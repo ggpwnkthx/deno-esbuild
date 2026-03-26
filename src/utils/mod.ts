@@ -1,3 +1,13 @@
+/**
+ * Utility functions and helpers
+ *
+ * @example
+ * ```typescript
+ * import { ... } from "@ggpwnkthx/esbuild/utils";
+ * ```
+ *
+ * @module
+ */
 export * from "./byte-buffer.ts";
 export * from "./channel.ts";
 export * from "./codec.ts";

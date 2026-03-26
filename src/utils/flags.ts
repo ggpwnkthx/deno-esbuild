@@ -22,6 +22,15 @@ import { encodeUTF8 } from "./codec.ts";
 const buildLogLevelDefault = "warning";
 const transformLogLevelDefault = "silent";
 
+/**
+ * Pushes log-related flags to the flags array based on build options.
+ *
+ * @param flags - Array to push flag strings to
+ * @param options - Build/transform options object
+ * @param keys - Object tracking valid option keys
+ * @param isTTY - Whether output is a TTY (controls default color flag)
+ * @param logLevelDefault - Default log level if not specified
+ */
 export function pushLogFlags(
   flags: string[],
   options: Record<string, unknown>,
@@ -38,6 +47,16 @@ export function pushLogFlags(
   flags.push(`--log-limit=${logLimit || 0}`);
 }
 
+/**
+ * Pushes common build/transform flags to the flags array.
+ *
+ * Handles flags like legalComments, sourceRoot, target, format, JSX options,
+ * minification settings, tree shaking, and more.
+ *
+ * @param flags - Array to push flag strings to
+ * @param options - Build/transform options object
+ * @param keys - Object tracking valid option keys
+ */
 export function pushCommonFlags(
   flags: string[],
   options: Record<string, unknown>,
@@ -242,6 +261,16 @@ interface FlagsForBuildOptionsResult {
   mangleCache: Record<string, string | false> | undefined;
 }
 
+/**
+ * Converts build options into esbuild command-line flags and related data.
+ *
+ * @param callName - Name of the calling function (for error messages)
+ * @param options - Build options object
+ * @param isTTY - Whether output is a TTY
+ * @param logLevelDefault - Default log level if not specified
+ * @param writeDefault - Default value for write flag if not specified
+ * @returns Object containing flags array, entries, stdin data, and other build info
+ */
 export function flagsForBuildOptions(
   callName: string,
   options: Record<string, unknown> | undefined,
@@ -558,6 +587,15 @@ export function flagsForBuildOptions(
   };
 }
 
+/**
+ * Converts transform options into esbuild command-line flags.
+ *
+ * @param callName - Name of the calling function (for error messages)
+ * @param options - Transform options object
+ * @param isTTY - Whether output is a TTY
+ * @param logLevelDefault - Default log level if not specified
+ * @returns Object containing flags array and mangle cache
+ */
 export function flagsForTransformOptions(
   callName: string,
   options: Record<string, unknown> | undefined,
@@ -605,4 +643,12 @@ export function flagsForTransformOptions(
   };
 }
 
-export { buildLogLevelDefault, transformLogLevelDefault };
+/**
+ * Default log level for build operations ("warning").
+ */
+export { buildLogLevelDefault };
+
+/**
+ * Default log level for transform operations ("silent").
+ */
+export { transformLogLevelDefault };

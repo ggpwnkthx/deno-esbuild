@@ -86,6 +86,10 @@ function asBuildResult(value: unknown): BuildResult<BuildOptions> {
   return value as BuildResult<BuildOptions>;
 }
 
+/**
+ * The subset of the esbuild API exposed to plugins running in the esbuild
+ * service process.
+ */
 export interface EsbuildExports {
   context: (options: BuildOptions) => Promise<BuildContext>;
   build: (options: BuildOptions) => Promise<BuildResult>;
@@ -170,6 +174,11 @@ interface ChannelResult {
   };
 }
 
+/**
+ * Creates a communication channel for interacting with the esbuild service.
+ * Handles packet encoding/decoding, request/response routing, and plugin
+ * callback bridging.
+ */
 export function createChannel(
   streamIn: StreamIn,
   expectedVersion?: string,

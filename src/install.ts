@@ -1,7 +1,27 @@
+/**
+ * esbuild binary installation and caching
+ *
+ * Handles downloading, caching, and path resolution for the native esbuild binary
+ * across supported platforms (Linux, macOS, Windows, FreeBSD, Android).
+ *
+ * @example
+ * ```typescript
+ * import { install } from "@ggpwnkthx/esbuild/install";
+ * const binaryPath = await install();
+ * ```
+ *
+ * @module
+ */
 const NPM_REGISTRY = "https://registry.npmjs.org";
 
 let cachedVersion: string | null = null;
 
+/**
+ * Fetches the latest version of esbuild from the npm registry.
+ *
+ * @returns The latest esbuild version string (e.g., "0.24.0")
+ * @throws Error if the npm registry request fails
+ */
 export async function getLatestVersion(): Promise<string> {
   const res = await fetch(`${NPM_REGISTRY}/@esbuild/linux-x64`);
   if (!res.ok) {
@@ -13,12 +33,25 @@ export async function getLatestVersion(): Promise<string> {
   return data["dist-tags"].latest;
 }
 
+/**
+ * Gets the cached esbuild version, fetching from npm if not yet cached.
+ *
+ * The version is cached after the first call to avoid repeated network requests.
+ *
+ * @returns The esbuild version string
+ */
 export async function getModVersion(): Promise<string> {
   if (cachedVersion !== null) return cachedVersion;
   cachedVersion = await getLatestVersion();
   return cachedVersion;
 }
 
+/**
+ * Returns the cached esbuild version synchronously.
+ *
+ * @returns The cached esbuild version string
+ * @throws Error if the version has not been initialized via `getModVersion()`
+ */
 export function getVersion(): string {
   if (cachedVersion === null) {
     throw new Error("Version not yet initialized. Call getModVersion() first.");
@@ -26,6 +59,17 @@ export function getVersion(): string {
   return cachedVersion;
 }
 
+/**
+ * Downloads and installs an npm package, extracting the specified file.
+ *
+ * The package is downloaded from the npm registry (or custom registry via
+ * NPM_CONFIG_REGISTRY env var) and cached in the system cache directory.
+ *
+ * @param name - The npm package name (e.g., "@esbuild/linux-x64")
+ * @param subpath - The path within the tarball to extract (e.g., "bin/esbuild")
+ * @returns The absolute path to the extracted executable
+ * @throws Error if the download or extraction fails
+ */
 export async function installFromNPM(name: string, subpath: string): Promise<string> {
   const version = await getModVersion();
   const { finalPath, finalDir } = getCachePath(name, version);
@@ -50,6 +94,19 @@ export async function installFromNPM(name: string, subpath: string): Promise<str
   return finalPath;
 }
 
+/**
+ * Computes the cache directory path for an esbuild binary.
+ *
+ * The cache location follows platform conventions:
+ * - macOS: ~/Library/Caches/esbuild/bin
+ * - Windows: %LOCALAPPDATA%\\Cache\\esbuild\\bin or %USERPROFILE%\\AppData\\Local\\Cache\\esbuild\\bin
+ * - Linux: $XDG_CACHE_HOME/esbuild/bin or ~/.cache/esbuild/bin
+ *
+ * @param name - The package name (e.g., "@esbuild/linux-x64")
+ * @param version - The version string. If omitted, uses the cached version via `getVersion()`
+ * @returns An object containing `finalPath` (full path to binary) and `finalDir` (directory path)
+ * @throws Error if no cache directory can be determined
+ */
 export function getCachePath(
   name: string,
   version?: string,
@@ -88,6 +145,14 @@ export function getCachePath(
   return { finalPath, finalDir };
 }
 
+/**
+ * Extracts a file from a gzip-compressed tar archive.
+ *
+ * @param buffer - The compressed tar.gz archive as a Uint8Array
+ * @param file - The filename to extract from the archive (without "package/" prefix)
+ * @returns The raw bytes of the extracted file
+ * @throws Error if the archive is invalid or the file is not found
+ */
 export async function extractFileFromTarGzip(
   buffer: Uint8Array,
   file: string,
@@ -124,6 +189,19 @@ export async function extractFileFromTarGzip(
   throw new Error(`Could not find ${JSON.stringify(file)} in archive`);
 }
 
+/**
+ * Installs the esbuild binary for the current platform.
+ *
+ * If the `ESBUILD_BINARY_PATH` environment variable is set, it returns that path
+ * instead of downloading. Otherwise, downloads and caches the appropriate binary
+ * from npm based on the current platform (OS and architecture).
+ *
+ * Supported platforms: macOS (x64, ARM64), Linux (x64, ARM64, FreeBSD, Alpine),
+ * Windows (x64), and Android (ARM64).
+ *
+ * @returns The absolute path to the esbuild binary
+ * @throws Error if running on an unsupported platform
+ */
 export async function install(): Promise<string> {
   const overridePath = Deno.env.get("ESBUILD_BINARY_PATH");
   if (overridePath) return overridePath;

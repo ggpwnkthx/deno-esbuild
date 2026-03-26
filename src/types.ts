@@ -1,5 +1,14 @@
+/**
+ * The target platform for the build.
+ */
 export type Platform = "browser" | "node" | "neutral";
+/**
+ * The output format for the bundle.
+ */
 export type Format = "iife" | "cjs" | "esm";
+/**
+ * The loader to use for file resolution.
+ */
 export type Loader =
   | "base64"
   | "binary"
@@ -16,11 +25,26 @@ export type Loader =
   | "text"
   | "ts"
   | "tsx";
+/**
+ * The level of logging for the build.
+ */
 export type LogLevel = "verbose" | "debug" | "info" | "warning" | "error" | "silent";
+/**
+ * The character encoding for output files.
+ */
 export type Charset = "ascii" | "utf8";
+/**
+ * The code to drop during minification.
+ */
 export type Drop = "console" | "debugger";
+/**
+ * The types of paths to return as absolute paths in the output.
+ */
 export type AbsPaths = "code" | "log" | "metafile";
 
+/**
+ * Common options shared between build and transform operations.
+ */
 export interface CommonOptions {
   sourcemap?: boolean | "linked" | "inline" | "external" | "both";
   legalComments?: "none" | "inline" | "eof" | "linked" | "external";
@@ -62,6 +86,10 @@ export interface CommonOptions {
   tsconfigRaw?: string | TsconfigRaw;
 }
 
+/**
+ * TypeScript compiler options passed directly to esbuild.
+ * Used when tsconfigRaw is a string.
+ */
 export interface TsconfigRaw {
   compilerOptions?: {
     alwaysStrict?: boolean;
@@ -81,6 +109,9 @@ export interface TsconfigRaw {
   };
 }
 
+/**
+ * Options for the build operation.
+ */
 export interface BuildOptions extends CommonOptions {
   bundle?: boolean;
   splitting?: boolean;
@@ -114,6 +145,9 @@ export interface BuildOptions extends CommonOptions {
   nodePaths?: string[];
 }
 
+/**
+ * Options for reading from standard input.
+ */
 export interface StdinOptions {
   contents: string | Uint8Array;
   resolveDir?: string;
@@ -121,6 +155,9 @@ export interface StdinOptions {
   loader?: Loader;
 }
 
+/**
+ * A structured error or warning message from esbuild.
+ */
 export interface Message {
   id: string;
   pluginName: string;
@@ -130,11 +167,17 @@ export interface Message {
   detail: unknown;
 }
 
+/**
+ * A note attached to a message providing additional context.
+ */
 export interface Note {
   text: string;
   location: Location | null;
 }
 
+/**
+ * The location in source code where a message originates.
+ */
 export interface Location {
   file: string;
   namespace: string;
@@ -145,6 +188,9 @@ export interface Location {
   suggestion: string;
 }
 
+/**
+ * A file written to the file system or returned in the build result.
+ */
 export interface OutputFile {
   path: string;
   contents: Uint8Array;
@@ -152,6 +198,9 @@ export interface OutputFile {
   readonly text: string;
 }
 
+/**
+ * The result of a successful build operation.
+ */
 export type BuildResult<
   ProvidedOptions extends BuildOptions = BuildOptions,
 > =
@@ -167,11 +216,17 @@ export type BuildResult<
     warnings: Message[];
   };
 
+/**
+ * Error thrown when a build operation fails.
+ */
 export interface BuildFailure extends Error {
   errors: Message[];
   warnings: Message[];
 }
 
+/**
+ * Options for the development server.
+ */
 export interface ServeOptions {
   port?: number;
   host?: string;
@@ -184,11 +239,17 @@ export interface ServeOptions {
   [key: string]: unknown;
 }
 
+/**
+ * Cross-Origin Resource Sharing options for the development server.
+ */
 export interface CORSOptions {
   origin?: string | string[];
   [key: string]: unknown;
 }
 
+/**
+ * Arguments passed to the onRequest callback of the development server.
+ */
 export interface ServeOnRequestArgs {
   remoteAddress: string;
   method: string;
@@ -197,11 +258,17 @@ export interface ServeOnRequestArgs {
   timeInMS: number;
 }
 
+/**
+ * Result from starting the development server.
+ */
 export interface ServeResult {
   port: number;
   hosts: string[];
 }
 
+/**
+ * Options for the transform operation.
+ */
 export interface TransformOptions extends CommonOptions {
   sourcefile?: string;
   loader?: Loader;
@@ -209,6 +276,9 @@ export interface TransformOptions extends CommonOptions {
   footer?: string;
 }
 
+/**
+ * The result of a successful transform operation.
+ */
 export type TransformResult<
   ProvidedOptions extends TransformOptions = TransformOptions,
 > =
@@ -223,16 +293,26 @@ export type TransformResult<
     warnings: Message[];
   };
 
+/**
+ * Error thrown when a transform operation fails.
+ */
 export interface TransformFailure extends Error {
   errors: Message[];
   warnings: Message[];
 }
 
+/**
+ * A user-defined plugin that hooks into the build process.
+ */
 export interface Plugin {
   name: string;
   setup: (build: PluginBuild) => void | Promise<void>;
 }
 
+/**
+ * The build object passed to a plugin's setup function.
+ * Provides methods for registering callbacks and resolving/loading modules.
+ */
 export interface PluginBuild {
   initialOptions: BuildOptions;
   resolve(
@@ -288,6 +368,9 @@ export interface PluginBuild {
   };
 }
 
+/**
+ * Options for the resolve callback registered by a plugin.
+ */
 export interface ResolveOptions {
   pluginName?: string;
   importer?: string;
@@ -299,6 +382,9 @@ export interface ResolveOptions {
   [key: string]: unknown;
 }
 
+/**
+ * Result returned by the resolve callback of a plugin.
+ */
 export interface ResolveResult {
   errors: Message[];
   warnings: Message[];
@@ -310,22 +396,34 @@ export interface ResolveResult {
   pluginData: unknown;
 }
 
+/**
+ * Result returned by the onStart callback of a plugin.
+ */
 export interface OnStartResult {
   errors?: PartialMessage[];
   warnings?: PartialMessage[];
 }
 
+/**
+ * Result returned by the onEnd callback of a plugin.
+ */
 export interface OnEndResult {
   errors?: PartialMessage[];
   warnings?: PartialMessage[];
 }
 
+/**
+ * Options for registering an onResolve callback on a plugin build.
+ */
 export interface OnResolveOptions {
   filter: RegExp;
   namespace?: string;
   [key: string]: unknown;
 }
 
+/**
+ * Arguments passed to the onResolve callback of a plugin.
+ */
 export interface OnResolveArgs {
   path: string;
   importer: string;
@@ -336,6 +434,9 @@ export interface OnResolveArgs {
   with: Record<string, string>;
 }
 
+/**
+ * The kind of import that triggered a resolve operation.
+ */
 export type ImportKind =
   | "entry-point"
   | "import-statement"
@@ -346,6 +447,9 @@ export type ImportKind =
   | "composes-from"
   | "url-token";
 
+/**
+ * Result returned by the onResolve callback of a plugin.
+ */
 export interface OnResolveResult {
   pluginName?: string;
   errors?: PartialMessage[];
@@ -361,12 +465,18 @@ export interface OnResolveResult {
   [key: string]: unknown;
 }
 
+/**
+ * Options for registering an onLoad callback on a plugin build.
+ */
 export interface OnLoadOptions {
   filter: RegExp;
   namespace?: string;
   [key: string]: unknown;
 }
 
+/**
+ * Arguments passed to the onLoad callback of a plugin.
+ */
 export interface OnLoadArgs {
   path: string;
   namespace: string;
@@ -375,6 +485,9 @@ export interface OnLoadArgs {
   with: Record<string, string>;
 }
 
+/**
+ * Result returned by the onLoad callback of a plugin.
+ */
 export interface OnLoadResult {
   pluginName?: string;
   errors?: PartialMessage[];
@@ -388,6 +501,9 @@ export interface OnLoadResult {
   [key: string]: unknown;
 }
 
+/**
+ * A message with all fields optional, used in plugin callbacks.
+ */
 export interface PartialMessage {
   id?: string;
   pluginName?: string;
@@ -397,11 +513,17 @@ export interface PartialMessage {
   detail?: unknown;
 }
 
+/**
+ * A note with all fields optional, used in plugin callbacks.
+ */
 export interface PartialNote {
   text?: string;
   location?: Partial<Location> | null;
 }
 
+/**
+ * Metadata about the build inputs and outputs.
+ */
 export interface Metafile {
   inputs: Record<
     string,
@@ -435,6 +557,9 @@ export interface Metafile {
   >;
 }
 
+/**
+ * Options for formatting error or warning messages.
+ */
 export interface FormatMessagesOptions {
   kind: "error" | "warning";
   color?: boolean;
@@ -442,17 +567,26 @@ export interface FormatMessagesOptions {
   [key: string]: unknown;
 }
 
+/**
+ * Options for analyzing a metafile.
+ */
 export interface AnalyzeMetafileOptions {
   color?: boolean;
   verbose?: boolean;
   [key: string]: unknown;
 }
 
+/**
+ * Options for the watch operation.
+ */
 export interface WatchOptions {
   delay?: number;
   [key: string]: unknown;
 }
 
+/**
+ * A context for a build operation that supports watch and serve modes.
+ */
 export interface BuildContext<
   ProvidedOptions extends BuildOptions = BuildOptions,
 > {
@@ -463,6 +597,9 @@ export interface BuildContext<
   dispose(): Promise<void>;
 }
 
+/**
+ * Options for initializing the esbuild service.
+ */
 export interface InitializeOptions {
   wasmURL?: string | URL;
   wasmModule?: WebAssembly.Module;

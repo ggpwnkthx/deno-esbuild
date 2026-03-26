@@ -16,6 +16,11 @@ import {
   mustBeString,
 } from "./validation.ts";
 
+/**
+ * Creates an object stash for storing and retrieving values by numeric ID.
+ *
+ * @returns An object with clear, load, and store methods
+ */
 export function createObjectStash<T = unknown>(): {
   clear(): void;
   load(id: number): T | undefined;
@@ -44,6 +49,14 @@ interface StreamIn {
   readFileSync?: (path: string, encoding: string) => string;
 }
 
+/**
+ * Extracts caller information from a V8 stack trace.
+ *
+ * @param e - Error object to extract stack from
+ * @param streamIn - Object with readFileSync for reading source files
+ * @param ident - Identifier string to match for length calculation
+ * @returns Function that returns caller text and location when called
+ */
 export function extractCallerV8(
   e: Error,
   streamIn: StreamIn,
@@ -70,6 +83,15 @@ export function extractCallerV8(
   };
 }
 
+/**
+ * Extracts error message and location from a V8 error.
+ *
+ * @param e - Error or unknown value to extract message from
+ * @param streamIn - Object with readFileSync for reading source files
+ * @param _stash - Object stash (unused in this function)
+ * @param pluginName - Name of the plugin reporting the error
+ * @returns Message object with text and optional location
+ */
 export function extractErrorMessageV8(
   e: unknown,
   streamIn: StreamIn,
@@ -166,6 +188,14 @@ function parseStackLinesV8(
   return null;
 }
 
+/**
+ * Creates a BuildFailure error with errors and warnings attached.
+ *
+ * @param text - Error message text
+ * @param errors - Array of error messages
+ * @param warnings - Array of warning messages
+ * @returns Error object with errors and warnings properties
+ */
 export function failureErrorWithLog(
   text: string,
   errors: Message[],
@@ -216,6 +246,13 @@ ${file}:${line}:${column}: ERROR: ${pluginText}${e.text}`;
   return error;
 }
 
+/**
+ * Replaces detail references in messages with actual objects from the stash.
+ *
+ * @param messages - Array of messages with detail IDs
+ * @param stash - Object stash containing the actual detail values
+ * @returns The same messages array with resolved details
+ */
 export function replaceDetailsInMessages(
   messages: Message[],
   stash: ReturnType<typeof createObjectStash>,
@@ -226,6 +263,14 @@ export function replaceDetailsInMessages(
   return messages;
 }
 
+/**
+ * Sanitizes a location object, extracting and validating its properties.
+ *
+ * @param location - Raw location object to sanitize
+ * @param where - Description of location context (for error messages)
+ * @param _terminalWidth - Terminal width (unused)
+ * @returns Sanitized Location object or null if input is null/undefined
+ */
 export function sanitizeLocation(
   location: unknown,
   where: string,
@@ -294,6 +339,16 @@ function mustBeIntegerForSanitize(value: unknown): string | null {
   return "an integer";
 }
 
+/**
+ * Sanitizes an array of partial messages into complete Message objects.
+ *
+ * @param messages - Array of partial messages to sanitize
+ * @param property - Property name (for error context)
+ * @param stash - Object stash for storing detail values
+ * @param fallbackPluginName - Default plugin name if not specified
+ * @param terminalWidth - Terminal width for formatting
+ * @returns Array of sanitized Message objects
+ */
 export function sanitizeMessages(
   messages: PartialMessage[],
   property: string,
@@ -383,6 +438,12 @@ export function sanitizeMessages(
   return messagesClone;
 }
 
+/**
+ * Converts output files to include a lazy-computed text property.
+ *
+ * @param file - Output file with path, contents, and hash
+ * @returns Object with original properties plus a text getter
+ */
 export function convertOutputFiles(file: {
   path: string;
   contents: Uint8Array;

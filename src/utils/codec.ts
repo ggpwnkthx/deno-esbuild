@@ -1,5 +1,9 @@
 const fromCharCode = String.fromCharCode;
 
+/**
+ * Throws a SyntaxError with a detailed message indicating where parsing
+ * failed in the JSON input.
+ */
 export function throwSyntaxError(
   bytes: Uint8Array,
   index: number,
@@ -31,6 +35,11 @@ export function throwSyntaxError(
   );
 }
 
+/**
+ * Parses a Uint8Array containing JSON data into a JavaScript value without
+ * using the native JSON parser. This is a hand-written parser for performance
+ * and to avoid engine-specific behavior.
+ */
 export function JSON_parse(bytes: Uint8Array): unknown {
   if (!(bytes instanceof Uint8Array)) {
     throw new Error("JSON input must be a Uint8Array");
@@ -306,6 +315,10 @@ export function JSON_parse(bytes: Uint8Array): unknown {
   throwSyntaxError(bytes, i);
 }
 
+/**
+ * Parses JSON data from a Uint8Array, attempting to decode as UTF-8 text first,
+ * then falling back to the hand-written JSON_parse for binary data.
+ */
 export function parseJSON(bytes: Uint8Array): unknown {
   const decodeUTF8 = getDecodeUTF8();
   let text: string | undefined;
@@ -320,18 +333,30 @@ export function parseJSON(bytes: Uint8Array): unknown {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+/**
+ * Returns a function that encodes a string to UTF-8 bytes using TextEncoder.
+ */
 export function getEncodeUTF8(): (text: string) => Uint8Array {
   return (text: string) => encoder.encode(text);
 }
 
+/**
+ * Returns a function that decodes UTF-8 bytes to a string using TextDecoder.
+ */
 export function getDecodeUTF8(): (bytes: Uint8Array) => string {
   return (bytes: Uint8Array) => decoder.decode(bytes);
 }
 
+/**
+ * Encodes a string to UTF-8 bytes using TextEncoder.
+ */
 export function encodeUTF8(text: string): Uint8Array {
   return getEncodeUTF8()(text);
 }
 
+/**
+ * Decodes UTF-8 bytes to a string using TextDecoder.
+ */
 export function decodeUTF8(bytes: Uint8Array): string {
   return getDecodeUTF8()(bytes);
 }

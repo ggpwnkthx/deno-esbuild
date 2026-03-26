@@ -1,3 +1,7 @@
+/**
+ * A growable byte buffer for reading and writing binary data in little-endian
+ * format. Used for encoding and decoding packets in the esbuild protocol.
+ */
 export class ByteBuffer {
   buf: Uint8Array;
   len: number;
@@ -60,6 +64,9 @@ export class ByteBuffer {
   }
 }
 
+/**
+ * Reads an unsigned 32-bit integer from a buffer in little-endian format.
+ */
 export function readUInt32LE(buffer: Uint8Array, offset: number): number {
   return (
     (buffer[offset++]
@@ -70,6 +77,9 @@ export function readUInt32LE(buffer: Uint8Array, offset: number): number {
   );
 }
 
+/**
+ * Writes an unsigned 32-bit integer to a buffer in little-endian format.
+ */
 export function writeUInt32LE(buffer: Uint8Array, value: number, offset: number): void {
   buffer[offset++] = value;
   buffer[offset++] = value >> 8;
@@ -83,6 +93,10 @@ interface Packet {
   value: unknown;
 }
 
+/**
+ * Encodes a packet (request or response) into a byte array for transmission
+ * to the esbuild service.
+ */
 export function encodePacket(packet: Packet): Uint8Array {
   const encodeUTF8 = getEncodeUTF8();
 
@@ -126,6 +140,9 @@ export function encodePacket(packet: Packet): Uint8Array {
   return bb.buf.subarray(0, bb.len) as Uint8Array;
 }
 
+/**
+ * Decodes a packet from a byte array received from the esbuild service.
+ */
 export function decodePacket(bytes: Uint8Array): Packet {
   const decodeUTF8 = getDecodeUTF8();
 
@@ -184,6 +201,10 @@ function getDecodeUTF8(): (bytes: Uint8Array) => string {
   return (bytes: Uint8Array) => textDecoder.decode(bytes);
 }
 
+/**
+ * Validates that the TextEncoder/TextDecoder codec produces valid UTF-8.
+ * Throws an error if the JavaScript environment is broken.
+ */
 export function validateUTF8Codec(): void {
   const encodeUTF8 = getEncodeUTF8();
   if (!(encodeUTF8("") instanceof Uint8Array)) {

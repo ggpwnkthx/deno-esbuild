@@ -14,8 +14,23 @@ import { createChannel, type EsbuildExports } from "./utils/channel.ts";
 import { validateInitializeOptions } from "./utils/validation.ts";
 import { getModVersion, getVersion, install } from "./install.ts";
 
+/**
+ * The version of the esbuild API.
+ */
 export { getVersion as version };
 
+/**
+ * Builds files and/or directories of files using the esbuild API.
+ *
+ * @example
+ * ```typescript
+ * await build({
+ *   entryPoints: ["src/index.ts"],
+ *   bundle: true,
+ *   outfile: "dist/bundle.js",
+ * });
+ * ```
+ */
 export function build<Options extends BuildOptions>(
   options: Options,
 ): Promise<BuildResult<Options>> {
@@ -24,6 +39,19 @@ export function build<Options extends BuildOptions>(
   );
 }
 
+/**
+ * Creates a build context that can be used to run builds repeatedly or to watch
+ * the file system for changes.
+ *
+ * @example
+ * ```typescript
+ * const ctx = await context({
+ *   entryPoints: ["src/index.ts"],
+ *   bundle: true,
+ * });
+ * await ctx.watch();
+ * ```
+ */
 export function context<Options extends BuildOptions>(
   options: Options,
 ): Promise<BuildContext<Options>> {
@@ -32,6 +60,16 @@ export function context<Options extends BuildOptions>(
   );
 }
 
+/**
+ * Transforms a string of JavaScript or TypeScript code into JavaScript code.
+ *
+ * @example
+ * ```typescript
+ * const result = await transform("const x: number = 1;", {
+ *   loader: "ts",
+ * });
+ * ```
+ */
 export function transform<Options extends TransformOptions>(
   input: string | Uint8Array,
   options?: Options,
@@ -43,12 +81,18 @@ export function transform<Options extends TransformOptions>(
   );
 }
 
+/**
+ * Formats an array of esbuild log messages into a human-readable string.
+ */
 export const formatMessages = (
   messages: PartialMessage[],
   options: FormatMessagesOptions,
 ): Promise<string[]> =>
   ensureServiceIsRunning().then((service) => service.formatMessages(messages, options));
 
+/**
+ * Analyzes a metafile output by esbuild and returns a human-readable string.
+ */
 export const analyzeMetafile = (
   metafile: Metafile | string,
   options?: AnalyzeMetafileOptions,
@@ -60,28 +104,68 @@ export const analyzeMetafile = (
     )
   );
 
+/**
+ * The synchronous version of `build`.
+ *
+ * This API is not supported in Deno as it requires a native binary that
+ * does not support synchronous operations. Use the asynchronous `build`
+ * function instead.
+ */
 export const buildSync = (): BuildResult => {
   throw new Error(`The "buildSync" API does not work in Deno`);
 };
 
+/**
+ * The synchronous version of `transform`.
+ *
+ * This API is not supported in Deno as it requires a native binary that
+ * does not support synchronous operations. Use the asynchronous `transform`
+ * function instead.
+ */
 export const transformSync = (): TransformResult => {
   throw new Error(`The "transformSync" API does not work in Deno`);
 };
 
+/**
+ * The synchronous version of `formatMessages`.
+ *
+ * This API is not supported in Deno as it requires a native binary that
+ * does not support synchronous operations. Use the asynchronous `formatMessages`
+ * function instead.
+ */
 export const formatMessagesSync = (): string[] => {
   throw new Error(`The "formatMessagesSync" API does not work in Deno`);
 };
 
+/**
+ * The synchronous version of `analyzeMetafile`.
+ *
+ * This API is not supported in Deno as it requires a native binary that
+ * does not support synchronous operations. Use the asynchronous `analyzeMetafile`
+ * function instead.
+ */
 export const analyzeMetafileSync = (): string => {
   throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
 };
 
+/**
+ * Stops the esbuild service, releasing any resources it holds.
+ */
 export const stop = async (): Promise<void> => {
   if (stopService) await stopService();
 };
 
 let initializeWasCalled = false;
 
+/**
+ * Initializes the esbuild service with the given options.
+ *
+ * This function is called automatically by other API methods. You typically
+ * do not need to call it explicitly unless you want to validate options
+ * before performing any builds.
+ *
+ * @throws Error If called more than once, or if browser-only options are provided.
+ */
 export const initialize = async (options: InitializeOptions): Promise<void> => {
   const validated = validateInitializeOptions(options);
   if (validated.wasmURL) {
@@ -166,6 +250,13 @@ const spawnNew = (
 
 const spawn = spawnNew;
 
+/**
+ * Ensures the esbuild service is running and returns a promise that resolves
+ * to the service API.
+ *
+ * This function is called automatically by other API methods. It handles
+ * installing the esbuild binary if needed and spawning the service process.
+ */
 export const ensureServiceIsRunning = (): Promise<{
   build: (options: BuildOptions) => Promise<BuildResult>;
   context: (options: BuildOptions) => Promise<BuildContext>;
