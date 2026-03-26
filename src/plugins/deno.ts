@@ -220,7 +220,7 @@ export function denoPlugin(options: DenoPluginOptions = {}): Plugin {
         args: OnLoadArgs,
       ): Promise<OnLoadResult | null> => {
         const url = args.path.startsWith("http:") || args.path.startsWith("https:")
-          || args.path.startsWith("npm:") || args.path.startsWith("jsr:")
+            || args.path.startsWith("npm:") || args.path.startsWith("jsr:")
           ? args.path
           : path.toFileUrl(args.path).toString();
 

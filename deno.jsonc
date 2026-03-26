@@ -56,7 +56,6 @@
     "./.*",
     "./benchmarks",
     "./coverage",
-    "./tests",
     "./AGENTS.md",
     "./CONTRIBUTING.md",
     "opencode.json"
