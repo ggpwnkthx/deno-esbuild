@@ -1,6 +1,6 @@
 {
   "name": "@ggpwnkthx/esbuild",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A Deno wrapper for esbuild, a fast JavaScript bundler and minifier.",
   "repository": "https://github.com/ggpwnkthx/deno-esbuild",
   "exports": {
