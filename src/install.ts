@@ -84,7 +84,11 @@ export async function installFromNPM(name: string, subpath: string): Promise<str
   const url = `${npmRegistry}/${name}/-/${
     name.replace("@esbuild/", "")
   }-${version}.tgz`;
-  const buffer = await fetch(url).then((r) => r.arrayBuffer());
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+  }
+  const buffer = await res.arrayBuffer();
   const executable = await extractFileFromTarGzip(new Uint8Array(buffer), subpath);
   await Deno.mkdir(finalDir, {
     recursive: true,
@@ -154,39 +158,47 @@ export function getCachePath(
  * @throws Error if the archive is invalid or the file is not found
  */
 export async function extractFileFromTarGzip(
-  buffer: Uint8Array,
+  compressed: Uint8Array,
   file: string,
 ): Promise<Uint8Array> {
+  let buffer: Uint8Array;
+
   try {
-    const ds = new DecompressionStream("gzip");
-    const writer = ds.writable.getWriter();
-    await writer.write(new Uint8Array(buffer));
-    await writer.close();
-    const result = await new Response(ds.readable).arrayBuffer();
-    buffer = new Uint8Array(result);
+    const decompressedStream = new Blob([compressed.buffer as ArrayBuffer])
+      .stream()
+      .pipeThrough(new DecompressionStream("gzip"));
+
+    const decompressed = await new Response(decompressedStream).arrayBuffer();
+    buffer = new Uint8Array(decompressed);
   } catch (err) {
-    throw new Error(
-      `Invalid gzip data in archive: ${(err as { message?: string })?.message || err}`,
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid gzip data in archive: ${message}`);
   }
 
   const str = (i: number, n: number): string =>
     String.fromCharCode(...buffer.subarray(i, i + n)).replace(/\0.*$/, "");
-  let offset = 0;
-  file = `package/${file}`;
 
-  while (offset < buffer.length) {
+  let offset = 0;
+  const target = `package/${file}`;
+
+  while (offset + 512 <= buffer.length) {
     const name = str(offset, 100);
+    if (name === "") {
+      break;
+    }
+
     const size = parseInt(str(offset + 124, 12), 8);
     offset += 512;
 
-    if (!isNaN(size)) {
-      if (name === file) return buffer.subarray(offset, offset + size);
+    if (!Number.isNaN(size)) {
+      if (name === target) {
+        return buffer.subarray(offset, offset + size);
+      }
       offset += (size + 511) & ~511;
     }
   }
 
-  throw new Error(`Could not find ${JSON.stringify(file)} in archive`);
+  throw new Error(`Could not find ${JSON.stringify(target)} in archive`);
 }
 
 /**

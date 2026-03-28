@@ -1054,14 +1054,17 @@ Deno.test("context.watch() sends a watch request and forwards delay", async () =
       encodeResponse(buildPacket.id, false, { errors: [], warnings: [], key: 1 }),
     ),
   );
-  const ctx = contextResult as { watch: (opts?: { delay?: number }) => Promise<void> };
-  ctx.watch({ delay: 500 });
+  const ctx = contextResult as {
+    watch: (opts?: { delay?: number }) => Promise<void>;
+    dispose: () => Promise<void>;
+  };
+  const watchPromise = ctx.watch({ delay: 500 });
   const watchPackets = fake.getStdinPackets();
   const watchPacket = watchPackets.find((p) => p.value.command === "watch");
   assert(watchPacket !== undefined);
   fake.injectFramed(
     encodeFramed(
-      encodeResponse(watchPacket.id, false, { errors: [], warnings: [] }),
+      encodeResponse(watchPacket!.id, false, { errors: [], warnings: [] }),
     ),
   );
   assertEquals(
@@ -1070,6 +1073,8 @@ Deno.test("context.watch() sends a watch request and forwards delay", async () =
     ),
     true,
   );
+  await watchPromise;
+  await ctx.dispose();
 });
 
 Deno.test("context.serve() throws when streamIn.hasFS === false", async () => {
@@ -1142,8 +1147,9 @@ Deno.test("context.serve() validates and forwards port, host, servedir, keyfile,
       fallback?: string;
       cors?: { origin?: string };
     }) => Promise<unknown>;
+    dispose: () => Promise<void>;
   };
-  ctx.serve({
+  const servePromise = ctx.serve({
     port: 3000,
     host: "localhost",
     servedir: "/public",
@@ -1161,6 +1167,16 @@ Deno.test("context.serve() validates and forwards port, host, servedir, keyfile,
   assertEquals(servePacket?.value.certfile, "/cert.pem");
   assertEquals(servePacket?.value.fallback, "/index.html");
   assertEquals((servePacket?.value.corsOrigin as string[])?.[0], "*");
+  fake.injectFramed(
+    encodeFramed(
+      encodeResponse(servePacket!.id, false, {
+        host: "localhost",
+        port: 3000,
+      }),
+    ),
+  );
+  await servePromise;
+  await ctx.dispose();
 });
 
 Deno.test("context.serve() registers a serve-request callback when onRequest is provided", async () => {
@@ -1187,12 +1203,23 @@ Deno.test("context.serve() registers a serve-request callback when onRequest is 
   );
   const ctx = contextResult as {
     serve: (opts?: { onRequest?: (args: unknown) => void }) => Promise<unknown>;
+    dispose: () => Promise<void>;
   };
-  await ctx.serve({ onRequest: () => {} });
+  const servePromise = ctx.serve({ onRequest: () => {} });
   const packets = fake.getStdinPackets();
   const servePacket = packets.find((p) => p.value.command === "serve");
   assert(servePacket !== undefined);
-  assertEquals(servePacket.value.onRequest, true);
+  assertEquals(servePacket!.value.onRequest, true);
+  fake.injectFramed(
+    encodeFramed(
+      encodeResponse(servePacket!.id, false, {
+        host: "localhost",
+        port: 3000,
+      }),
+    ),
+  );
+  await servePromise;
+  await ctx.dispose();
 });
 
 Deno.test("context.cancel() is safe to call and resolves", async () => {
@@ -1223,7 +1250,7 @@ Deno.test("context.cancel() is safe to call and resolves", async () => {
   assert(cancelPacket !== undefined);
   fake.injectFramed(
     encodeFramed(
-      encodeResponse(cancelPacket.id, false, { errors: [], warnings: [] }),
+      encodeResponse(cancelPacket!.id, false, { errors: [], warnings: [] }),
     ),
   );
   await cancelPromise;

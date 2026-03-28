@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.19";
+import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1.0.19";
 import {
   extractFileFromTarGzip,
   getCachePath,
@@ -232,7 +232,7 @@ Deno.test("extractFileFromTarGzip returns the requested package/... file", async
 Deno.test("extractFileFromTarGzip throws for invalid gzip data", async () => {
   const invalidGzip = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
 
-  await assertThrows(
+  await assertRejects(
     () => extractFileFromTarGzip(invalidGzip, "bin/esbuild"),
     Error,
     "Invalid gzip data in archive",
@@ -246,7 +246,7 @@ Deno.test("extractFileFromTarGzip throws when file is missing", async () => {
 
   const compressed = await gzipAsync(tarData);
 
-  await assertThrows(
+  await assertRejects(
     () => extractFileFromTarGzip(compressed, "bin/esbuild"),
     Error,
     'Could not find "package/bin/esbuild" in archive',
