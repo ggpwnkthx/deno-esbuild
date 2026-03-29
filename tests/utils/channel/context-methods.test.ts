@@ -89,7 +89,18 @@ Deno.test("context.watch() sends a watch request and forwards delay", async () =
     true,
   );
   await watchPromise;
-  await ctx.dispose();
+
+  const disposePromise = ctx.dispose();
+  const disposePacket = fake.getStdinPackets().find((p) =>
+    p.value.command === "dispose"
+  );
+  assert(disposePacket !== undefined);
+  fake.injectFramed(
+    encodeFramed(
+      encodeResponse(disposePacket!.id, false, { errors: [], warnings: [] }),
+    ),
+  );
+  await disposePromise;
 });
 
 Deno.test("context.serve() throws when streamIn.hasFS === false", async () => {
@@ -195,7 +206,18 @@ Deno.test("context.serve() validates and forwards port, host, servedir, keyfile,
     ),
   );
   await servePromise;
-  await ctx.dispose();
+
+  const disposePromise = ctx.dispose();
+  const disposePacket = fake.getStdinPackets().find((p) =>
+    p.value.command === "dispose"
+  );
+  assert(disposePacket !== undefined);
+  fake.injectFramed(
+    encodeFramed(
+      encodeResponse(disposePacket!.id, false, { errors: [], warnings: [] }),
+    ),
+  );
+  await disposePromise;
 });
 
 Deno.test("context.serve() registers a serve-request callback when onRequest is provided", async () => {
@@ -238,7 +260,18 @@ Deno.test("context.serve() registers a serve-request callback when onRequest is 
     ),
   );
   await servePromise;
-  await ctx.dispose();
+
+  const disposePromise = ctx.dispose();
+  const disposePacket = fake.getStdinPackets().find((p) =>
+    p.value.command === "dispose"
+  );
+  assert(disposePacket !== undefined);
+  fake.injectFramed(
+    encodeFramed(
+      encodeResponse(disposePacket!.id, false, { errors: [], warnings: [] }),
+    ),
+  );
+  await disposePromise;
 });
 
 Deno.test("context.cancel() is safe to call and resolves", async () => {

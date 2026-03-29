@@ -267,10 +267,10 @@ export function createChannel(
     streamIn.writeToStdin(encodePacket({ id, isRequest: false, value }));
   };
 
-  const handleRequest = async (
+  const handleRequest = (
     id: number,
     request: Record<string, unknown>,
-  ): Promise<void> => {
+  ): void => {
     try {
       if (request.command === "ping") {
         sendResponse(id, {});
@@ -283,7 +283,10 @@ export function createChannel(
         }
         const callback = requestCallbacks[request.command as string];
         if (callback) {
-          await callback(id, request);
+          const result = callback(id, request);
+          if (result instanceof Promise) {
+            result.catch(() => {});
+          }
           return;
         }
       }
@@ -900,25 +903,23 @@ function buildOrContextImpl(
       | undefined;
 
     if (isContext) {
-      requestCallbacks["on-end"] = (id, request2) =>
-        new Promise<void>((resolve) => {
-          buildResponseToResult(
-            request2 as Record<string, unknown>,
-            (err, res, onEndErrors, onEndWarnings) => {
-              const response = {
-                errors: onEndErrors,
-                warnings: onEndWarnings,
-              };
-              if (provideLatestResult) {
-                provideLatestResult(err, res as Record<string, unknown> | undefined);
-              }
-              latestResultPromise = void 0;
-              provideLatestResult = undefined;
-              sendResponse(id, response);
-              resolve();
-            },
-          );
-        });
+      requestCallbacks["on-end"] = (id, request2) => {
+        buildResponseToResult(
+          request2 as Record<string, unknown>,
+          (err, res, onEndErrors, onEndWarnings) => {
+            const response = {
+              errors: onEndErrors,
+              warnings: onEndWarnings,
+            };
+            if (provideLatestResult) {
+              provideLatestResult(err, res as Record<string, unknown> | undefined);
+            }
+            latestResultPromise = void 0;
+            provideLatestResult = undefined;
+            sendResponse(id, response);
+          },
+        );
+      };
     }
 
     sendRequest(

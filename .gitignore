@@ -32,3 +32,6 @@ temp/
 # Misc
 CLAUDE.md
 .origin
+
+# segfault
+core
