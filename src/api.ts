@@ -210,6 +210,7 @@ interface Child {
   read: () => Promise<Uint8Array | null>;
   close: () => Promise<void>;
   status: () => Promise<{ code: number }>;
+  kill: () => void;
 }
 
 const spawnNew = (
@@ -245,6 +246,7 @@ const spawnNew = (
       await child.status;
     },
     status: () => child.status,
+    kill: () => child.kill(),
   };
 };
 
@@ -287,7 +289,23 @@ export const ensureServiceIsRunning = (): Promise<{
       });
 
       stopService = async () => {
-        await child.close();
+        const closePromise = waitForClose();
+        const timeoutPromise = new Promise<void>((resolve) =>
+          setTimeout(resolve, 5000)
+        );
+        await Promise.race([
+          child.close(),
+          timeoutPromise,
+        ]);
+        await Promise.race([
+          closePromise,
+          new Promise<void>((resolve) => setTimeout(resolve, 1000)),
+        ]);
+        try {
+          child.kill();
+        } catch {
+          // Process may have already exited
+        }
         initializeWasCalled = false;
         longLivedService = undefined;
         stopService = undefined;
@@ -308,7 +326,7 @@ export const ensureServiceIsRunning = (): Promise<{
         version,
       };
 
-      const { readFromStdout, afterClose, service } = createChannel({
+      const { readFromStdout, afterClose, waitForClose, service } = createChannel({
         writeToStdin(bytes: Uint8Array) {
           child.write(bytes);
         },

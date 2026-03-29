@@ -125,6 +125,7 @@ interface StreamIn {
 interface ChannelResult {
   readFromStdout: (chunk: Uint8Array) => void;
   afterClose: (error?: Error) => void;
+  waitForClose: () => Promise<void>;
   service: {
     buildOrContext: (params: {
       callName: string;
@@ -227,6 +228,11 @@ export function createChannel(
     }
   };
 
+  let closeResolver: () => void;
+  const closePromise = new Promise<void>((resolve) => {
+    closeResolver = resolve;
+  });
+
   const afterClose = (error?: Error): void => {
     closeData.didClose = true;
     if (error) closeData.reason = ": " + (error.message || error);
@@ -238,7 +244,10 @@ export function createChannel(
       number,
       (error: string | null, response: Record<string, unknown> | null) => void
     >;
+    closeResolver();
   };
+
+  const waitForClose = (): Promise<void> => closePromise;
 
   const sendRequest = (
     refs: unknown,
@@ -630,6 +639,7 @@ export function createChannel(
   return {
     readFromStdout,
     afterClose,
+    waitForClose,
     service: {
       buildOrContext,
       transform: transform2,
