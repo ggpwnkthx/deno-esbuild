@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0]
+
+### Changed
+
+- Complete rewrite/simplification around high-level entrypoints
+- Replaced low-level IPC/channel/codec machinery with first-class Deno plugin and Hono middleware wrappers
+
+### Added
+
+- New `plugins/deno.ts` providing a Deno plugin for esbuild (250 lines)
+- New `wrappers/hono/mod.ts` Hono middleware wrapper (99 lines) with tests (`default.test.ts`, `wasm.test.ts`) and a transpiler (`transpilers/wasm.ts`)
+
+### Removed
+
+- All `src/` contents (api.ts, install.ts, mod.ts, native.ts, types.ts)
+- All `src/utils/` contents (byte-buffer.ts, channel.ts, codec.ts, flags.ts, misc.ts, validation.ts)
+- All `src/plugins/` and `tests/` contents including api.test.ts, install.test.ts, and the full tests/utils/ tree
+
 ## [0.1.6-rc.0]
 
 ### Fixed

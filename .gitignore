@@ -1,37 +1,4 @@
-# Environment
+/core
+node_modules
 .env
-.env.local
-.env.*.local
-
-# IDE
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Coverage
-coverage/
-
-# Build output
-dist/
-build/
-
-# Temp files
-tmp/
-temp/
-*.tmp
-
-# Misc
-CLAUDE.md
-.origin
-
-# segfault
-core
+AGENTS.md

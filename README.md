@@ -1,254 +1,156 @@
-# @ggpwnkthx/esbuild
+# deno-esbuild
 
-A Deno-first wrapper around the native `esbuild` binary. This package exposes an async API similar to esbuild's JavaScript API while handling binary installation, service lifecycle, packet-based communication, option validation, and plugin callback bridging.
+A thin wrapper around the official [esbuild](https://deno.land/x/esbuild) Deno package,
+adding Deno-specific conveniences: a first-class Deno plugin and framework middleware wrappers (Hono, Oak) for on-the-fly transpilation.
 
-## When to use this vs official esbuild
+## Exports
 
-**Use this package if:**
+| Export               | Description                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `mod.ts`             | Re-exports all esbuild exports (passthru from `deno.land/x/esbuild`)                     |
+| `plugins/deno`       | Deno plugin for esbuild - handles import resolution, transpilation, and env var inlining |
+| `wrappers/hono`      | Hono middleware using the native esbuild binary                                          |
+| `wrappers/hono/wasm` | Hono middleware using esbuild's WASM build                                               |
+| `wrappers/oak`       | Oak middleware using the native esbuild binary                                           |
+| `wrappers/oak/wasm`  | Oak middleware using esbuild's WASM build                                                |
 
-- You're building with Deno and want native esbuild support without Node.js compatibility layers
-- You prefer Deno's permission model over npm-based tooling
-- Your project already uses Deno and you want to avoid adding Node.js as a dependency
-
-**Use the official `esbuild` package instead if:**
-
-- You're using Node.js, Bun, or another Node-compatible runtime
-- You need synchronous APIs (`buildSync`, `transformSync`) for `require.extensions` or similar
-- You need browser/WASM support via `esbuild-wasm`
-- You want zero-configuration usage via npx or a bundler's built-in esbuild integration
-
-This wrapper provides full parity with esbuild's async JavaScript API. The trade-off is loss of sync APIs and browser/WASM support, which are incompatible with Deno's async-first design.
-
-## Installation
-
-```ts
-import { build } from "@ggpwnkthx/esbuild";
-```
-
-## Required Deno permissions
-
-Because this wrapper downloads binaries, spawns a subprocess, reads sources, and writes outputs, you will need:
-
-- `--allow-net`
-- `--allow-env`
-- `--allow-read`
-- `--allow-write`
-- `--allow-run`
-
-```sh
-deno run --allow-net --allow-env --allow-read --allow-write --allow-run main.ts
-```
+---
 
 ## Quick start
 
-### Build a bundle
+### `mod.ts` - esbuild passthru
+
+Import everything esbuild exports directly:
 
 ```ts
-import { build } from "@ggpwnkthx/esbuild";
+import * as esbuild from "@ggpwnkthx/esbuild";
 
-await build({
+const result = await esbuild.build({
   entryPoints: ["src/index.ts"],
   bundle: true,
-  outfile: "dist/app.js",
+  outfile: "dist/bundle.js",
 });
 ```
 
-### Transform a string
+### `plugins/deno` - Deno plugin
+
+Use the Deno plugin to build Deno projects with proper resolution of `file:`, `https:`,
+`jsr:`, `npm:`, and other Deno-specific schemes.
 
 ```ts
-import { transform } from "@ggpwnkthx/esbuild";
+import * as esbuild from "esbuild";
+import { denoPlugin } from "@ggpwnkthx/esbuild/plugins/deno";
 
-const result = await transform("const answer: number = 42", {
-  loader: "ts",
-  minify: true,
-});
-
-console.log(result.code);
-```
-
-### Watch and serve with a context
-
-```ts
-import { context } from "@ggpwnkthx/esbuild";
-
-const ctx = await context({
+await esbuild.build({
   entryPoints: ["src/index.ts"],
   bundle: true,
-  outdir: "dist",
+  outfile: "dist/bundle.js",
+  plugins: [denoPlugin()],
 });
-
-await ctx.watch();
-
-const server = await ctx.serve({ port: 8000 });
-console.log(`Serving on port ${server.port}`);
-
-// later
-await ctx.dispose();
 ```
 
-### Build with plugins
+**Options**
 
 ```ts
-import { build, stop } from "@ggpwnkthx/esbuild";
-
-const virtualPlugin = {
-  name: "virtual",
-  setup(build) {
-    build.onResolve({ filter: /^virtual:/ }, (args) => ({
-      path: args.path,
-      namespace: "virtual",
-    }));
-
-    build.onLoad({ filter: /.*/, namespace: "virtual" }, (args) => ({
-      contents: `export const message = "hello from virtual module";`,
-      loader: "ts",
-    }));
-  },
-};
-
-const result = await build({
-  entryPoints: ["virtual:module"],
-  bundle: true,
-  plugins: [virtualPlugin],
+denoPlugin({
+  /** Path to a deno.json to use instead of auto-discovering one */
+  configPath?: string;
+  /** Skip transpilation (load raw source) */
+  noTranspile?: boolean;
+  /** Keep JSX as-is instead of transpiling via compilerOptions */
+  preserveJsx?: boolean;
+  /** Prefix for public env vars to inline at build time (e.g. "PUBLIC_") */
+  publicEnvVarPrefix?: string;
 });
-
-console.log(result.outputFiles[0].text);
-await stop();
 ```
 
-### Code splitting with dynamic imports
+The plugin handles:
+
+- **Import resolution** - `file:`, `https:`, `jsr:`, `npm:` and more
+- **Transpilation** - TypeScript/TSX → JavaScript via Deno's loader
+- **Env var inlining** - Replaces `Deno.env.get("PUBLIC_*")` with string literals when
+  `publicEnvVarPrefix` is set
+
+### `wrappers/hono` - Native esbuild middleware
+
+On-the-fly transpilation for Hono servers using the native esbuild binary:
 
 ```ts
-import { build, stop } from "@ggpwnkthx/esbuild";
+import { Hono } from "hono";
+import transpiler from "@ggpwnkthx/esbuild/wrappers/hono";
 
-await build({
-  entryPoints: ["src/index.ts"],
-  bundle: true,
-  splitting: true,
-  format: "esm",
-  outdir: "dist",
-  sourcemap: true,
-});
+const app = new Hono();
 
-await stop();
+app.use(transpiler());
+
+app.get("/", (c) => c.html(`<script type="module" src="/static/app.ts"></script>`));
+
+await app.fetch(request);
 ```
 
-## API reference
+Requests to `/static/app.ts` (or any `.ts`/`.tsx` path) are transpiled and served as
+JavaScript.
 
-### Public API
+### `wrappers/hono/wasm` - WASM esbuild middleware
+
+Same as above but uses esbuild's WASM build - useful in environments where the native
+binary is unavailable:
 
 ```ts
-import {
-  analyzeMetafile,
-  build,
-  context,
-  formatMessages,
-  initialize,
-  stop,
-  transform,
-  version,
-} from "@ggpwnkthx/esbuild";
+import { Hono } from "hono";
+import transpiler from "@ggpwnkthx/esbuild/wrappers/hono/wasm";
+
+const app = new Hono();
+
+app.use(transpiler({
+  /** Optional: custom esbuild.wasm WebAssembly module */
+  wasmModule?: WebAssembly.Module;
+  /** Optional: URL to esbuild.wasm (defaults to deno.land CDN) */
+  wasmURL?: string | URL;
+}));
+
+// ...
 ```
 
-### `build(options)`
+### `wrappers/oak` - Native esbuild middleware
 
-Starts or reuses the background esbuild service and runs a build.
+On-the-fly transpilation for Oak servers using the native esbuild binary:
 
-Returns warnings and, depending on options, may also return:
+```ts
+import { Application } from "@oak/oak";
+import transpiler from "@ggpwnkthx/esbuild/wrappers/oak";
 
-- `outputFiles` when `write: false`
-- `metafile` when `metafile: true`
-- `mangleCache` when configured
+const app = new Application();
 
-### `context(options)`
+app.use(transpiler());
 
-Creates a persistent build context with support for:
+app.use(async (ctx) => {
+  ctx.response.body = `<script type="module" src="/static/app.ts"></script>`;
+});
 
-- `rebuild()` - repeat a build
-- `watch()` - watch for file changes
-- `serve()` - serve the output over HTTP
-- `cancel()` - cancel an in-progress build
-- `dispose()` - release resources
-
-Use this when you need watch mode, serving, or repeated rebuilds.
-
-### `transform(input, options)`
-
-Transforms a string or `Uint8Array` without requiring entry points. Useful for TypeScript to JavaScript conversion, JSX transforms, minification, and source map generation.
-
-### `formatMessages(messages, options)`
-
-Formats esbuild-style diagnostics into readable strings.
-
-### `analyzeMetafile(metafile, options)`
-
-Produces a human-readable report from a metafile object or JSON string.
-
-### `initialize(options)`
-
-For Deno, this mostly validates usage and ensures the service is running. Browser-only initialization fields such as `wasmURL`, `wasmModule`, and `worker` are rejected.
-
-### `stop()`
-
-Stops the long-lived esbuild service process. Call this when done or use `stop()` in a `finally` block.
-
-### Unsupported synchronous APIs
-
-The following are intentionally unavailable in Deno:
-
-- `buildSync()`
-- `transformSync()`
-- `formatMessagesSync()`
-- `analyzeMetafileSync()`
-
-## Plugin support
-
-Plugins are supported through the channel layer. The wrapper registers plugin hooks in Deno, forwards requests to the native service, and translates results back into typed objects.
-
-Supported plugin lifecycle pieces:
-
-- `setup`
-- `onStart`
-- `onEnd`
-- `onResolve`
-- `onLoad`
-- `onDispose`
-- `build.resolve(...)`
-
-## How it works
-
-At runtime the flow looks like this:
-
-1. `src/api.ts` calls `ensureServiceIsRunning()`
-2. `src/install.ts` locates or downloads the matching native `esbuild` binary
-3. The binary is launched as a child process using `Deno.Command`
-4. Requests and responses are exchanged over stdin/stdout
-5. `src/utils/channel.ts` manages service requests, responses, and plugin callbacks
-6. `src/utils/byte-buffer.ts` encodes and decodes the binary packet protocol
-7. `src/utils/flags.ts` converts TypeScript options into esbuild service flags
-
-## Caveats
-
-- The first run may download the platform-specific `esbuild` binary from npm.
-- This implementation keeps a long-lived service process until `stop()` is called or the process exits.
-- Large transform inputs may be written to a temp file before being passed to the service.
-
-## Running this repo locally
-
-```sh
-deno task fmt        # Format code
-deno task lint       # Lint code
-deno task check      # Type-check public entrypoint
-deno task test       # Run all tests with coverage
-deno task ci         # Run all CI checks
+export default { fetch: app.handle };
 ```
 
-## Type safety
+Requests to `/static/app.ts` (or any `.ts`/`.tsx` path) are transpiled and served as
+JavaScript.
 
-This package prioritizes type safety:
+### `wrappers/oak/wasm` - WASM esbuild middleware
 
-- **Strict TypeScript mode** - `strict: true` is enabled in `deno.jsonc`
-- **No `any` types** - Uses `unknown` with proper type narrowing instead
-- **Runtime validation** - All input options are validated via `src/utils/validation.ts`
-- **jsr.io dependencies** - All dependencies are pinned from jsr.io with explicit versions
-- **Plugin types preserved** - Plugin callbacks are fully typed through `PluginBuild`, `OnResolveArgs`, `OnLoadArgs` and related interfaces
+Same as above but uses esbuild's WASM build - useful in environments where the native
+binary is unavailable:
+
+```ts
+import { Application } from "@oak/oak";
+import transpiler from "@ggpwnkthx/esbuild/wrappers/oak/wasm";
+
+const app = new Application();
+
+app.use(transpiler({
+  /** Optional: custom esbuild.wasm WebAssembly module */
+  wasmModule?: WebAssembly.Module;
+  /** Optional: URL to esbuild.wasm (defaults to deno.land CDN) */
+  wasmURL?: string | URL;
+}));
+
+// ...
+```
