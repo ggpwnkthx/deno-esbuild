@@ -13,7 +13,6 @@ export type {
 } from "./shared/types.ts";
 import * as common from "./shared/common.ts";
 import * as ourselves from "./mod.ts";
-import * as denoflate from "https://deno.land/x/denoflate@1.2.1/mod.ts";
 
 export const version = common.ESBUILD_VERSION;
 
@@ -52,7 +51,7 @@ export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
   throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
 };
 
-export const stop = async () => {
+export const stop = async (): Promise<void> => {
   if (stopService) await stopService();
 };
 
@@ -83,10 +82,11 @@ async function installFromNPM(name: string, subpath: string): Promise<string> {
 
   const npmRegistry = Deno.env.get("NPM_CONFIG_REGISTRY")
     || "https://registry.npmjs.org";
-  const url = `${npmRegistry}/${name}/-/${name.replace("@esbuild/", "")
-    }-${version}.tgz`;
+  const url = `${npmRegistry}/${name}/-/${
+    name.replace("@esbuild/", "")
+  }-${version}.tgz`;
   const buffer = await fetch(url).then((r) => r.arrayBuffer());
-  const executable = extractFileFromTarGzip(new Uint8Array(buffer), subpath);
+  const executable = await extractFileFromTarGzip(new Uint8Array(buffer), subpath);
 
   await Deno.mkdir(finalDir, {
     recursive: true,
@@ -134,9 +134,21 @@ function getCachePath(name: string): { finalPath: string; finalDir: string } {
   return { finalPath, finalDir };
 }
 
-function extractFileFromTarGzip(buffer: Uint8Array, file: string): Uint8Array {
+async function gunzip(buffer: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream("gzip");
+  const writer = ds.writable.getWriter();
+  writer.write(buffer as BufferSource);
+  writer.close();
+  const result = await new Response(ds.readable).arrayBuffer();
+  return new Uint8Array(result);
+}
+
+async function extractFileFromTarGzip(
+  buffer: Uint8Array,
+  file: string,
+): Promise<Uint8Array> {
   try {
-    buffer = denoflate.gunzip(buffer);
+    buffer = await gunzip(buffer);
     // deno-lint-ignore no-explicit-any
   } catch (err: any) {
     throw new Error(`Invalid gzip data in archive: ${err && err.message || err}`);

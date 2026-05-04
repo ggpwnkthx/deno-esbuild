@@ -176,7 +176,8 @@ function pushLogFlags(
 function validateStringValue(value: unknown, what: string, key?: string): string {
   if (typeof value !== "string") {
     throw new Error(
-      `Expected value for ${what}${key !== void 0 ? " " + quote(key) : ""
+      `Expected value for ${what}${
+        key !== void 0 ? " " + quote(key) : ""
       } to be a string, got ${typeof value} instead`,
     );
   }
@@ -227,7 +228,8 @@ function pushCommonFlags(
   if (sourcesContent !== void 0) flags.push(`--sources-content=${sourcesContent}`);
   if (target) {
     flags.push(
-      `--target=${validateAndJoinStringArray(Array.isArray(target) ? target : [target], "target")
+      `--target=${
+        validateAndJoinStringArray(Array.isArray(target) ? target : [target], "target")
       }`,
     );
   }
@@ -236,7 +238,8 @@ function pushCommonFlags(
   if (platform) flags.push(`--platform=${platform}`);
   if (tsconfigRaw) {
     flags.push(
-      `--tsconfig-raw=${typeof tsconfigRaw === "string" ? tsconfigRaw : JSON.stringify(tsconfigRaw)
+      `--tsconfig-raw=${
+        typeof tsconfigRaw === "string" ? tsconfigRaw : JSON.stringify(tsconfigRaw)
       }`,
     );
   }
@@ -279,7 +282,8 @@ function pushCommonFlags(
     for (const key in logOverride) {
       if (key.indexOf("=") >= 0) throw new Error(`Invalid log override: ${key}`);
       flags.push(
-        `--log-override:${key}=${validateStringValue(logOverride[key], "log override", key)
+        `--log-override:${key}=${
+          validateStringValue(logOverride[key], "log override", key)
         }`,
       );
     }
@@ -290,7 +294,8 @@ function pushCommonFlags(
       const value = supported[key];
       if (typeof value !== "boolean") {
         throw new Error(
-          `Expected value for supported ${quote(key)
+          `Expected value for supported ${
+            quote(key)
           } to be a boolean, got ${typeof value} instead`,
         );
       }
@@ -379,7 +384,8 @@ function flagsForBuildOptions(
   if (packages) flags.push(`--packages=${packages}`);
   if (resolveExtensions) {
     flags.push(
-      `--resolve-extensions=${validateAndJoinStringArray(resolveExtensions, "resolve extension")
+      `--resolve-extensions=${
+        validateAndJoinStringArray(resolveExtensions, "resolve extension")
       }`,
     );
   }
@@ -437,7 +443,8 @@ function flagsForBuildOptions(
     for (const ext in outExtension) {
       if (ext.indexOf("=") >= 0) throw new Error(`Invalid out extension: ${ext}`);
       flags.push(
-        `--out-extension:${ext}=${validateStringValue(outExtension[ext], "out extension", ext)
+        `--out-extension:${ext}=${
+          validateStringValue(outExtension[ext], "out extension", ext)
         }`,
       );
     }
@@ -761,7 +768,8 @@ export function createChannel(streamIn: StreamIn): StreamOut {
       const binaryVersion = String.fromCharCode(...bytes);
       if (binaryVersion !== ESBUILD_VERSION) {
         throw new Error(
-          `Cannot start service: Host version "${ESBUILD_VERSION}" does not match binary version ${quote(binaryVersion)
+          `Cannot start service: Host version "${ESBUILD_VERSION}" does not match binary version ${
+            quote(binaryVersion)
           }`,
         );
       }
@@ -871,8 +879,8 @@ export function createChannel(streamIn: StreamIn): StreamOut {
           input: inputPath !== null
             ? protocol.encodeUTF8(inputPath)
             : typeof input === "string"
-              ? protocol.encodeUTF8(input)
-              : input,
+            ? protocol.encodeUTF8(input)
+            : input,
         };
         if (mangleCache) request.mangleCache = mangleCache;
         sendRequest<protocol.TransformRequest, protocol.TransformResponse>(
@@ -1118,7 +1126,7 @@ function buildOrContextImpl(
   }
 
   try {
-    buildOrContextContinue(null, (_result, done) => done([], []), () => { });
+    buildOrContextContinue(null, (_result, done) => done([], []), () => {});
   } catch (e) {
     handleError(e as Error, "");
   }
@@ -1737,7 +1745,8 @@ const handlePlugins = async (
         if (result != null) {
           if (typeof result !== "object") {
             throw new Error(
-              `Expected onStart() callback in plugin ${quote(name)
+              `Expected onStart() callback in plugin ${
+                quote(name)
               } to return an object`,
             );
           }
@@ -1788,7 +1797,8 @@ const handlePlugins = async (
         if (result != null) {
           if (typeof result !== "object") {
             throw new Error(
-              `Expected onResolve() callback in plugin ${quote(name)
+              `Expected onResolve() callback in plugin ${
+                quote(name)
               } to return an object`,
             );
           }
@@ -1952,7 +1962,8 @@ const handlePlugins = async (
             if (value != null) {
               if (typeof value !== "object") {
                 throw new Error(
-                  `Expected onEnd() callback in plugin ${quote(name)
+                  `Expected onEnd() callback in plugin ${
+                    quote(name)
                   } to return an object`,
                 );
               }
@@ -2190,13 +2201,13 @@ function failureErrorWithLog(
   text += errors.length < 1
     ? ""
     : ` with ${errors.length} error${errors.length < 2 ? "" : "s"}:`
-    + errors.slice(0, limit + 1).map((e, i) => {
-      if (i === limit) return "\n...";
-      if (!e.location) return `\nerror: ${e.text}`;
-      const { file, line, column } = e.location;
-      const pluginText = e.pluginName ? `[plugin: ${e.pluginName}] ` : "";
-      return `\n${file}:${line}:${column}: ERROR: ${pluginText}${e.text}`;
-    }).join("");
+      + errors.slice(0, limit + 1).map((e, i) => {
+        if (i === limit) return "\n...";
+        if (!e.location) return `\nerror: ${e.text}`;
+        const { file, line, column } = e.location;
+        const pluginText = e.pluginName ? `[plugin: ${e.pluginName}] ` : "";
+        return `\n${file}:${line}:${column}: ERROR: ${pluginText}${e.text}`;
+      }).join("");
   const error: Error & { errors?: types.Message[]; warnings?: types.Message[] } =
     new Error(text);
 
@@ -2260,8 +2271,8 @@ function sanitizeLocation(
     const relevantASCII = lineText.slice(
       0,
       (column && column > 0 ? column : 0)
-      + (length && length > 0 ? length : 0)
-      + (terminalWidth && terminalWidth > 0 ? terminalWidth : 80),
+        + (length && length > 0 ? length : 0)
+        + (terminalWidth && terminalWidth > 0 ? terminalWidth : 80),
     );
 
     // Make sure it's ASCII (so the byte-oriented column and length values

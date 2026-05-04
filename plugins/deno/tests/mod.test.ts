@@ -1,6 +1,6 @@
 import * as esbuild from "esbuild";
 import { assertEquals, assertMatch, assertStringIncludes } from "@std/assert";
-import { denoPlugin } from "../deno.ts";
+import { denoPlugin } from "../mod.ts";
 
 Deno.test({
   name: "denoPlugin - transpiles TypeScript to JavaScript",

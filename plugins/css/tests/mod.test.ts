@@ -1,6 +1,6 @@
 import * as esbuild from "esbuild";
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { cssPlugin } from "../css.ts";
+import { cssPlugin } from "../mod.ts";
 
 Deno.test({
   name: "cssPlugin - resolves local relative @import within a CSS bundle",

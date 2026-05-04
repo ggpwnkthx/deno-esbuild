@@ -49,7 +49,7 @@ export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
   throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
 };
 
-export const stop = () => {
+export const stop = (): Promise<void> => {
   if (stopService) stopService();
   return Promise.resolve();
 };

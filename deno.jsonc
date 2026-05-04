@@ -6,14 +6,11 @@
   "exports": {
     ".": "./mod.ts",
     "./wrappers/hono": "./wrappers/hono/mod.ts",
-    "./wrappers/hono/html": "./wrappers/hono/html.ts",
     "./wrappers/hono/wasm": "./wrappers/hono/transpilers/wasm.ts",
     "./wrappers/oak": "./wrappers/oak/mod.ts",
-    "./wrappers/oak/html": "./wrappers/oak/html.ts",
     "./wrappers/oak/wasm": "./wrappers/oak/transpilers/wasm.ts",
-    "./plugins/deno": "./plugins/deno.ts",
-    "./plugins/css": "./plugins/css.ts",
-    "./plugins/html": "./plugins/html.ts"
+    "./plugins/deno": "./plugins/deno/mod.ts",
+    "./plugins/css": "./plugins/css/mod.ts"
   },
   "fmt": {
     "exclude": [
@@ -31,10 +28,8 @@
   },
   "lint": {
     "exclude": [
-      "original/",
       "./.*/",
-      "./coverage/",
-      "wasm.js"
+      "./coverage/"
     ],
     "rules": {
       "tags": [
@@ -44,7 +39,6 @@
   },
   "check": {
     "exclude": [
-      "original/*.js",
       "./.*/",
       "./coverage/"
     ]
@@ -53,13 +47,13 @@
     "strict": true
   },
   "imports": {
-    "@deno/loader": "jsr:@deno/loader@^0.5.0",
-    "@std/assert": "jsr:@std/assert@^1.0.19",
-    "@std/path": "jsr:@std/path@^1.1.4",
     "esbuild": "./esbuild/mod.ts",
     "esbuild/wasm": "./esbuild/wasm.ts",
     "hono": "jsr:@hono/hono@4.12.16",
-    "@oak/oak": "jsr:@oak/oak@^17"
+    "@deno/loader": "jsr:@deno/loader@^0.5.0",
+    "@oak/oak": "jsr:@oak/oak@^17",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/path": "jsr:@std/path@^1.1.4"
   },
   "tasks": {
     "test": "deno test -A",
@@ -74,8 +68,6 @@
   },
   "exclude": [
     "./.*",
-    "./benchmarks",
-    "./coverage",
     "./CONTRIBUTING.md",
     "./CONVENTIONAL_COMMITS.md"
   ]
