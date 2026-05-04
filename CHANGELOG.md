@@ -9,13 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Complete rewrite/simplification around high-level entrypoints
-- Replaced low-level IPC/channel/codec machinery with first-class Deno plugin and Hono middleware wrappers
+- Complete rewrite replacing low-level IPC/channel/codec machinery with Deno-native plugins and framework middleware
+- `mod.ts` root now a thin passthrough re-exporting from `plugins/`
 
 ### Added
 
-- New `plugins/deno.ts` providing a Deno plugin for esbuild (250 lines)
-- New `wrappers/hono/mod.ts` Hono middleware wrapper (99 lines) with tests (`default.test.ts`, `wasm.test.ts`) and a transpiler (`transpilers/wasm.ts`)
+- `plugins/deno.ts` (284 lines): Deno plugin handling resolution of `file:`, `https:`, `jsr:`, `npm:`, `node:` specifiers, transpilation, env var inlining, and binary asset exclusion
+- `plugins/css.ts` (154 lines): CSS plugin handling `@import` chains and `url()` syntax, marks remote imports as external
+- `plugins/html.ts` (99 lines): HTML plugin bundling HTML with inline script/style tags
+- `plugins/utils.ts` (95 lines): Shared plugin utilities
+- `wrappers/shared.ts` (225 lines): In-memory LRU response cache with TTL, shared by both Hono and Oak middleware
+- `wrappers/hono/mod.ts` (69 lines): Hono middleware wrapper with WASM transpiler variant
+- `wrappers/hono/transpilers/wasm.ts` (39 lines): WASM transpiler for Hono
+- `wrappers/oak/mod.ts` (71 lines): Oak middleware wrapper with WASM transpiler variant
+- `wrappers/oak/transpilers/wasm.ts` (38 lines): WASM transpiler for Oak
+- `deno.jsonc` updated to use JSR-managed dependencies: `@deno/loader`, `jsr:@hono/hono`, `jsr:@oak/oak`
 
 ### Removed
 

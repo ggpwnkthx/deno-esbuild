@@ -16,6 +16,10 @@
     "./plugins/html": "./plugins/html.ts"
   },
   "fmt": {
+    "exclude": [
+      "original/",
+      "wasm.js"
+    ],
     "lineWidth": 88,
     "indentWidth": 2,
     "useTabs": false,
@@ -27,8 +31,10 @@
   },
   "lint": {
     "exclude": [
+      "original/",
       "./.*/",
-      "./coverage/"
+      "./coverage/",
+      "wasm.js"
     ],
     "rules": {
       "tags": [
@@ -38,6 +44,7 @@
   },
   "check": {
     "exclude": [
+      "original/*.js",
       "./.*/",
       "./coverage/"
     ]
@@ -49,8 +56,8 @@
     "@deno/loader": "jsr:@deno/loader@^0.5.0",
     "@std/assert": "jsr:@std/assert@^1.0.19",
     "@std/path": "jsr:@std/path@^1.1.4",
-    "esbuild": "https://deno.land/x/esbuild@v0.28.0/mod.js",
-    "esbuild/wasm": "https://deno.land/x/esbuild@v0.28.0/wasm.js",
+    "esbuild": "./esbuild/mod.ts",
+    "esbuild/wasm": "./esbuild/wasm.ts",
     "hono": "jsr:@hono/hono@4.12.16",
     "@oak/oak": "jsr:@oak/oak@^17"
   },

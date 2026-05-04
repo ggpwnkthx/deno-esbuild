@@ -1,13 +1,14 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { Hono } from "hono";
-import esbuild from "../transpilers/wasm.ts";
+import esbuildMiddleware from "../transpilers/wasm.ts";
+import * as esbuild from "esbuild";
 
 const source = "export const value: number = 1;\n";
 
 const createApp = (): Hono => {
   const app = new Hono();
 
-  app.use("*", esbuild());
+  app.use("*", esbuildMiddleware());
 
   app.use("*", async (c) =>
     await c.body(source, 200, {
@@ -30,4 +31,6 @@ Deno.test("wasm transpiler initializes and transforms TypeScript responses", asy
 
   assertStringIncludes(body, "export const value = 1;");
   assertEquals(body.includes(": number"), false);
+
+  await esbuild.stop();
 });

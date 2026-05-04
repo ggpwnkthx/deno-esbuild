@@ -1,4 +1,4 @@
-import * as esbuild from "esbuild/wasm";
+import * as esbuild from "esbuild";
 import type { Middleware } from "@oak/oak";
 import esbuildTranspiler from "../mod.ts";
 import type { Options } from "../../shared.ts";
@@ -6,7 +6,7 @@ import type { Options } from "../../shared.ts";
 let initialized = false;
 
 /**
- * Creates an Oak middleware that transpiles code using esbuild WASM.
+ * Creates an Oak middleware that transpiles code using esbuild.
  */
 export default function (
   options: Partial<Omit<Options, "esbuild">> & {
@@ -16,18 +16,8 @@ export default function (
 ): Middleware {
   return async (ctx, next) => {
     if (!initialized) {
-      if (options.wasmModule) {
-        await esbuild.initialize({
-          wasmModule: options.wasmModule,
-          worker: false,
-        });
-      } else {
-        await esbuild.initialize({
-          wasmURL: options.wasmURL
-            ?? "https://deno.land/x/esbuild@v0.28.0/esbuild.wasm",
-          worker: false,
-        });
-      }
+      // Initialize with defaults - works in all contexts including workers
+      await esbuild.initialize({});
       initialized = true;
     }
     await esbuildTranspiler({

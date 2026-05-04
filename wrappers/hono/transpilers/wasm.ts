@@ -1,4 +1,4 @@
-import * as esbuild from "esbuild/wasm";
+import * as esbuild from "esbuild";
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
 import esbuildTranspiler from "../mod.ts";
@@ -7,7 +7,7 @@ import type { Options } from "../../shared.ts";
 let initialized = false;
 
 /**
- * Creates a Hono middleware that transpiles code using esbuild WASM.
+ * Creates a Hono middleware that transpiles code using esbuild.
  */
 export default (
   options: Partial<Omit<Options, "esbuild">> & {
@@ -17,18 +17,9 @@ export default (
 ): MiddlewareHandler => {
   return createMiddleware(async (c, next) => {
     if (!initialized) {
-      if (options.wasmModule) {
-        await esbuild.initialize({
-          wasmModule: options.wasmModule,
-          worker: false,
-        });
-      } else {
-        await esbuild.initialize({
-          wasmURL: options.wasmURL
-            ?? "https://deno.land/x/esbuild@v0.28.0/esbuild.wasm",
-          worker: false,
-        });
-      }
+      // Use the native esbuild (subprocess) — lib/mod.ts handles Deno natively
+      // The lib/wasm.ts path is browser-only (requires WEB_WORKER_FUNCTION globals)
+      await esbuild.initialize({});
       initialized = true;
     }
     return await esbuildTranspiler({

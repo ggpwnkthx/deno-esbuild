@@ -1,6 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { resolve } from "@std/path";
 
+type esbuild = typeof import("esbuild")
+
 /**
  * A fixed test directory for HTML middleware tests.
  * Files are created once and cleaned up on process exit.
@@ -54,7 +56,7 @@ Deno.test("responseCache ttl - entry expires after TTL", async () => {
       callCount++;
       return { code: input + "\n// transformed" };
     },
-    stop: () => {},
+    stop: () => { },
   };
 
   responseCache.clear();
@@ -63,7 +65,7 @@ Deno.test("responseCache ttl - entry expires after TTL", async () => {
   await getCachedOrTranspile({
     pathname: "/test-ttl.ts",
     body: "const x = 1;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -80,7 +82,7 @@ Deno.test("responseCache ttl - entry expires after TTL", async () => {
   await getCachedOrTranspile({
     pathname: "/test-ttl.ts",
     body: "const x = 1;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -100,7 +102,7 @@ Deno.test("responseCache maxSize - oldest entry is evicted when cap is reached",
       callCount++;
       return { code: input + "\n// transformed" };
     },
-    stop: () => {},
+    stop: () => { },
   };
 
   responseCache.clear();
@@ -109,7 +111,7 @@ Deno.test("responseCache maxSize - oldest entry is evicted when cap is reached",
   await getCachedOrTranspile({
     pathname: "/a.ts",
     body: "const a = 1;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -119,7 +121,7 @@ Deno.test("responseCache maxSize - oldest entry is evicted when cap is reached",
   await getCachedOrTranspile({
     pathname: "/b.ts",
     body: "const b = 2;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -129,7 +131,7 @@ Deno.test("responseCache maxSize - oldest entry is evicted when cap is reached",
   await getCachedOrTranspile({
     pathname: "/c.ts",
     body: "const c = 3;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -158,7 +160,7 @@ Deno.test("responseCache ttl: 0 expires entry on next access", async () => {
       callCount++;
       return { code: input + "\n// transformed" };
     },
-    stop: () => {},
+    stop: () => { },
   };
 
   responseCache.clear();
@@ -166,7 +168,7 @@ Deno.test("responseCache ttl: 0 expires entry on next access", async () => {
   await getCachedOrTranspile({
     pathname: "/ttl-zero.ts",
     body: "const x = 1;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -179,7 +181,7 @@ Deno.test("responseCache ttl: 0 expires entry on next access", async () => {
   await getCachedOrTranspile({
     pathname: "/ttl-zero.ts",
     body: "const x = 1;",
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
@@ -199,7 +201,7 @@ Deno.test("responseCache maxSize: 0 is treated as no limit (no O(n) scan)", asyn
       callCount++;
       return { code: input + "\n// transformed" };
     },
-    stop: () => {},
+    stop: () => { },
   };
 
   responseCache.clear();
@@ -209,7 +211,7 @@ Deno.test("responseCache maxSize: 0 is treated as no limit (no O(n) scan)", asyn
     await getCachedOrTranspile({
       pathname: path,
       body: `const x = "${path}";`,
-      esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+      esbuild: mockEsbuild as unknown as esbuild,
       transformOptions: {},
       cache: true,
       shouldStop: false,
@@ -231,7 +233,7 @@ Deno.test("responseCache ttl and maxSize work together", async () => {
       callCount++;
       return { code: input + "\n// transformed" };
     },
-    stop: () => {},
+    stop: () => { },
   };
 
   responseCache.clear();
@@ -241,7 +243,7 @@ Deno.test("responseCache ttl and maxSize work together", async () => {
     await getCachedOrTranspile({
       pathname: path,
       body: `const x = "${path}";`,
-      esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+      esbuild: mockEsbuild as unknown as esbuild,
       transformOptions: {},
       cache: true,
       shouldStop: false,
@@ -261,7 +263,7 @@ Deno.test("responseCache ttl and maxSize work together", async () => {
   await getCachedOrTranspile({
     pathname: "/a.ts",
     body: `const x = "/a.ts";`,
-    esbuild: mockEsbuild as unknown as typeof import("esbuild"),
+    esbuild: mockEsbuild as unknown as esbuild,
     transformOptions: {},
     cache: true,
     shouldStop: false,
