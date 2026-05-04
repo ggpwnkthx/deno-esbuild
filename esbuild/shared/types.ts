@@ -16,7 +16,13 @@ export type Loader =
   | "text"
   | "ts"
   | "tsx";
-export type LogLevel = "verbose" | "debug" | "info" | "warning" | "error" | "silent";
+export type LogLevel =
+  | "verbose"
+  | "debug"
+  | "info"
+  | "warning"
+  | "error"
+  | "silent";
 export type Charset = "ascii" | "utf8";
 export type Drop = "console" | "debugger";
 export type AbsPaths = "code" | "log" | "metafile";
@@ -177,7 +183,9 @@ export interface BuildOptions extends CommonOptions {
   /** Documentation: https://esbuild.github.io/api/#footer */
   footer?: { [type: string]: string };
   /** Documentation: https://esbuild.github.io/api/#entry-points */
-  entryPoints?: (string | { in: string; out: string })[] | Record<string, string>;
+  entryPoints?:
+    | (string | { in: string; out: string })[]
+    | Record<string, string>;
   /** Documentation: https://esbuild.github.io/api/#stdin */
   stdin?: StdinOptions;
   /** Documentation: https://esbuild.github.io/plugins/ */
@@ -236,7 +244,9 @@ export interface OutputFile {
   readonly text: string;
 }
 
-export interface BuildResult<ProvidedOptions extends BuildOptions = BuildOptions> {
+export interface BuildResult<
+  ProvidedOptions extends BuildOptions = BuildOptions,
+> {
   errors: Message[];
   warnings: Message[];
   /** Only when "write: false" */
@@ -244,7 +254,9 @@ export interface BuildResult<ProvidedOptions extends BuildOptions = BuildOptions
     | OutputFile[]
     | (ProvidedOptions["write"] extends false ? never : undefined);
   /** Only when "metafile: true" */
-  metafile: Metafile | (ProvidedOptions["metafile"] extends true ? never : undefined);
+  metafile:
+    | Metafile
+    | (ProvidedOptions["metafile"] extends true ? never : undefined);
   /** Only when "mangleCache" is present */
   mangleCache:
     | Record<string, string | false>
@@ -334,7 +346,11 @@ export interface PluginBuild {
 
   /** Documentation: https://esbuild.github.io/plugins/#on-start */
   onStart(
-    callback: () => OnStartResult | null | void | Promise<OnStartResult | null | void>,
+    callback: () =>
+      | OnStartResult
+      | null
+      | void
+      | Promise<OnStartResult | null | void>,
   ): void;
 
   /** Documentation: https://esbuild.github.io/plugins/#on-end */
@@ -361,7 +377,11 @@ export interface PluginBuild {
     options: OnLoadOptions,
     callback: (
       args: OnLoadArgs,
-    ) => OnLoadResult | null | undefined | Promise<OnLoadResult | null | undefined>,
+    ) =>
+      | OnLoadResult
+      | null
+      | undefined
+      | Promise<OnLoadResult | null | undefined>,
   ): void;
 
   /** Documentation: https://esbuild.github.io/plugins/#on-dispose */
@@ -568,7 +588,9 @@ export interface WatchOptions {
   delay?: number; // In milliseconds
 }
 
-export interface BuildContext<ProvidedOptions extends BuildOptions = BuildOptions> {
+export interface BuildContext<
+  ProvidedOptions extends BuildOptions = BuildOptions,
+> {
   /** Documentation: https://esbuild.github.io/api/#rebuild */
   rebuild(): Promise<BuildResult<ProvidedOptions>>;
 

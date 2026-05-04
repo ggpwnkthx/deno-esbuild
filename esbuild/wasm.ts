@@ -23,12 +23,21 @@ export const context: typeof types.context = (options: types.BuildOptions) =>
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
-) => ensureServiceIsRunning().then((service) => service.transform(input, options));
+) =>
+  ensureServiceIsRunning().then((service) => service.transform(input, options));
 
-export const formatMessages: typeof types.formatMessages = (messages, options) =>
-  ensureServiceIsRunning().then((service) => service.formatMessages(messages, options));
+export const formatMessages: typeof types.formatMessages = (
+  messages,
+  options,
+) =>
+  ensureServiceIsRunning().then((service) =>
+    service.formatMessages(messages, options)
+  );
 
-export const analyzeMetafile: typeof types.analyzeMetafile = (metafile, options) =>
+export const analyzeMetafile: typeof types.analyzeMetafile = (
+  metafile,
+  options,
+) =>
   ensureServiceIsRunning().then((service) =>
     service.analyzeMetafile(metafile, options)
   );
@@ -66,7 +75,8 @@ let initializePromise: Promise<Service> | undefined;
 let stopService: (() => void) | undefined;
 
 const ensureServiceIsRunning = (): Promise<Service> => {
-  return initializePromise || startRunningService("esbuild.wasm", undefined, true);
+  return initializePromise ||
+    startRunningService("esbuild.wasm", undefined, true);
 };
 
 export const initialize: typeof types.initialize = async (options) => {
@@ -74,7 +84,9 @@ export const initialize: typeof types.initialize = async (options) => {
   const wasmURL = options.wasmURL;
   const wasmModule = options.wasmModule;
   const useWorker = options.worker !== false;
-  if (initializePromise) throw new Error('Cannot call "initialize" more than once');
+  if (initializePromise) {
+    throw new Error('Cannot call "initialize" more than once');
+  }
   initializePromise = startRunningService(
     wasmURL || "esbuild.wasm",
     wasmModule,
@@ -101,9 +113,12 @@ const startRunningService = async (
 
   if (useWorker) {
     // Run esbuild off the main thread
-    const blob = new Blob([`onmessage=${WEB_WORKER_SOURCE_CODE}(postMessage)`], {
-      type: "text/javascript",
-    });
+    const blob = new Blob(
+      [`onmessage=${WEB_WORKER_SOURCE_CODE}(postMessage)`],
+      {
+        type: "text/javascript",
+      },
+    );
     worker = new Worker(URL.createObjectURL(blob), { type: "module" });
   } else {
     // Run esbuild on the main thread
@@ -139,7 +154,9 @@ const startRunningService = async (
     else firstMessageResolve();
   };
 
-  worker.postMessage(wasmModule || new URL(wasmURL, import.meta.url).toString());
+  worker.postMessage(
+    wasmModule || new URL(wasmURL, import.meta.url).toString(),
+  );
 
   const { readFromStdout, service } = common.createChannel({
     writeToStdin(bytes) {
@@ -168,7 +185,8 @@ const startRunningService = async (
           options,
           isTTY: false,
           defaultWD: "/",
-          callback: (err, res) => err ? reject(err) : resolve(res as types.BuildResult),
+          callback: (err, res) =>
+            err ? reject(err) : resolve(res as types.BuildResult),
         })
       ),
 
@@ -221,7 +239,9 @@ const startRunningService = async (
         service.analyzeMetafile({
           callName: "analyzeMetafile",
           refs: null,
-          metafile: typeof metafile === "string" ? metafile : JSON.stringify(metafile),
+          metafile: typeof metafile === "string"
+            ? metafile
+            : JSON.stringify(metafile),
           options,
           callback: (err, res) => err ? reject(err) : resolve(res!),
         })

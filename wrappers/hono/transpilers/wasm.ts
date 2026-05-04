@@ -2,7 +2,7 @@ import * as esbuild from "esbuild";
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
 import esbuildTranspiler from "../mod.ts";
-import type { Options } from "../../shared.ts";
+import type { Options } from "@ggpwnkthx/esbuild-wrapper-shared";
 
 let initialized = false;
 

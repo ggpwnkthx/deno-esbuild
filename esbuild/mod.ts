@@ -25,12 +25,21 @@ export const context: typeof types.context = (options: types.BuildOptions) =>
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
-) => ensureServiceIsRunning().then((service) => service.transform(input, options));
+) =>
+  ensureServiceIsRunning().then((service) => service.transform(input, options));
 
-export const formatMessages: typeof types.formatMessages = (messages, options) =>
-  ensureServiceIsRunning().then((service) => service.formatMessages(messages, options));
+export const formatMessages: typeof types.formatMessages = (
+  messages,
+  options,
+) =>
+  ensureServiceIsRunning().then((service) =>
+    service.formatMessages(messages, options)
+  );
 
-export const analyzeMetafile: typeof types.analyzeMetafile = (metafile, options) =>
+export const analyzeMetafile: typeof types.analyzeMetafile = (
+  metafile,
+  options,
+) =>
   ensureServiceIsRunning().then((service) =>
     service.analyzeMetafile(metafile, options)
   );
@@ -65,8 +74,12 @@ export const initialize: typeof types.initialize = async (options) => {
   if (options.wasmModule) {
     throw new Error(`The "wasmModule" option only works in the browser`);
   }
-  if (options.worker) throw new Error(`The "worker" option only works in the browser`);
-  if (initializeWasCalled) throw new Error('Cannot call "initialize" more than once');
+  if (options.worker) {
+    throw new Error(`The "worker" option only works in the browser`);
+  }
+  if (initializeWasCalled) {
+    throw new Error('Cannot call "initialize" more than once');
+  }
   await ensureServiceIsRunning();
   initializeWasCalled = true;
 };
@@ -80,13 +93,16 @@ async function installFromNPM(name: string, subpath: string): Promise<string> {
     // Cache miss, need to download
   }
 
-  const npmRegistry = Deno.env.get("NPM_CONFIG_REGISTRY")
-    || "https://registry.npmjs.org";
+  const npmRegistry = Deno.env.get("NPM_CONFIG_REGISTRY") ||
+    "https://registry.npmjs.org";
   const url = `${npmRegistry}/${name}/-/${
     name.replace("@esbuild/", "")
   }-${version}.tgz`;
   const buffer = await fetch(url).then((r) => r.arrayBuffer());
-  const executable = await extractFileFromTarGzip(new Uint8Array(buffer), subpath);
+  const executable = await extractFileFromTarGzip(
+    new Uint8Array(buffer),
+    subpath,
+  );
 
   await Deno.mkdir(finalDir, {
     recursive: true,
@@ -151,7 +167,9 @@ async function extractFileFromTarGzip(
     buffer = await gunzip(buffer);
     // deno-lint-ignore no-explicit-any
   } catch (err: any) {
-    throw new Error(`Invalid gzip data in archive: ${err && err.message || err}`);
+    throw new Error(
+      `Invalid gzip data in archive: ${err && err.message || err}`,
+    );
   }
   const str = (i: number, n: number) =>
     String.fromCharCode(...buffer.subarray(i, i + n)).replace(/\0.*$/, "");
@@ -192,9 +210,15 @@ async function install(): Promise<string> {
 
   // Pick a package to install
   if (platformKey in knownWindowsPackages) {
-    return await installFromNPM(knownWindowsPackages[platformKey], "esbuild.exe");
+    return await installFromNPM(
+      knownWindowsPackages[platformKey],
+      "esbuild.exe",
+    );
   } else if (platformKey in knownUnixlikePackages) {
-    return await installFromNPM(knownUnixlikePackages[platformKey], "bin/esbuild");
+    return await installFromNPM(
+      knownUnixlikePackages[platformKey],
+      "bin/esbuild",
+    );
   } else {
     throw new Error(`Unsupported platform: ${platformKey}`);
   }
@@ -313,7 +337,8 @@ const ensureServiceIsRunning = (): Promise<Service> => {
           }
         }).catch((e) => {
           if (
-            e instanceof Deno.errors.Interrupted || e instanceof Deno.errors.BadResource
+            e instanceof Deno.errors.Interrupted ||
+            e instanceof Deno.errors.BadResource
           ) {
             // ignore the error if read was interrupted (stdout was closed)
             afterClose(e);
@@ -350,7 +375,10 @@ const ensureServiceIsRunning = (): Promise<Service> => {
             })
           ),
 
-        transform: (input: string | Uint8Array, options?: types.TransformOptions) =>
+        transform: (
+          input: string | Uint8Array,
+          options?: types.TransformOptions,
+        ) =>
           new Promise<types.TransformResult>((resolve, reject) =>
             service.transform({
               callName: "transform",

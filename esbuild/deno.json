@@ -1,0 +1,19 @@
+{
+  "name": "@ggpwnkthx/esbuild",
+  "version": "0.2.1",
+  "exports": {
+    ".": "./mod.ts",
+    "./wasm": "./wasm.ts",
+    "./shared/common": "./shared/common.ts",
+    "./shared/stdio_protocol": "./shared/stdio_protocol.ts",
+    "./shared/types": "./shared/types.ts",
+    "./shared/uint8array_json_parser": "./shared/uint8array_json_parser.ts",
+    "./shared/worker": "./shared/worker.ts"
+  },
+  "tasks": {
+    "fmt": "deno fmt .",
+    "lint": "deno lint .",
+    "check": "deno check .",
+    "test": "deno test -A"
+  }
+}

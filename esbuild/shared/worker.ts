@@ -57,12 +57,15 @@ declare function postMessage(message: any): void;
     position: null,
     callback: (err: Error | null, count?: number) => void,
   ) => {
-    if (fd !== 0 || offset !== 0 || length !== buffer.length || position !== null) {
+    if (
+      fd !== 0 || offset !== 0 || length !== buffer.length || position !== null
+    ) {
       throw new Error("Bad read");
     }
 
     if (stdin.length === 0) {
-      resumeStdin = () => fs.read(fd, buffer, offset, length, position, callback);
+      resumeStdin = () =>
+        fs.read(fd, buffer, offset, length, position, callback);
       return;
     }
 
@@ -108,8 +111,8 @@ async function tryToInstantiateModule(
 
   // Attempt to use the superior "instantiateStreaming" API first
   if (
-    "instantiateStreaming" in WebAssembly
-    && /^application\/wasm($|;)/i.test(res.headers.get("Content-Type") || "")
+    "instantiateStreaming" in WebAssembly &&
+    /^application\/wasm($|;)/i.test(res.headers.get("Content-Type") || "")
   ) {
     const result = await WebAssembly.instantiateStreaming(res, go.importObject);
     return result.instance;

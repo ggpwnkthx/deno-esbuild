@@ -22,8 +22,8 @@ export function cssPlugin(_options: object = {}): esbuild.Plugin {
 
           // External URL imports — mark as external
           if (
-            args.path.startsWith("https://")
-            || args.path.startsWith("http://")
+            args.path.startsWith("https://") ||
+            args.path.startsWith("http://")
           ) {
             return {
               path: args.path,
@@ -139,9 +139,9 @@ export function cssPlugin(_options: object = {}): esbuild.Plugin {
       );
 
       // Replace @import with the resolved content
-      result = result.slice(0, start)
-        + nestedResolved
-        + result.slice(start + match.length);
+      result = result.slice(0, start) +
+        nestedResolved +
+        result.slice(start + match.length);
     }
 
     // Re-process the CSS in case there are remaining @imports

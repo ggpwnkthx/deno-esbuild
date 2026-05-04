@@ -77,7 +77,11 @@ Deno.test("cache: true skips esbuild.transform on repeat requests", async () => 
   );
   assertExists(res2);
   assertEquals(res2.status, 200);
-  assertEquals(transformCallCount, 1, "transform should not be called for cached path");
+  assertEquals(
+    transformCallCount,
+    1,
+    "transform should not be called for cached path",
+  );
 
   const body1 = await res1.text();
   const body2 = await res2.text();

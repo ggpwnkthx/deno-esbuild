@@ -10,7 +10,10 @@ Deno.test({
       const base = `${tmpDir}/base.css`;
       const imported = `${tmpDir}/imported.css`;
       await Deno.writeTextFile(imported, `.imported { color: red; }`);
-      await Deno.writeTextFile(base, `@import "./imported.css";.base { color: blue; }`);
+      await Deno.writeTextFile(
+        base,
+        `@import "./imported.css";.base { color: blue; }`,
+      );
 
       const result = await esbuild.build({
         entryPoints: [base],
@@ -112,7 +115,10 @@ Deno.test({
       const imgFile = `${tmpDir}/img.png`;
       // Create a minimal placeholder file for url() resolution
       await Deno.writeTextFile(imgFile, "");
-      await Deno.writeTextFile(entry, `.entry { background: url("./img.png"); }`);
+      await Deno.writeTextFile(
+        entry,
+        `.entry { background: url("./img.png"); }`,
+      );
 
       const result = await esbuild.build({
         entryPoints: [entry],
@@ -177,8 +183,14 @@ Deno.test({
       const shared = `${tmpDir}/shared.css`;
 
       await Deno.writeTextFile(shared, `.shared { color: green; }`);
-      await Deno.writeTextFile(b, `@import "./shared.css";\n.b { color: blue; }`);
-      await Deno.writeTextFile(c, `@import "./shared.css";\n.c { color: red; }`);
+      await Deno.writeTextFile(
+        b,
+        `@import "./shared.css";\n.b { color: blue; }`,
+      );
+      await Deno.writeTextFile(
+        c,
+        `@import "./shared.css";\n.c { color: red; }`,
+      );
       await Deno.writeTextFile(
         a,
         `@import "./b.css";\n@import "./c.css";\n.a { color: yellow; }`,

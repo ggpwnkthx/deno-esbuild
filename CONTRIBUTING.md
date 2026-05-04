@@ -78,8 +78,8 @@ deno task bench
 
 ### Memory-Sensitive Changes
 
-Changes touching FFI, pointers, memory layout, resource lifecycle, or ABI-sensitive code
-need extra care.
+Changes touching FFI, pointers, memory layout, resource lifecycle, or
+ABI-sensitive code need extra care.
 
 For these changes:
 
@@ -89,8 +89,8 @@ For these changes:
 
 ## Code Style
 
-This project uses Deno's formatter and linter. The canonical settings are defined in
-`deno.jsonc`.
+This project uses Deno's formatter and linter. The canonical settings are
+defined in `deno.jsonc`.
 
 Please run:
 
@@ -135,17 +135,20 @@ When adding tests:
 
 ## AI / LLM-Assisted Contributions
 
-AI/LLM-generated code is allowed, but contributors are fully responsible for anything they submit.
+AI/LLM-generated code is allowed, but contributors are fully responsible for
+anything they submit.
 
 If you use AI tools:
 
 - review, understand, and test all generated code before opening a PR
 - ensure the code matches this project's style, safety, and version requirements
 - do not submit code you cannot explain or maintain
-- verify that generated code does not add unsafe dependencies, weaken validation, or change public behavior unintentionally
+- verify that generated code does not add unsafe dependencies, weaken
+  validation, or change public behavior unintentionally
 - avoid including secrets, private data, or unpublished code in AI tool prompts
 
-PRs may be rejected if AI-generated changes are low-quality, unreviewed, overly broad, or unsafe.
+PRs may be rejected if AI-generated changes are low-quality, unreviewed, overly
+broad, or unsafe.
 
 ## Reporting Security Issues
 

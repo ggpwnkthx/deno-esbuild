@@ -137,7 +137,10 @@ Deno.test({
     const tmpDir = await Deno.makeTempDir();
     try {
       const testFile = `${tmpDir}/test.tsx`;
-      await Deno.writeTextFile(testFile, `export const element = <div>Hello</div>;`);
+      await Deno.writeTextFile(
+        testFile,
+        `export const element = <div>Hello</div>;`,
+      );
 
       const resultDefault = await esbuild.build({
         entryPoints: [testFile],
@@ -203,7 +206,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "denoPlugin - publicEnvVarPrefix handles import.meta.env and destructuring",
+  name:
+    "denoPlugin - publicEnvVarPrefix handles import.meta.env and destructuring",
   fn: async () => {
     const tmpDir = await Deno.makeTempDir();
     try {
@@ -259,7 +263,11 @@ Deno.test({
 
       // Pattern 6: PRIVATE_BAR is NOT inlined (lacks PUBLIC_ prefix), so "baz" does NOT appear
       // The bundle should contain PRIVATE_BAR as an identifier, not "baz"
-      assertEquals(output.includes("baz"), false, "PRIVATE_BAR should not be inlined");
+      assertEquals(
+        output.includes("baz"),
+        false,
+        "PRIVATE_BAR should not be inlined",
+      );
     } finally {
       Deno.env.delete("PUBLIC_FOO");
       Deno.env.delete("PRIVATE_BAR");

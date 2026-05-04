@@ -11,7 +11,10 @@ export interface CacheEntry {
 /**
  * In-memory cache for transformed responses, keyed by pathname.
  */
-export const responseCache = new Map<string, CacheEntry>();
+export const responseCache: Map<string, CacheEntry> = new Map<
+  string,
+  CacheEntry
+>();
 
 /**
  * Options for the Deno esbuild middleware.
@@ -66,7 +69,10 @@ export const DEFAULT_CONTENT_TYPE = "text/javascript";
 /**
  * Check if a pathname should be transpiled based on file extensions.
  */
-export function shouldTranspile(pathname: string, extensions?: string[]): boolean {
+export function shouldTranspile(
+  pathname: string,
+  extensions?: string[],
+): boolean {
   const exts = extensions ?? DEFAULT_EXTENSIONS;
   return exts.some((ext) => pathname.endsWith(ext));
 }
@@ -121,7 +127,10 @@ export async function getCachedOrTranspile(opts: TranspileOptions): Promise<{
   if (cache) {
     const cached = responseCache.get(pathname);
     if (cached !== undefined) {
-      if (effectiveTtl !== undefined && Date.now() - cached.timestamp >= effectiveTtl) {
+      if (
+        effectiveTtl !== undefined &&
+        Date.now() - cached.timestamp >= effectiveTtl
+      ) {
         responseCache.delete(pathname);
       } else {
         return { code: cached.code };
@@ -142,7 +151,9 @@ export async function getCachedOrTranspile(opts: TranspileOptions): Promise<{
   }
 
   if (cache) {
-    if (effectiveMaxSize !== undefined && responseCache.size >= effectiveMaxSize) {
+    if (
+      effectiveMaxSize !== undefined && responseCache.size >= effectiveMaxSize
+    ) {
       let oldestKey: string | null = null;
       let oldestTimestamp = Infinity;
       for (const [key, entry] of responseCache) {
@@ -184,7 +195,10 @@ export function setSuccessResponse(
     const c = ctx as {
       response: {
         body: string;
-        headers: { set: (k: string, v: string) => void; delete: (k: string) => void };
+        headers: {
+          set: (k: string, v: string) => void;
+          delete: (k: string) => void;
+        };
       };
     };
     c.response.body = code;
@@ -218,7 +232,10 @@ export function setErrorResponse(
     const c = ctx as {
       response: {
         body: string;
-        headers: { set: (k: string, v: string) => void; delete: (k: string) => void };
+        headers: {
+          set: (k: string, v: string) => void;
+          delete: (k: string) => void;
+        };
       };
     };
     c.response.body = originalBody;

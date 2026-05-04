@@ -1,7 +1,8 @@
 # deno-esbuild
 
-A thin wrapper around the official [esbuild](https://deno.land/x/esbuild) Deno package,
-adding Deno-specific conveniences: a first-class Deno plugin and framework middleware wrappers (Hono, Oak) for on-the-fly transpilation.
+A thin wrapper around the official [esbuild](https://deno.land/x/esbuild) Deno
+package, adding Deno-specific conveniences: a first-class Deno plugin and
+framework middleware wrappers (Hono, Oak) for on-the-fly transpilation.
 
 ## Exports
 
@@ -34,8 +35,8 @@ const result = await esbuild.build({
 
 ### `plugins/deno` - Deno plugin
 
-Use the Deno plugin to build Deno projects with proper resolution of `file:`, `https:`,
-`jsr:`, `npm:`, and other Deno-specific schemes.
+Use the Deno plugin to build Deno projects with proper resolution of `file:`,
+`https:`, `jsr:`, `npm:`, and other Deno-specific schemes.
 
 ```ts
 import * as esbuild from "esbuild";
@@ -68,8 +69,8 @@ The plugin handles:
 
 - **Import resolution** - `file:`, `https:`, `jsr:`, `npm:` and more
 - **Transpilation** - TypeScript/TSX → JavaScript via Deno's loader
-- **Env var inlining** - Replaces `Deno.env.get("PUBLIC_*")` with string literals when
-  `publicEnvVarPrefix` is set
+- **Env var inlining** - Replaces `Deno.env.get("PUBLIC_*")` with string
+  literals when `publicEnvVarPrefix` is set
 
 ### `wrappers/hono` - Native esbuild middleware
 
@@ -83,18 +84,21 @@ const app = new Hono();
 
 app.use(transpiler());
 
-app.get("/", (c) => c.html(`<script type="module" src="/static/app.ts"></script>`));
+app.get(
+  "/",
+  (c) => c.html(`<script type="module" src="/static/app.ts"></script>`),
+);
 
 await app.fetch(request);
 ```
 
-Requests to `/static/app.ts` (or any `.ts`/`.tsx` path) are transpiled and served as
-JavaScript.
+Requests to `/static/app.ts` (or any `.ts`/`.tsx` path) are transpiled and
+served as JavaScript.
 
 ### `wrappers/hono/wasm` - WASM esbuild middleware
 
-Same as above but uses esbuild's WASM build - useful in environments where the native
-binary is unavailable:
+Same as above but uses esbuild's WASM build - useful in environments where the
+native binary is unavailable:
 
 ```ts
 import { Hono } from "hono";
@@ -131,13 +135,13 @@ app.use(async (ctx) => {
 export default { fetch: app.handle };
 ```
 
-Requests to `/static/app.ts` (or any `.ts`/`.tsx` path) are transpiled and served as
-JavaScript.
+Requests to `/static/app.ts` (or any `.ts`/`.tsx` path) are transpiled and
+served as JavaScript.
 
 ### `wrappers/oak/wasm` - WASM esbuild middleware
 
-Same as above but uses esbuild's WASM build - useful in environments where the native
-binary is unavailable:
+Same as above but uses esbuild's WASM build - useful in environments where the
+native binary is unavailable:
 
 ```ts
 import { Application } from "@oak/oak";

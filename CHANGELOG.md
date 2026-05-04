@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1]
+
+### Changed
+
+- Project split into six independently versioned JSR packages; the root no longer exports any code directly
+- The core `esbuild` package (`jsr:@ggpwnkthx/esbuild@0.2.1`) exposes the full esbuild API (build, context, transform, formatMessages, analyzeMetafile, initialize, stop) and now also exports `shared/common`, `shared/stdio_protocol`, `shared/types`, `shared/uint8array_json_parser`, `shared/worker`, and `wasm` sub-paths
+- Plugin packages (`esbuild-plugin-deno`, `esbuild-plugin-css`) now import the core package via `jsr:@ggpwnkthx/esbuild@0.2.0`
+- Wrapper packages (`esbuild-wrapper-hono`, `esbuild-wrapper-oak`) now import the shared utilities via `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.2.0` instead of a relative path
+
+### Removed
+
+- Root `mod.ts` no longer exists; import from the appropriate package instead
+- `plugins/utils.ts` removed; utilities moved into `plugins/deno/utils.ts`
+
 ## [0.2.0]
 
 ### Changed

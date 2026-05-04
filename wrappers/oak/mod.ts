@@ -6,7 +6,7 @@ import {
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,
-} from "../shared.ts";
+} from "@ggpwnkthx/esbuild-wrapper-shared";
 
 export type { Options };
 

@@ -1,7 +1,12 @@
 import type * as esbuild from "esbuild";
 import * as path from "@std/path";
 import { RequestedModuleType, ResolutionMode, Workspace } from "@deno/loader";
-import { externalToRegex, getModuleType, getPlatform, mediaToLoader } from "./utils.ts";
+import {
+  externalToRegex,
+  getModuleType,
+  getPlatform,
+  mediaToLoader,
+} from "./utils.ts";
 
 export interface DenoPluginOptions {
   /**
@@ -96,16 +101,18 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
           return null;
         }
         if (
-          args.path.startsWith("node:") || externals.some((reg) => reg.test(args.path))
+          args.path.startsWith("node:") ||
+          externals.some((reg) => reg.test(args.path))
         ) {
           return {
             path: args.path,
             external: true,
           };
         }
-        const kind = args.kind === "require-call" || args.kind === "require-resolve"
-          ? ResolutionMode.Require
-          : ResolutionMode.Import;
+        const kind =
+          args.kind === "require-call" || args.kind === "require-resolve"
+            ? ResolutionMode.Require
+            : ResolutionMode.Import;
 
         try {
           const importerUrl = args.importer;
@@ -155,7 +162,9 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
             namespace = "jsr";
           }
 
-          const resolved = res.startsWith("file:") ? path.fromFileUrl(res) : res;
+          const resolved = res.startsWith("file:")
+            ? path.fromFileUrl(res)
+            : res;
 
           options.debug && console.debug(
             "[DEBUG onResolve result]",
@@ -170,7 +179,9 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
           const couldNotResolveReg =
             /not a dependency and not in import map|Relative import path ".*?" not prefixed with/;
 
-          if (err instanceof Error && couldNotResolveReg.test(err.message ?? "")) {
+          if (
+            err instanceof Error && couldNotResolveReg.test(err.message ?? "")
+          ) {
             return null;
           }
 
@@ -192,10 +203,11 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
         args: esbuild.OnLoadArgs,
       ): Promise<esbuild.OnLoadResult | null> => {
         // If the path doesn't look like a URL, convert it to a file:// URL
-        const url = args.path.startsWith("http:") || args.path.startsWith("https:")
-            || args.path.startsWith("npm:") || args.path.startsWith("jsr:")
-          ? args.path
-          : path.toFileUrl(args.path).toString();
+        const url =
+          args.path.startsWith("http:") || args.path.startsWith("https:") ||
+            args.path.startsWith("npm:") || args.path.startsWith("jsr:")
+            ? args.path
+            : path.toFileUrl(args.path).toString();
 
         const moduleType = getModuleType(args.path, args.with);
         const res = await loader.load(url, moduleType);
@@ -208,8 +220,8 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
 
         const envPrefix = options.publicEnvVarPrefix;
         if (
-          envPrefix && envPrefix.length > 0
-          && moduleType === RequestedModuleType.Default
+          envPrefix && envPrefix.length > 0 &&
+          moduleType === RequestedModuleType.Default
         ) {
           let code = new TextDecoder().decode(res.code);
 
@@ -221,21 +233,28 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
                 const stringified = JSON.stringify(val);
                 // JSON.stringify(null) returns the literal "null" (no quotes).
                 // We need a string literal, so wrap in quotes only when the value is null.
-                return stringified === "null" ? `"${stringified}"` : stringified;
+                return stringified === "null"
+                  ? `"${stringified}"`
+                  : stringified;
               }
               if (
                 processName !== undefined && processName.startsWith(envPrefix)
               ) {
                 const val = Deno.env.get(processName) ?? null;
                 const stringified = JSON.stringify(val);
-                return stringified === "null" ? `"${stringified}"` : stringified;
+                return stringified === "null"
+                  ? `"${stringified}"`
+                  : stringified;
               }
               if (
-                importMetaName !== undefined && importMetaName.startsWith(envPrefix)
+                importMetaName !== undefined &&
+                importMetaName.startsWith(envPrefix)
               ) {
                 const val = Deno.env.get(importMetaName) ?? null;
                 const stringified = JSON.stringify(val);
-                return stringified === "null" ? `"${stringified}"` : stringified;
+                return stringified === "null"
+                  ? `"${stringified}"`
+                  : stringified;
               }
               return m;
             },
@@ -246,7 +265,9 @@ export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
             /const\s+\{\s*([\w_]+(?:\s*,\s*[\w_]+)*)\s*\}\s*=\s*Deno\.env/g,
             (match: string, identList: string) => {
               const ids = identList.split(",").map((s: string) => s.trim());
-              const allMatch = ids.every((id: string) => id.startsWith(envPrefix));
+              const allMatch = ids.every((id: string) =>
+                id.startsWith(envPrefix)
+              );
               if (!allMatch) return match;
               const inlined = ids.map((id: string) => {
                 const val = Deno.env.get(id) ?? null;

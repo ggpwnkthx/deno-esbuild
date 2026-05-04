@@ -53,7 +53,11 @@ const enum Char {
 
 const fromCharCode = String.fromCharCode;
 
-function throwSyntaxError(bytes: Uint8Array, index: number, message?: string): void {
+function throwSyntaxError(
+  bytes: Uint8Array,
+  index: number,
+  message?: string,
+): void {
   const c = bytes[index];
   let line = 1;
   let column = 0;
@@ -112,8 +116,8 @@ export function JSON_parse(bytes: Uint8Array): any {
 
     // Validate state inside objects
     if (
-      state === State.Object && property === null && c !== Char.Quote
-      && c !== Char.CloseBrace
+      state === State.Object && property === null && c !== Char.Quote &&
+      c !== Char.CloseBrace
     ) {
       throwSyntaxError(bytes, --i);
     }
@@ -122,8 +126,8 @@ export function JSON_parse(bytes: Uint8Array): any {
       // True
       case Char.LowerT: {
         if (
-          bytes[i++] !== Char.LowerR || bytes[i++] !== Char.LowerU
-          || bytes[i++] !== Char.LowerE
+          bytes[i++] !== Char.LowerR || bytes[i++] !== Char.LowerU ||
+          bytes[i++] !== Char.LowerE
         ) {
           throwSyntaxError(bytes, --i);
         }
@@ -135,8 +139,8 @@ export function JSON_parse(bytes: Uint8Array): any {
       // False
       case Char.LowerF: {
         if (
-          bytes[i++] !== Char.LowerA || bytes[i++] !== Char.LowerL
-          || bytes[i++] !== Char.LowerS || bytes[i++] !== Char.LowerE
+          bytes[i++] !== Char.LowerA || bytes[i++] !== Char.LowerL ||
+          bytes[i++] !== Char.LowerS || bytes[i++] !== Char.LowerE
         ) {
           throwSyntaxError(bytes, --i);
         }
@@ -148,8 +152,8 @@ export function JSON_parse(bytes: Uint8Array): any {
       // Null
       case Char.LowerN: {
         if (
-          bytes[i++] !== Char.LowerU || bytes[i++] !== Char.LowerL
-          || bytes[i++] !== Char.LowerL
+          bytes[i++] !== Char.LowerU || bytes[i++] !== Char.LowerL ||
+          bytes[i++] !== Char.LowerL
         ) {
           throwSyntaxError(bytes, --i);
         }
@@ -263,8 +267,9 @@ export function JSON_parse(bytes: Uint8Array): any {
                 for (let j = 0; j < 4; j++) {
                   c = bytes[i++];
                   code <<= 4;
-                  if (c >= Char.Digit0 && c <= Char.Digit9) code |= c - Char.Digit0;
-                  else if (c >= Char.LowerA && c <= Char.LowerF) {
+                  if (c >= Char.Digit0 && c <= Char.Digit9) {
+                    code |= c - Char.Digit0;
+                  } else if (c >= Char.LowerA && c <= Char.LowerF) {
                     code |= c + (10 - Char.LowerA);
                   } else if (c >= Char.UpperA && c <= Char.UpperF) {
                     code |= c + (10 - Char.UpperA);
@@ -288,12 +293,13 @@ export function JSON_parse(bytes: Uint8Array): any {
           } // 3-byte UTF-8 sequence
           else if ((c & 0xF0) === 0xE0) {
             value += fromCharCode(
-              ((c & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F),
+              ((c & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) |
+                (bytes[i++] & 0x3F),
             );
           } // 4-byte UTF-8 sequence
           else if ((c & 0xF8) == 0xF0) {
-            let codePoint = ((c & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12)
-              | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
+            let codePoint = ((c & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) |
+              ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
             if (codePoint > 0xFFFF) {
               codePoint -= 0x10000;
               value += fromCharCode(((codePoint >> 10) & 0x3FF) | 0xD800);
