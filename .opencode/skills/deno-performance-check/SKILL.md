@@ -13,7 +13,8 @@ metadata:
 
 Look for:
 
-- `await req.text()`, `await req.json()`, `Deno.readTextFile`, `response.text()` on large inputs
+- `await req.text()`, `await req.json()`, `Deno.readTextFile`, `response.text()`
+  on large inputs
 - unbounded arrays, maps, caches, queues, or buffering
 - missing pagination, cursors, limits, batching, or streaming
 - repeated filters/scans inside loops

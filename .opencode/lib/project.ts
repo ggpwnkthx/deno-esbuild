@@ -130,8 +130,12 @@ export function candidateRelatedTestPaths(path: string): string[] {
   for (const suffix of TEST_SUFFIXES) {
     candidates.add(`${withoutExtension}${suffix}`);
     candidates.add(joinPath(currentDirectory, `${currentFile}${suffix}`));
-    candidates.add(joinPath("tests", currentDirectory, `${currentFile}${suffix}`));
-    candidates.add(joinPath("test", currentDirectory, `${currentFile}${suffix}`));
+    candidates.add(
+      joinPath("tests", currentDirectory, `${currentFile}${suffix}`),
+    );
+    candidates.add(
+      joinPath("test", currentDirectory, `${currentFile}${suffix}`),
+    );
     candidates.add(joinPath("tests", `${currentFile}${suffix}`));
     candidates.add(joinPath("test", `${currentFile}${suffix}`));
   }
@@ -160,8 +164,13 @@ export function scoreProjectFile(
 
   if (recentIndex >= 0) score += 20 + recentIndex;
   if (depth <= 2) score += 8;
-  if (/\/(src|app|server|packages|lib|routes|api|domain)\//.test(`/${normalized}`)) score += 6;
-  if (/(index|route|router|controller|service|repo|repository|model|schema|config|client|server|handler|middleware)\./.test(fileName)) score += 10;
+  if (
+    /\/(src|app|server|packages|lib|routes|api|domain)\//.test(`/${normalized}`)
+  ) score += 6;
+  if (
+    /(index|route|router|controller|service|repo|repository|model|schema|config|client|server|handler|middleware)\./
+      .test(fileName)
+  ) score += 10;
   if (isTestFile(fileName)) score -= 4;
 
   return score;
@@ -172,7 +181,9 @@ export function selectProjectContextFiles(
   recentlyEditedPaths: readonly string[],
   maxFiles: number,
 ): string[] {
-  const unique = [...new Set(files.map(normalizePath))].filter(isReviewableFile);
+  const unique = [...new Set(files.map(normalizePath))].filter(
+    isReviewableFile,
+  );
   if (unique.length <= maxFiles) return unique;
 
   const scored = unique
@@ -208,28 +219,35 @@ export function suggestReviewAgents(
   const suggestions: AgentSuggestion[] = [
     {
       name: AGENT_NAMES.criticalReviewer,
-      reason: "evaluate correctness, security, failure modes, test proof, and merge risk",
+      reason:
+        "evaluate correctness, security, failure modes, test proof, and merge risk",
     },
   ];
 
-  if (normalized.length >= 4 || spansMultipleBuckets(normalized) || normalized.some(isArchitectureRelatedPath)) {
+  if (
+    normalized.length >= 4 || spansMultipleBuckets(normalized) ||
+    normalized.some(isArchitectureRelatedPath)
+  ) {
     suggestions.push({
       name: AGENT_NAMES.architectureReviewer,
-      reason: "changed files span structure, ownership, or dependency boundaries",
+      reason:
+        "changed files span structure, ownership, or dependency boundaries",
     });
   }
 
   if (normalized.some(isHttpRelatedPath)) {
     suggestions.push({
       name: AGENT_NAMES.httpAuditor,
-      reason: "changed files touch HTTP, request/response, auth, route, or config boundaries",
+      reason:
+        "changed files touch HTTP, request/response, auth, route, or config boundaries",
     });
   }
 
   if (normalized.some(isPerformanceSensitivePath)) {
     suggestions.push({
       name: AGENT_NAMES.performanceAuditor,
-      reason: "changed files touch streaming, file, list, search, cache, parser, or batch paths",
+      reason:
+        "changed files touch streaming, file, list, search, cache, parser, or batch paths",
     });
   }
 
@@ -249,17 +267,20 @@ function spansMultipleBuckets(files: readonly string[]): boolean {
 
 function isArchitectureRelatedPath(path: string): boolean {
   const value = normalizePath(path).toLowerCase();
-  return /(deno\.jsonc?|import_map|package\.json|tsconfig|\/domain\/|\/adapter\/|\/client\/|\/lib\/|\/types?\/|\/schemas?\/|\/config\/|\/errors?\.)/.test(value);
+  return /(deno\.jsonc?|import_map|package\.json|tsconfig|\/domain\/|\/adapter\/|\/client\/|\/lib\/|\/types?\/|\/schemas?\/|\/config\/|\/errors?\.)/
+    .test(value);
 }
 
 function isHttpRelatedPath(path: string): boolean {
   const value = normalizePath(path).toLowerCase();
-  return /(route|routes|http|api|handler|middleware|controller|server|request|response|auth|config)/.test(value);
+  return /(route|routes|http|api|handler|middleware|controller|server|request|response|auth|config)/
+    .test(value);
 }
 
 function isPerformanceSensitivePath(path: string): boolean {
   const value = normalizePath(path).toLowerCase();
-  return /(stream|queue|worker|job|batch|scan|search|index|cache|file|parser|import|export|sync|list|paginate|cursor|perf|performance|benchmark)/.test(value);
+  return /(stream|queue|worker|job|batch|scan|search|index|cache|file|parser|import|export|sync|list|paginate|cursor|perf|performance|benchmark)/
+    .test(value);
 }
 
 function dedupeSuggestions(
@@ -288,7 +309,9 @@ export function buildProjectReviewPrompt(
   const suggestedAgents = suggestReviewAgents(changedFiles);
   const delegationList = suggestedAgents.length === 0
     ? "- None"
-    : suggestedAgents.map((agent) => `- ${formatAgentMention(agent.name)} - ${agent.reason}`).join("\n");
+    : suggestedAgents.map((agent) =>
+      `- ${formatAgentMention(agent.name)} - ${agent.reason}`
+    ).join("\n");
 
   const referencedFiles = reviewFiles.length === 0
     ? "none"
@@ -298,7 +321,9 @@ export function buildProjectReviewPrompt(
     ? "- None"
     : reviewFiles.map((file) => `- @${file}`).join("\n");
 
-  const omittedFiles = changedFiles.filter((file) => !reviewFiles.includes(file));
+  const omittedFiles = changedFiles.filter((file) =>
+    !reviewFiles.includes(file)
+  );
   const omittedFileList = omittedFiles.length === 0
     ? "- None"
     : omittedFiles.map((file) => `- ${file}`).join("\n");

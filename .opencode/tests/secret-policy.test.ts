@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  looksLikeSecretShellRead,
-  looksSecret,
-} from "../lib/secret-policy.ts";
+import { looksLikeSecretShellRead, looksSecret } from "../lib/secret-policy.ts";
 
 describe("secret policy", () => {
   test("blocks likely secret paths", () => {

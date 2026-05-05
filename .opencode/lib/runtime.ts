@@ -90,10 +90,15 @@ export function quoteShellToken(token: string): string {
 
 export function clipText(text: string, maxChars = 8_000): string {
   if (text.length <= maxChars) return text;
-  return `${text.slice(0, maxChars)}\n...[truncated ${text.length - maxChars} chars]`;
+  return `${text.slice(0, maxChars)}\n...[truncated ${
+    text.length - maxChars
+  } chars]`;
 }
 
-export function commandReport(result: CommandResult, maxChars = 12_000): string {
+export function commandReport(
+  result: CommandResult,
+  maxChars = 12_000,
+): string {
   return [
     `Exit code: ${result.exitCode}`,
     "",

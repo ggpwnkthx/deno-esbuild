@@ -4,7 +4,8 @@ import { commandReport, runCommand } from "../lib/runtime.ts";
 import { resolveInside } from "../lib/path.ts";
 
 export default tool({
-  description: "Run an approved `deno task` inside the current project worktree.",
+  description:
+    "Run an approved `deno task` inside the current project worktree.",
   args: {
     task: tool.schema.string().min(1).describe(
       "Task name from deno.json or deno.jsonc",

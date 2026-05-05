@@ -1,12 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin";
 
-import {
-  getStringArg,
-} from "../lib/command-policy.ts";
-import {
-  looksLikeSecretShellRead,
-  looksSecret,
-} from "../lib/secret-policy.ts";
+import { getStringArg } from "../lib/command-policy.ts";
+import { looksLikeSecretShellRead, looksSecret } from "../lib/secret-policy.ts";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -29,8 +24,7 @@ export const SecretGuardPlugin: Plugin = async ({ client }) => {
   return {
     "tool.execute.before": async (input, output) => {
       if (input.tool === "read") {
-        const filePath =
-          getStringArg(output.args, "filePath") ??
+        const filePath = getStringArg(output.args, "filePath") ??
           getStringArg(output.args, "path");
 
         if (!filePath) return;

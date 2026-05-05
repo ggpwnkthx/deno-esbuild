@@ -1,10 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin";
 
-import {
-  commandReport,
-  formatCommand,
-  runCommand,
-} from "../lib/runtime.ts";
+import { commandReport, formatCommand, runCommand } from "../lib/runtime.ts";
 import { collectChangedFiles } from "../lib/git.ts";
 import {
   chooseRelatedTests,

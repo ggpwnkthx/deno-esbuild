@@ -23,6 +23,7 @@ You are the performance and memory auditor.
 Immediately load `deno-performance-check`.
 
 Look for:
+
 - whole-payload reads
 - unbounded buffering
 - accidental copies

@@ -20,15 +20,19 @@ export default tool({
   },
   async execute(args, context) {
     const result = await collectChangedFilesDetailed(context);
-    const reviewFiles = selectProjectContextFiles(result.files, [], args.maxFiles);
+    const reviewFiles = selectProjectContextFiles(
+      result.files,
+      [],
+      args.maxFiles,
+    );
     const prompt = buildProjectReviewPrompt(result.files, reviewFiles);
 
     const warnings = result.warnings.length > 0
       ? [
-          "## Git discovery warnings",
-          ...result.warnings.map((warning) => `- ${warning}`),
-          "",
-        ].join("\n")
+        "## Git discovery warnings",
+        ...result.warnings.map((warning) => `- ${warning}`),
+        "",
+      ].join("\n")
       : "";
 
     return `${warnings}${prompt}`;

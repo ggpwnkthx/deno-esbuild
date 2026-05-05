@@ -9,7 +9,9 @@ export interface PermissionAnalysis {
   readonly hrtime: boolean;
 }
 
-export function analyzeDenoPermissionNeeds(command: string): PermissionAnalysis {
+export function analyzeDenoPermissionNeeds(
+  command: string,
+): PermissionAnalysis {
   const read = new Set<string>();
   const write = new Set<string>();
   const net = new Set<string>();
@@ -21,7 +23,10 @@ export function analyzeDenoPermissionNeeds(command: string): PermissionAnalysis 
 
   const lower = command.toLowerCase();
 
-  if (/\b(fetch|websocket|serve|listen|connect|postgres|mysql|redis|s3|mqtt|amqp)\b/.test(lower)) {
+  if (
+    /\b(fetch|websocket|serve|listen|connect|postgres|mysql|redis|s3|mqtt|amqp)\b/
+      .test(lower)
+  ) {
     net.add("<host>");
   }
 
@@ -29,7 +34,10 @@ export function analyzeDenoPermissionNeeds(command: string): PermissionAnalysis 
     env.add("<name>");
   }
 
-  if (/\b(subprocess|spawn|exec|command\(|deno\.command|bun\.spawn|bun\.\$)\b/.test(lower)) {
+  if (
+    /\b(subprocess|spawn|exec|command\(|deno\.command|bun\.spawn|bun\.\$)\b/
+      .test(lower)
+  ) {
     run = true;
   }
 
@@ -37,7 +45,10 @@ export function analyzeDenoPermissionNeeds(command: string): PermissionAnalysis 
     ffi = true;
   }
 
-  if (/\b(os\.|hostname|loadavg|networkinterfaces|uid|gid|memoryusage|systemmemoryinfo)\b/.test(lower)) {
+  if (
+    /\b(os\.|hostname|loadavg|networkinterfaces|uid|gid|memoryusage|systemmemoryinfo)\b/
+      .test(lower)
+  ) {
     sys = true;
   }
 
@@ -45,11 +56,17 @@ export function analyzeDenoPermissionNeeds(command: string): PermissionAnalysis 
     hrtime = true;
   }
 
-  if (/\b(readfile|readtextfile|readfileSync|open\(|watchfs|watch|glob|walk)\b/.test(lower)) {
+  if (
+    /\b(readfile|readtextfile|readfileSync|open\(|watchfs|watch|glob|walk)\b/
+      .test(lower)
+  ) {
     read.add("<path>");
   }
 
-  if (/\b(writefile|writetextfile|mkdir|copy|rename|remove|truncate|create|append)\b/.test(lower)) {
+  if (
+    /\b(writefile|writetextfile|mkdir|copy|rename|remove|truncate|create|append)\b/
+      .test(lower)
+  ) {
     write.add("<path>");
   }
 
@@ -68,10 +85,18 @@ export function analyzeDenoPermissionNeeds(command: string): PermissionAnalysis 
 export function formatPermissionFlags(analysis: PermissionAnalysis): string[] {
   const flags: string[] = [];
 
-  if (analysis.read.length > 0) flags.push(`--allow-read=${analysis.read.join(",")}`);
-  if (analysis.write.length > 0) flags.push(`--allow-write=${analysis.write.join(",")}`);
-  if (analysis.net.length > 0) flags.push(`--allow-net=${analysis.net.join(",")}`);
-  if (analysis.env.length > 0) flags.push(`--allow-env=${analysis.env.join(",")}`);
+  if (analysis.read.length > 0) {
+    flags.push(`--allow-read=${analysis.read.join(",")}`);
+  }
+  if (analysis.write.length > 0) {
+    flags.push(`--allow-write=${analysis.write.join(",")}`);
+  }
+  if (analysis.net.length > 0) {
+    flags.push(`--allow-net=${analysis.net.join(",")}`);
+  }
+  if (analysis.env.length > 0) {
+    flags.push(`--allow-env=${analysis.env.join(",")}`);
+  }
   if (analysis.sys) flags.push("--allow-sys");
   if (analysis.ffi) flags.push("--allow-ffi");
   if (analysis.run) flags.push("--allow-run");

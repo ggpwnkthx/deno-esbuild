@@ -1,9 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin";
 
-import {
-  evaluateShellCommand,
-  getStringArg,
-} from "../lib/command-policy.ts";
+import { evaluateShellCommand, getStringArg } from "../lib/command-policy.ts";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -43,11 +40,15 @@ export const DenoCommandsPlugin: Plugin = async ({ client }) => {
       }
 
       output.args.command = decision.replacement;
-      await log("info", "Rewrote target-repo shell command for Deno-first workflow", {
-        from: command,
-        to: decision.replacement,
-        reason: decision.reason,
-      });
+      await log(
+        "info",
+        "Rewrote target-repo shell command for Deno-first workflow",
+        {
+          from: command,
+          to: decision.replacement,
+          reason: decision.reason,
+        },
+      );
     },
   };
 };

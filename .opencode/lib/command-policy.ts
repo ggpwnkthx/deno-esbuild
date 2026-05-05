@@ -2,10 +2,10 @@ export type CommandPolicyDecision =
   | { readonly action: "allow" }
   | { readonly action: "block"; readonly message: string }
   | {
-      readonly action: "rewrite";
-      readonly replacement: string;
-      readonly reason: string;
-    };
+    readonly action: "rewrite";
+    readonly replacement: string;
+    readonly reason: string;
+  };
 
 const BLOCKED_PATTERNS: ReadonlyArray<{
   readonly pattern: RegExp;
@@ -13,27 +13,33 @@ const BLOCKED_PATTERNS: ReadonlyArray<{
 }> = [
   {
     pattern: /^\s*node(?:\s|$)/,
-    message: "Do not use `node` directly for target-repo work. This OpenCode harness runs on Bun; target repo commands should prefer `deno task`, `deno run`, or a local OpenCode tool.",
+    message:
+      "Do not use `node` directly for target-repo work. This OpenCode harness runs on Bun; target repo commands should prefer `deno task`, `deno run`, or a local OpenCode tool.",
   },
   {
     pattern: /^\s*(npm|pnpm|yarn)\s+(install|add|exec|dlx|create)(?:\s|$)/,
-    message: "Do not install or execute target-repo dependencies with npm/pnpm/yarn. Prefer Deno built-ins, pinned `jsr:` imports, or explicit maintainer approval.",
+    message:
+      "Do not install or execute target-repo dependencies with npm/pnpm/yarn. Prefer Deno built-ins, pinned `jsr:` imports, or explicit maintainer approval.",
   },
   {
     pattern: /^\s*npx(?:\s|$)/,
-    message: "Do not use `npx` in this Deno-first repo. Prefer `deno task`, `deno run`, or a custom OpenCode tool.",
+    message:
+      "Do not use `npx` in this Deno-first repo. Prefer `deno task`, `deno run`, or a custom OpenCode tool.",
   },
   {
     pattern: /^\s*(ts-node|tsx)(?:\s|$)/,
-    message: "Do not use ts-node/tsx for target-repo work. Prefer `deno run` or `deno task`.",
+    message:
+      "Do not use ts-node/tsx for target-repo work. Prefer `deno run` or `deno task`.",
   },
   {
     pattern: /^\s*(jest|vitest)(?:\s|$)/,
-    message: "Do not use Jest/Vitest directly in this Deno-first repo unless the repo explicitly owns that workflow. Prefer `deno test` or a Deno task.",
+    message:
+      "Do not use Jest/Vitest directly in this Deno-first repo unless the repo explicitly owns that workflow. Prefer `deno test` or a Deno task.",
   },
   {
     pattern: /^\s*tsc(?!\s+--noEmit\s*$)(?:\s|$)/,
-    message: "Do not use arbitrary `tsc` commands in this Deno-first repo. Prefer `deno check`.",
+    message:
+      "Do not use arbitrary `tsc` commands in this Deno-first repo. Prefer `deno check`.",
   },
 ];
 
@@ -59,16 +65,20 @@ export function rewriteCommand(command: string): CommandPolicyDecision | null {
     return {
       action: "rewrite",
       replacement: `deno task ${packageRun[2]}${packageRun.groups?.rest ?? ""}`,
-      reason: "Use `deno task` instead of package-manager scripts in Deno-first repos.",
+      reason:
+        "Use `deno task` instead of package-manager scripts in Deno-first repos.",
     };
   }
 
-  const packageTest = command.match(/^\s*(npm|pnpm|yarn|bun)\s+test(?<rest>.*)$/s);
+  const packageTest = command.match(
+    /^\s*(npm|pnpm|yarn|bun)\s+test(?<rest>.*)$/s,
+  );
   if (packageTest) {
     return {
       action: "rewrite",
       replacement: `deno test -A${packageTest.groups?.rest ?? ""}`,
-      reason: "Use `deno test -A` instead of package-manager test commands in Deno-first repos.",
+      reason:
+        "Use `deno test -A` instead of package-manager test commands in Deno-first repos.",
     };
   }
 
@@ -96,7 +106,8 @@ export function rewriteCommand(command: string): CommandPolicyDecision | null {
     if (/\s--write\b/.test(rest)) {
       return {
         action: "block",
-        message: "Do not rewrite `prettier --write` automatically because flags and globs are not always equivalent. Use `deno fmt` directly.",
+        message:
+          "Do not rewrite `prettier --write` automatically because flags and globs are not always equivalent. Use `deno fmt` directly.",
       };
     }
 

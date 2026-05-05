@@ -1,9 +1,6 @@
 import { tool } from "@opencode-ai/plugin";
 
-import {
-  runSelectedTests,
-  selectChangedTests,
-} from "../lib/tests.ts";
+import { runSelectedTests, selectChangedTests } from "../lib/tests.ts";
 
 export default tool({
   description:
@@ -23,7 +20,9 @@ export default tool({
     allowAll: tool.schema
       .boolean()
       .default(false)
-      .describe("Pass -A to deno test when the selected tests need full permissions"),
+      .describe(
+        "Pass -A to deno test when the selected tests need full permissions",
+      ),
   },
   async execute(args, context) {
     const selection = await selectChangedTests(context, args.maxFiles);

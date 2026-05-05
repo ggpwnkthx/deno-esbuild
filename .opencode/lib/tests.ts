@@ -97,7 +97,9 @@ async function walkDirectory(
 
     if (!entry.isFile()) continue;
 
-    if (TEST_GLOB_SUFFIXES.some((suffix) => relativePath.endsWith(`.${suffix}`))) {
+    if (
+      TEST_GLOB_SUFFIXES.some((suffix) => relativePath.endsWith(`.${suffix}`))
+    ) {
       found.add(relativePath);
       if (found.size >= maxFiles) return;
     }
@@ -129,7 +131,10 @@ export function chooseRelatedTests(
   if (direct.size >= maxFiles) {
     return {
       changedFiles,
-      relatedTests: [...direct].sort((a, b) => a.localeCompare(b)).slice(0, maxFiles),
+      relatedTests: [...direct].sort((a, b) => a.localeCompare(b)).slice(
+        0,
+        maxFiles,
+      ),
       reason: "selected direct test filename matches for changed files",
     };
   }
@@ -182,7 +187,9 @@ function scoreTestFile(
     if (changedBase.length >= 3 && testName.includes(changedBase)) score += 30;
 
     const changedDir = dirname(normalizedChanged);
-    if (testDir.endsWith(changedDir) || changedDir.endsWith(testDir)) score += 12;
+    if (testDir.endsWith(changedDir) || changedDir.endsWith(testDir)) {
+      score += 12;
+    }
   }
 
   return score;
@@ -206,7 +213,9 @@ export async function runSelectedTests(
     return "No related test files were found.";
   }
 
-  const cwd = options.cwd ? resolveInside(context.worktree, options.cwd) : context.worktree;
+  const cwd = options.cwd
+    ? resolveInside(context.worktree, options.cwd)
+    : context.worktree;
   const command = options.allowAll
     ? ["deno", "test", "-A", ...testFiles]
     : ["deno", "test", ...testFiles];

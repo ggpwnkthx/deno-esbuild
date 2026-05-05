@@ -28,7 +28,11 @@ export async function collectChangedFilesDetailed(
   for (const cmd of CHANGE_COMMANDS) {
     const result = await runCommand(context, cmd, { cwd: context.worktree });
     if (result.exitCode !== 0) {
-      warnings.push(`${cmd.join(" ")} exited ${result.exitCode}: ${result.stderr.trim() || result.stdout.trim() || "no output"}`);
+      warnings.push(
+        `${cmd.join(" ")} exited ${result.exitCode}: ${
+          result.stderr.trim() || result.stdout.trim() || "no output"
+        }`,
+      );
       continue;
     }
 

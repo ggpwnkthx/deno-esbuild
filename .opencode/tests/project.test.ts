@@ -16,8 +16,12 @@ describe("project helpers", () => {
 
   test("detects test files and candidates", () => {
     expect(isTestFile("src/foo.test.ts")).toBe(true);
-    expect(candidateRelatedTestPaths("src/foo.ts")).toContain("src/foo.test.ts");
-    expect(candidateRelatedTestPaths("src/foo.ts")).toContain("tests/src/foo.test.ts");
+    expect(candidateRelatedTestPaths("src/foo.ts")).toContain(
+      "src/foo.test.ts",
+    );
+    expect(candidateRelatedTestPaths("src/foo.ts")).toContain(
+      "tests/src/foo.test.ts",
+    );
   });
 
   test("suggests specialists based on changed paths", () => {
