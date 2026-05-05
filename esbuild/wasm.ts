@@ -1,4 +1,5 @@
 /**
+ * @module
  * Browser/WASM entrypoint for the `@ggpwnkthx/esbuild` package, providing the
  * same async API as mod.ts but using the WebAssembly version of esbuild running
  * in a browser worker by default.
@@ -11,6 +12,7 @@
  * The `initialize()` function must be called before other API calls in the
  * browser to load the WebAssembly module.
  *
+ * @see ./mod
  * @example
  * ```ts
  * import { initialize, build } from "@ggpwnkthx/esbuild/wasm";
@@ -44,22 +46,40 @@ declare let WEB_WORKER_FUNCTION: (
 /** The esbuild binary version string (e.g. "0.28.0"). @see ../mod.ts */
 export { version };
 
-/** @see ../shared/types.ts:build */
+/**
+ * @param options - Configuration options for the build.
+ * @returns A promise that resolves with the build result or rejects with a `BuildFailure`.
+ * @see ../shared/types.ts:build
+ */
 export const build: typeof types.build = (options: types.BuildOptions) =>
   ensureServiceIsRunning().then((service) => service.build(options));
 
-/** @see ../shared/types.ts:context */
+/**
+ * @param options - Configuration options for the build context.
+ * @returns A promise that resolves with a `BuildContext` for long-running operations.
+ * @see ../shared/types.ts:context
+ */
 export const context: typeof types.context = (options: types.BuildOptions) =>
   ensureServiceIsRunning().then((service) => service.context(options));
 
-/** @see ../shared/types.ts:transform */
+/**
+ * @param input - The source code (string) or raw bytes to transform.
+ * @param options - Optional transform configuration.
+ * @returns A promise that resolves with the transform result or rejects with a `TransformFailure`.
+ * @see ../shared/types.ts:transform
+ */
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
 ) =>
   ensureServiceIsRunning().then((service) => service.transform(input, options));
 
-/** @see ../shared/types.ts:formatMessages */
+/**
+ * @param messages - An array of diagnostic messages to format.
+ * @param options - Configuration for the formatter, including `kind` ("error" or "warning").
+ * @returns A promise that resolves with an array of formatted message strings.
+ * @see ../shared/types.ts:formatMessages
+ */
 export const formatMessages: typeof types.formatMessages = (
   messages,
   options,
@@ -68,7 +88,12 @@ export const formatMessages: typeof types.formatMessages = (
     service.formatMessages(messages, options)
   );
 
-/** @see ../shared/types.ts:analyzeMetafile */
+/**
+ * @param metafile - The metafile JSON string or object to analyze.
+ * @param options - Optional analysis configuration.
+ * @returns A promise that resolves with a human-readable analysis string.
+ * @see ../shared/types.ts:analyzeMetafile
+ */
 export const analyzeMetafile: typeof types.analyzeMetafile = (
   metafile,
   options,
@@ -77,27 +102,52 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
     service.analyzeMetafile(metafile, options)
   );
 
-/** @see ../shared/types.ts:buildSync */
+/**
+ * Synchronous builds are not supported in the WASM API and throw unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:buildSync
+ */
 export const buildSync: typeof types.buildSync = () => {
   throw new Error(`The "buildSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:transformSync */
+/**
+ * Synchronous transforms are not supported in the WASM API and throw unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:transformSync
+ */
 export const transformSync: typeof types.transformSync = () => {
   throw new Error(`The "transformSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:formatMessagesSync */
+/**
+ * Synchronous message formatting is not supported in the WASM API and throws unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:formatMessagesSync
+ */
 export const formatMessagesSync: typeof types.formatMessagesSync = () => {
   throw new Error(`The "formatMessagesSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:analyzeMetafileSync */
+/**
+ * Synchronous metafile analysis is not supported in the WASM API and throws unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:analyzeMetafileSync
+ */
 export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
   throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:stop */
+/**
+ * Terminates the esbuild WASM service and releases associated resources.
+ *
+ * In Deno, you must call this function when done using esbuild to prevent the
+ * process from hanging indefinitely. The WASM worker is terminated and all
+ * associated state is reset.
+ *
+ * @returns A promise that resolves when cleanup is complete.
+ * @see ../shared/types.ts:stop
+ */
 export const stop = (): Promise<void> => {
   if (stopService) stopService();
   return Promise.resolve();
@@ -119,7 +169,19 @@ const ensureServiceIsRunning = (): Promise<Service> => {
     startRunningService("esbuild.wasm", undefined, true);
 };
 
-/** @see ../shared/types.ts:initialize */
+/**
+ * Initializes the esbuild WASM service with the provided configuration.
+ *
+ * This function must be called before any other API calls in browser environments.
+ * It loads the WebAssembly module and (by default) starts a web worker to run
+ * esbuild off the main thread.
+ *
+ * @param options - Configuration for the WASM service, including `wasmURL` (required
+ *   in browsers), `wasmModule` (optional pre-loaded module), and `worker` (whether
+ *   to run in a worker, default true).
+ * @returns A promise that resolves when initialization is complete.
+ * @see ../shared/types.ts:initialize
+ */
 export const initialize: typeof types.initialize = async (options) => {
   options = common.validateInitializeOptions(options || {});
   const wasmURL = options.wasmURL;

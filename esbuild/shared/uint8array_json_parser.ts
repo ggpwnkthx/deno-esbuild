@@ -1,6 +1,13 @@
 /**
- * A custom `JSON_parse` function that parses JSON directly from a `Uint8Array`,
+ * @module
+ * A custom {@link JSON_parse} function that parses JSON directly from a `Uint8Array`,
  * avoiding a string allocation and supporting UTF-8 encoded input.
+ *
+ * This parser handles all standard JSON tokens including strings, numbers,
+ * booleans, null, arrays, objects, and Unicode escape sequences. It throws a
+ * `SyntaxError` with line/column information on parse failure.
+ *
+ * @see JSON_parse
  */
 const enum State {
   TopLevel,
@@ -90,7 +97,13 @@ function throwSyntaxError(
   );
 }
 
-/** Parses JSON from a Uint8Array without a string allocation, supporting UTF-8 input. */
+/**
+ * Parses JSON from a `Uint8Array` without a string allocation, supporting UTF-8 input.
+ *
+ * @param bytes - A `Uint8Array` containing UTF-8 encoded JSON text.
+ * @returns The parsed JavaScript value (object, array, string, number, boolean, or null).
+ * @throws {SyntaxError} If the input is not valid JSON, with line/column position info.
+ */
 // deno-lint-ignore no-explicit-any
 export function JSON_parse(bytes: Uint8Array): any {
   if (!(bytes instanceof Uint8Array)) {

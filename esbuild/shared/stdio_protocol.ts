@@ -1,8 +1,18 @@
 /**
+ * @module
  * This module implements the binary stdio protocol used to communicate with
  * the esbuild Go binary. It handles encoding/decoding packets, defines all
  * request/response types (BuildRequest, ServeRequest, TransformRequest, etc.),
  * and provides UTF-8 helpers (encodeUTF8/decodeUTF8).
+ *
+ * The protocol is a simple binary format built on top of JSON with UTF-8 encoding
+ * and an additional byte array primitive. Each packet consists of a 4-byte little-endian
+ * length prefix followed by the encoded payload.
+ *
+ * @see encodePacket
+ * @see decodePacket
+ * @see encodeUTF8
+ * @see decodeUTF8
  */
 
 // The JavaScript API communicates with the Go child process over stdin/stdout
@@ -300,7 +310,14 @@ export type Value =
   | Value[]
   | { [key: string]: Value };
 
-/** Encodes a Packet into a byte array. */
+/**
+ * Encodes a {@link Packet} into a byte array for transmission over the stdio channel.
+ *
+ * @param packet - The packet to encode, including `id`, `isRequest` flag, and `value`.
+ * @returns A `Uint8Array` containing the encoded packet (length prefix + payload).
+ * @see Packet
+ * @see decodePacket
+ */
 export function encodePacket(packet: Packet): Uint8Array {
   const visit = (value: Value) => {
     if (value === null) {
@@ -342,7 +359,15 @@ export function encodePacket(packet: Packet): Uint8Array {
   return bb.buf.subarray(0, bb.len);
 }
 
-/** Decodes a byte array into a Packet. */
+/**
+ * Decodes a byte array from the stdio channel into a {@link Packet}.
+ *
+ * @param bytes - A `Uint8Array` containing the encoded packet (length prefix + payload).
+ * @returns The decoded `Packet` object.
+ * @throws {Error} If the packet is malformed or the byte stream is truncated.
+ * @see Packet
+ * @see encodePacket
+ */
 export function decodePacket(bytes: Uint8Array): Packet {
   const visit = (): Value => {
     switch (bb.read8()) {
@@ -475,7 +500,13 @@ is not a problem with esbuild. You need to fix your environment instead.
   );
 }
 
-/** Reads an unsigned 32-bit little-endian integer from a buffer at the given offset. */
+/**
+ * Reads an unsigned 32-bit little-endian integer from a buffer at the given offset.
+ *
+ * @param buffer - The `Uint8Array` to read from.
+ * @param offset - The byte offset within the buffer (0-based).
+ * @returns The unsigned 32-bit integer value at the specified position.
+ */
 export function readUInt32LE(buffer: Uint8Array, offset: number): number {
   return (
     buffer[offset++] |

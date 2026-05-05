@@ -1,6 +1,15 @@
 /**
+ * @module
  * Shared validation, channel/IPC setup, and flag processing logic used by both
  * the native binary API ({@link ../mod.ts}) and the WASM API ({@link ../wasm.ts}).
+ *
+ * This module is responsible for:
+ * - Validating and normalizing `InitializeOptions` passed to `initialize()`
+ * - Building CLI flag arrays from `BuildOptions` / `TransformOptions` objects
+ * - Creating the stdio channel pair used to communicate with the esbuild service
+ *
+ * @see ../mod.ts
+ * @see ../wasm.ts
  */
 import type * as types from "./types.ts";
 import * as protocol from "./stdio_protocol.ts";
@@ -732,7 +741,14 @@ export interface Refs {
   unref(): void;
 }
 
-/** The service RPC interface exposed by `createChannel()`. */
+/**
+ * The service RPC interface exposed by {@link createChannel}.
+ *
+ * This interface groups the four main RPC methods used to communicate with the
+ * esbuild service: `buildOrContext`, `transform`, `formatMessages`, and `analyzeMetafile`.
+ *
+ * @see createChannel
+ */
 export interface StreamService {
   buildOrContext(args: {
     callName: string;

@@ -1,10 +1,16 @@
 /**
+ * @module
  * This module contains the web worker source code used by esbuild's WASM API to
  * run the Go-based esbuild binary in a browser Worker thread — handling WASM
  * loading, stdin/stdout forwarding to the main thread, and the Go runtime
  * integration.
+ *
+ * The worker expects to receive the WebAssembly module via `postMessage` and
+ * then acts as a bridge: Go's `fs` hooks (`read`, `writeSync`) forward I/O over
+ * `postMessage` back to the main thread where the actual stdio channel lives.
+ *
+ * @see ../wasm.ts
  */
-
 import { ESBUILD_VERSION } from "./common.ts";
 
 interface Go {

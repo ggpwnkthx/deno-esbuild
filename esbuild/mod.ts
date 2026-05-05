@@ -1,4 +1,5 @@
 /**
+ * @module
  * Main entrypoint for the `@ggpwnkthx/esbuild` package, providing the full
  * esbuild JavaScript API for Deno with automatic binary management.
  *
@@ -6,6 +7,18 @@
  * first use and keeps it cached. All standard esbuild build functions are
  * available, including `build`, `context`, `transform`, and `formatMessages`.
  *
+ * All API calls are asynchronous and return promises. The synchronous APIs
+ * (`buildSync`, `transformSync`, `formatMessagesSync`, `analyzeMetafileSync`)
+ * throw in Deno because synchronous stdin/stdout is not supported.
+ *
+ * **You must call `stop()` when done** to terminate the esbuild child process;
+ * otherwise your Deno process will hang indefinitely. This is especially
+ * important in tests.
+ *
+ * Call `initialize()` to pre-initialize the esbuild service before first use
+ * (usually not needed — the service starts lazily on first API call).
+ *
+ * @see ./wasm
  * @example
  * ```ts
  * import { build } from "@ggpwnkthx/esbuild";
@@ -15,6 +28,8 @@
  *   outfile: "dist/bundle.js",
  *   bundle: true,
  * });
+ *
+ * await stop(); // prevent hang
  * ```
  */
 import type * as types from "./shared/types.ts";
@@ -41,25 +56,69 @@ export type { TransformOptions } from "./shared/types.ts";
 import * as common from "./shared/common.ts";
 import * as ourselves from "./mod.ts";
 
-/** The esbuild binary version string (e.g. "0.28.0"). */
+/** The esbuild binary version string (e.g. "0.28.0").
+ * @see https://github.com/evanw/esbuild/releases */
 export const version = common.ESBUILD_VERSION;
 
-/** @see ../shared/types.ts:build */
+/** @see ../shared/types.ts:build
+ * @param options - Configuration options for the build.
+ * @example
+ * ```ts
+ * const result = await build({
+ *   entryPoints: ["src/index.ts"],
+ *   bundle: true,
+ *   outfile: "dist/bundle.js",
+ * });
+ * ```
+ */
 export const build: typeof types.build = (options: types.BuildOptions) =>
   ensureServiceIsRunning().then((service) => service.build(options));
 
-/** @see ../shared/types.ts:context */
+/** @see ../shared/types.ts:context
+ * @param options - Configuration options for the build context.
+ * @example
+ * ```ts
+ * const ctx = await context({
+ *   entryPoints: ["src/index.ts"],
+ *   bundle: true,
+ *   outdir: "dist",
+ * });
+ * await ctx.watch();
+ * await ctx.serve({ servedir: "dist", port: 8000 });
+ * await ctx.dispose();
+ * ```
+ */
 export const context: typeof types.context = (options: types.BuildOptions) =>
   ensureServiceIsRunning().then((service) => service.context(options));
 
-/** @see ../shared/types.ts:transform */
+/** @see ../shared/types.ts:transform
+ * @param input - The source code (string) or raw bytes to transform.
+ * @param options - Optional transform configuration.
+ * @example
+ * ```ts
+ * const result = await transform("const x: number = 1;", {
+ *   loader: "ts",
+ *   minify: true,
+ * });
+ * console.log(result.code);
+ * ```
+ */
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
 ) =>
   ensureServiceIsRunning().then((service) => service.transform(input, options));
 
-/** @see ../shared/types.ts:formatMessages */
+/** @see ../shared/types.ts:formatMessages
+ * @param messages - An array of diagnostic messages to format.
+ * @param options - Configuration for the formatter, including `kind` ("error" or "warning").
+ * @example
+ * ```ts
+ * const messages = [{ text: "Something went wrong", location: { file: "src/index.ts", line: 1, column: 0, lineText: "", length: 0 } }];
+ * const formatted = await formatMessages(messages, { kind: "error" });
+ * console.log(formatted.join("\n"));
+ * ```
+ */
 export const formatMessages: typeof types.formatMessages = (
   messages,
   options,
@@ -68,7 +127,16 @@ export const formatMessages: typeof types.formatMessages = (
     service.formatMessages(messages, options)
   );
 
-/** @see ../shared/types.ts:analyzeMetafile */
+/** @see ../shared/types.ts:analyzeMetafile
+ * @param metafile - The metafile JSON string or object to analyze.
+ * @param options - Optional analysis configuration.
+ * @example
+ * ```ts
+ * const result = await build({ entryPoints: ["src/index.ts"], metafile: true });
+ * const analysis = await analyzeMetafile(result.metafile);
+ * console.log(analysis);
+ * ```
+ */
 export const analyzeMetafile: typeof types.analyzeMetafile = (
   metafile,
   options,
@@ -77,34 +145,70 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
     service.analyzeMetafile(metafile, options)
   );
 
-/** @see ../shared/types.ts:buildSync */
+/** @see ../shared/types.ts:buildSync
+ * @example
+ * ```ts
+ * // Throws: The "buildSync" API does not work in Deno
+ * buildSync({ entryPoints: ["src/index.ts"] });
+ * ```
+ */
 export const buildSync: typeof types.buildSync = () => {
   throw new Error(`The "buildSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:transformSync */
+/** @see ../shared/types.ts:transformSync
+ * @example
+ * ```ts
+ * // Throws: The "transformSync" API does not work in Deno
+ * transformSync("const x: number = 1;", { loader: "ts" });
+ * ```
+ */
 export const transformSync: typeof types.transformSync = () => {
   throw new Error(`The "transformSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:formatMessagesSync */
+/** @see ../shared/types.ts:formatMessagesSync
+ * @example
+ * ```ts
+ * // Throws: The "formatMessagesSync" API does not work in Deno
+ * formatMessagesSync([{ text: "error" }], { kind: "error" });
+ * ```
+ */
 export const formatMessagesSync: typeof types.formatMessagesSync = () => {
   throw new Error(`The "formatMessagesSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:analyzeMetafileSync */
+/** @see ../shared/types.ts:analyzeMetafileSync
+ * @example
+ * ```ts
+ * // Throws: The "analyzeMetafileSync" API does not work in Deno
+ * analyzeMetafileSync("{ inputs: {} }", {});
+ * ```
+ */
 export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
   throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
 };
 
-/** @see ../shared/types.ts:stop */
+/** @see ../shared/types.ts:stop
+ * @example
+ * ```ts
+ * // ... use esbuild ...
+ * await stop(); // prevents hang
+ * ```
+ */
 export const stop = async (): Promise<void> => {
   if (stopService) await stopService();
 };
 
 let initializeWasCalled = false;
 
-/** @see ../shared/types.ts:initialize */
+/** @see ../shared/types.ts:initialize
+ * @example
+ * ```ts
+ * // Pre-initialize the esbuild service before first use
+ * await initialize({});
+ * ```
+ */
 export const initialize: typeof types.initialize = async (options) => {
   options = common.validateInitializeOptions(options || {});
   if (options.wasmURL) {

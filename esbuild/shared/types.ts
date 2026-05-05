@@ -1,4 +1,5 @@
 /**
+ * @module
  * This module contains all TypeScript type definitions exported by the esbuild
  * package.
  *
@@ -586,18 +587,32 @@ export interface Metafile {
   };
 }
 
+/**
+ * Options for formatting diagnostic messages with {@link formatMessages}.
+ *
+ * @see https://esbuild.github.io/api/#format-messages
+ */
 export interface FormatMessagesOptions {
   kind: "error" | "warning";
   color?: boolean;
   terminalWidth?: number;
 }
 
+/**
+ * Options for analyzing a metafile with {@link analyzeMetafile}.
+ *
+ * @see https://esbuild.github.io/api/#analyze
+ */
 export interface AnalyzeMetafileOptions {
   color?: boolean;
   verbose?: boolean;
 }
 
-/** Documentation: https://esbuild.github.io/api/#watch-arguments */
+/**
+ * Options for the watch mode ({@link BuildContext.watch}).
+ *
+ * @see https://esbuild.github.io/api/#watch
+ */
 export interface WatchOptions {
   delay?: number; // In milliseconds
 }

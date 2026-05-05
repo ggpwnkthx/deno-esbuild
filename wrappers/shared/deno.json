@@ -1,8 +1,8 @@
 {
   "name": "@ggpwnkthx/esbuild-wrapper-shared",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "exports": "./mod.ts",
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@0.2.4"
+    "esbuild": "jsr:@ggpwnkthx/esbuild@0.2.5"
   }
 }

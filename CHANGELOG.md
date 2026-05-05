@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5]
+
+### Added
+
+- JSDoc module system and cross-link improvements across `esbuild/mod.ts`,
+  `esbuild/wasm.ts`, `esbuild/shared/common.ts`,
+  `esbuild/shared/stdio_protocol.ts`, `esbuild/shared/types.ts`,
+  `esbuild/shared/uint8array_json_parser.ts`, and `esbuild/shared/worker.ts`:
+  - Added `@module` declarations to all shared modules
+  - Added `@see` cross-links between modules (mod↔wasm, mod↔shared/*,
+    wasm↔shared/*)
+  - Added `@param` and `@returns` annotations to all exported functions in
+    mod.ts and wasm.ts
+  - Added `@throws` annotations to sync-API shims that throw unconditionally
+  - Added module-level documentation explaining protocol encoding, the JSON
+    parser's design, worker bridge behavior, and service lifecycle
+
+### Changed
+
+- CI workflow: Removed test step from the `wrappers/shared` CI job (commented out)
+- All packages bumped to version 0.2.5
+
 ## [0.2.4]
 
 ### Added
