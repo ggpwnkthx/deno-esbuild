@@ -1,3 +1,7 @@
+/**
+ * Provides a Hono middleware that uses esbuild's WASM API to transpile
+ * TypeScript/TSX responses.
+ */
 import * as esbuild from "esbuild";
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";

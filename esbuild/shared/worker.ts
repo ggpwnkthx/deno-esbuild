@@ -1,4 +1,9 @@
-// This file is part of the web worker source code
+/**
+ * This module contains the web worker source code used by esbuild's WASM API to
+ * run the Go-based esbuild binary in a browser Worker thread — handling WASM
+ * loading, stdin/stdout forwarding to the main thread, and the Go runtime
+ * integration.
+ */
 
 import { ESBUILD_VERSION } from "./common.ts";
 

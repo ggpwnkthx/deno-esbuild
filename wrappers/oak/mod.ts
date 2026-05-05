@@ -1,3 +1,26 @@
+/**
+ * Main entrypoint for the `@ggpwnkthx/esbuild-wrapper-oak` package.
+ *
+ * Exports an Oak middleware that on-the-fly transpiles TypeScript/TSX
+ * responses using esbuild. Intended for development servers that serve
+ * Deno TypeScript files directly without a separate build step.
+ *
+ * @example
+ * ```ts
+ * import { Application } from "@oak/oak";
+ * import { esbuild } from "@ggpwnkthx/esbuild-wrapper";
+ * import esbuildMiddleware from "@ggpwnkthx/esbuild-wrapper-oak";
+ *
+ * const app = new Application();
+ * app.use(esbuildMiddleware());
+ * app.use(async (ctx) => {
+ *   ctx.response.body = `export const value: number = 1;`;
+ *   ctx.response.headers.set("content-type", "application/typescript");
+ * });
+ *
+ * export default { fetch: app.handle };
+ * ```
+ */
 import type { Middleware } from "@oak/oak";
 import {
   DEFAULT_CONTENT_TYPE,

@@ -1,3 +1,27 @@
+/**
+ * Shared utility library for Deno esbuild middleware wrappers.
+ *
+ * This module provides caching, transpilation, and framework response helpers
+ * used by both Hono and Oak wrappers. It handles the complexity of transforming
+ * TypeScript/JSX on the fly with an in-memory cache, and updating framework
+ * responses so you can focus on the business logic of your middleware.
+ *
+ * @example Basic usage
+ * ```ts
+ * import { shouldTranspile, getCachedOrTranspile } from "@ggpwnkthx/esbuild-wrapper-shared";
+ *
+ * if (shouldTranspile("/path/to/file.ts")) {
+ *   const { code } = await getCachedOrTranspile({
+ *     pathname: "/path/to/file.ts",
+ *     body: "console.log('hello')",
+ *     transformOptions: { loader: "tsx" },
+ *     cache: true,
+ *     shouldStop: true,
+ *   });
+ *   // use `code` in your response...
+ * }
+ * ```
+ */
 import * as esbuild from "esbuild";
 
 /**

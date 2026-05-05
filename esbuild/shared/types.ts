@@ -1,3 +1,17 @@
+/**
+ * This module contains all TypeScript type definitions exported by the esbuild
+ * package.
+ *
+ * It includes:
+ * - `BuildOptions` and `TransformOptions` – configuration for building and transforming.
+ * - `Plugin` and `PluginBuild` – the plugin API surface.
+ * - `BuildResult`, `BuildContext`, `BuildFailure` – build outcome types.
+ * - `ServeOptions`, `ServeResult`, `ServeOnRequestArgs` – dev server types.
+ * - `Message`, `Note`, `Location`, `PartialMessage`, `PartialNote` – diagnostic types.
+ * - All JSII-compatible function signatures (`build`, `context`, `transform`,
+ *   `buildSync`, `transformSync`, `formatMessages`, `formatMessagesSync`,
+ *   `analyzeMetafile`, `analyzeMetafileSync`, `initialize`, `stop`).
+ */
 export type Platform = "browser" | "node" | "neutral";
 export type Format = "iife" | "cjs" | "esm";
 export type Loader =

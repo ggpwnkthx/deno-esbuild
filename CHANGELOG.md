@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2]
+
+### Added
+
+- JSDoc module documentation for all package entry points: `esbuild/mod.ts`, `plugins/deno/mod.ts`, `plugins/css/mod.ts`, `wrappers/hono/mod.ts`, `wrappers/oak/mod.ts`, `wrappers/shared/mod.ts`, and all shared internal modules
+
+### Changed
+
+- README.md rewritten with a monorepo overview table, package-by-package examples, shared exports table, and environment variables section
+- All packages bumped to version 0.2.2; cross-package import versions updated to `jsr:@ggpwnkthx/esbuild@0.2.2`
+
 ## [0.2.1]
 
 ### Changed

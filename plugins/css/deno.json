@@ -1,11 +1,11 @@
 {
   "name": "@ggpwnkthx/esbuild-plugin-css",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "exports": {
     ".": "./mod.ts"
   },
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@0.2.1",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@0.2.2",
     "@std/path": "jsr:@std/path@^1.1.4",
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },

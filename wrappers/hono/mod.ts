@@ -1,3 +1,24 @@
+/**
+ * Hono middleware that on-the-fly transpiles TypeScript/TSX responses using esbuild.
+ *
+ * This is the main entrypoint for the `@ggpwnkthx/esbuild-wrapper-hono` package.
+ * It intercepts responses, checks if the request path matches configured
+ * `extensions`, and transforms the response body using `esbuild.transform`
+ * with the `tsx` loader.
+ *
+ * @example
+ * ```ts
+ * import { Hono } from "hono";
+ * import { esbuild } from "@deno/esbuild";
+ * import denoEsbuild from "@deno/esbuild/wrappers/hono";
+ *
+ * const app = new Hono();
+ * app.use(denoEsbuild({ extensions: [".ts", ".tsx"] }));
+ * app.get("/", (c) => c.text("Hello from Deno!"));
+ *
+ * export default { fetch: app.fetch };
+ * ```
+ */
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
 import {

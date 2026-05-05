@@ -1,3 +1,7 @@
+/**
+ * Shared validation, channel/IPC setup, and flag processing logic used by both
+ * the native binary API ({@link ../mod.ts}) and the WASM API ({@link ../wasm.ts}).
+ */
 import type * as types from "./types.ts";
 import * as protocol from "./stdio_protocol.ts";
 import { JSON_parse } from "./uint8array_json_parser.ts";

@@ -1,3 +1,22 @@
+/**
+ * Main entrypoint for the `@ggpwnkthx/esbuild` package, providing the full
+ * esbuild JavaScript API for Deno with automatic binary management.
+ *
+ * The module downloads the appropriate esbuild binary for your platform on
+ * first use and keeps it cached. All standard esbuild build functions are
+ * available, including `build`, `context`, `transform`, and `formatMessages`.
+ *
+ * @example
+ * ```ts
+ * import { build } from "@ggpwnkthx/esbuild";
+ *
+ * const result = await build({
+ *   entryPoints: ["src/index.ts"],
+ *   outfile: "dist/bundle.js",
+ *   bundle: true,
+ * });
+ * ```
+ */
 import type * as types from "./shared/types.ts";
 export type {
   BuildOptions,

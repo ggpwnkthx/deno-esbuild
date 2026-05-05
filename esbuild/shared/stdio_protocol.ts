@@ -1,3 +1,10 @@
+/**
+ * This module implements the binary stdio protocol used to communicate with
+ * the esbuild Go binary. It handles encoding/decoding packets, defines all
+ * request/response types (BuildRequest, ServeRequest, TransformRequest, etc.),
+ * and provides UTF-8 helpers (encodeUTF8/decodeUTF8).
+ */
+
 // The JavaScript API communicates with the Go child process over stdin/stdout
 // using this protocol. It's a very simple binary protocol that uses primitives
 // and nested arrays and maps. It's basically JSON with UTF-8 encoding and an

@@ -1,3 +1,23 @@
+/**
+ * Main entrypoint for the `@ggpwnkthx/esbuild-plugin-css` package.
+ *
+ * This module provides `cssPlugin`, an esbuild plugin that resolves and inlines
+ * CSS `@import` rules during bundles. It handles both local relative imports and
+ * external URL imports (marked as external).
+ *
+ * @example
+ * ```ts
+ * import * as esbuild from "esbuild";
+ * import { cssPlugin } from "@ggpwnkthx/esbuild-plugin-css";
+ *
+ * await esbuild.build({
+ *   entryPoints: ["src/index.ts"],
+ *   bundle: true,
+ *   outfile: "dist/bundle.js",
+ *   plugins: [cssPlugin()],
+ * });
+ * ```
+ */
 import type * as esbuild from "esbuild";
 import * as path from "@std/path";
 

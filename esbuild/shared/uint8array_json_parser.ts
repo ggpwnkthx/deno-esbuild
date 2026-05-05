@@ -1,3 +1,7 @@
+/**
+ * A custom `JSON_parse` function that parses JSON directly from a `Uint8Array`,
+ * avoiding a string allocation and supporting UTF-8 encoded input.
+ */
 const enum State {
   TopLevel,
   Array,

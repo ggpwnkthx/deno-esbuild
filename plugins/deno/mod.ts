@@ -1,3 +1,24 @@
+/**
+ * Main entrypoint for the `@ggpwnkthx/esbuild-plugin-deno` package.
+ *
+ * This module exports `denoPlugin`, an esbuild plugin that integrates Deno's
+ * module resolution, import map semantics, and transpilation pipeline into
+ * esbuild builds. It handles imports from `file:`, `http:`, `https:`, `npm:`,
+ * and `jsr:` specifiers, applies Deno's configuration and import map, and
+ * transpiles TypeScript/JSX before passing content to esbuild.
+ *
+ * @example
+ * ```ts
+ * import * as esbuild from "esbuild";
+ * import { denoPlugin } from "@ggpwnkthx/esbuild-plugin-deno";
+ *
+ * await esbuild.build({
+ *   entryPoints: ["./main.ts"],
+ *   bundle: true,
+ *   plugins: [denoPlugin()],
+ * });
+ * ```
+ */
 import type * as esbuild from "esbuild";
 import * as path from "@std/path";
 import { RequestedModuleType, ResolutionMode, Workspace } from "@deno/loader";
