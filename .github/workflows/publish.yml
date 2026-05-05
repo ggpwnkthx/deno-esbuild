@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
       - name: Publish esbuild
         run: cd ./esbuild && deno publish
 
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
       - name: Publish plugins/deno
         run: cd ./plugins/deno && deno publish
       - name: Publish plugins/css
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
       - name: Publish wrappers/hono
         run: cd ./wrappers/hono && deno publish
 
@@ -56,6 +56,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
       - name: Publish wrappers/oak
         run: cd ./wrappers/oak && deno publish

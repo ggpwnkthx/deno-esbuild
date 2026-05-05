@@ -8,8 +8,16 @@ on:
 
 jobs:
   ci:
-    name: CI
+    name: CI (${{ matrix.package }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - esbuild
+          - plugins/deno
+          - plugins/css
+          - wrappers/hono
+          - wrappers/oak
 
     steps:
       - uses: actions/checkout@v4
@@ -18,11 +26,18 @@ jobs:
         with:
           deno-version: "2.7.7"
 
-      - run: deno task ci
+      - name: Run fmt
+        run: deno fmt --check
+        working-directory: ${{ matrix.package }}
 
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage
-          path: coverage/
-          retention-days: 7
+      - name: Run lint
+        run: deno lint
+        working-directory: ${{ matrix.package }}
+
+      - name: Run check
+        run: deno check **/*.ts
+        working-directory: ${{ matrix.package }}
+
+      - name: Run test
+        run: deno test
+        working-directory: ${{ matrix.package }}
