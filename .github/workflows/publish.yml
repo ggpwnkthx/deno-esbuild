@@ -15,7 +15,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1
       - name: Publish esbuild
-        run: deno run --cwd ./esbuild jsr publish
+        run: cd ./esbuild && deno run jsr publish
 
   publish-tier-2:
     runs-on: ubuntu-latest
@@ -28,11 +28,11 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1
       - name: Publish plugins/deno
-        run: deno run --cwd ./plugins/deno jsr publish
+        run: cd ./plugins/deno && deno run jsr publish
       - name: Publish plugins/css
-        run: deno run --cwd ./plugins/css jsr publish
+        run: cd ./plugins/css && deno run jsr publish
       - name: Publish wrappers/shared
-        run: deno run --cwd ./wrappers/shared jsr publish
+        run: cd ./wrappers/shared && deno run jsr publish
 
   publish-wrappers-hono:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1
       - name: Publish wrappers/hono
-        run: deno run --cwd ./wrappers/hono jsr publish
+        run: cd ./wrappers/hono && deno run jsr publish
 
   publish-wrappers-oak:
     runs-on: ubuntu-latest
@@ -58,4 +58,4 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1
       - name: Publish wrappers/oak
-        run: deno run --cwd ./wrappers/oak jsr publish
+        run: cd ./wrappers/oak && deno run jsr publish
