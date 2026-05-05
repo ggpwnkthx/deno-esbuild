@@ -31,7 +31,7 @@ jobs:
         working-directory: esbuild
 
       # - name: Run test
-      #   run: deno test
+      #   run: deno test -A
       #   working-directory: esbuild
 
   plugins:
@@ -59,7 +59,7 @@ jobs:
         working-directory: plugins/deno
 
       - name: Run test
-        run: deno test
+        run: deno test -A
         working-directory: plugins/deno
 
       - name: Run fmt
@@ -75,7 +75,7 @@ jobs:
         working-directory: plugins/css
 
       - name: Run test
-        run: deno test
+        run: deno test -A
         working-directory: plugins/css
 
       - name: Run fmt
@@ -91,7 +91,7 @@ jobs:
         working-directory: wrappers/shared
 
       - name: Run test
-        run: deno test
+        run: deno test -A
         working-directory: wrappers/shared
 
   wrappers:
@@ -119,7 +119,7 @@ jobs:
         working-directory: wrappers/hono
 
       - name: Run test
-        run: deno test
+        run: deno test -A
         working-directory: wrappers/hono
 
       - name: Run fmt
@@ -135,5 +135,5 @@ jobs:
         working-directory: wrappers/oak
 
       - name: Run test
-        run: deno test
+        run: deno test -A
         working-directory: wrappers/oak
