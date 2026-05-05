@@ -693,7 +693,7 @@ function flagsForTransformOptions(
 }
 
 export interface StreamIn {
-  writeToStdin: (data: Uint8Array<ArrayBuffer>) => void;
+  writeToStdin: (data: Uint8Array) => void;
   readFileSync?: (path: string, encoding: "utf8") => string;
   isSync: boolean;
   hasFS: boolean;
@@ -899,7 +899,7 @@ export function createChannel(streamIn: StreamIn): StreamOut {
 
   let isFirstPacket = true;
 
-  const handleIncomingPacket = (bytes: Uint8Array<ArrayBuffer>): void => {
+  const handleIncomingPacket = (bytes: Uint8Array): void => {
     // The first packet is a version check
     if (isFirstPacket) {
       isFirstPacket = false;

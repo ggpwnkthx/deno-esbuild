@@ -262,7 +262,7 @@ export type Value =
   | Value[]
   | { [key: string]: Value };
 
-export function encodePacket(packet: Packet): Uint8Array<ArrayBuffer> {
+export function encodePacket(packet: Packet): Uint8Array {
   const visit = (value: Value) => {
     if (value === null) {
       bb.write8(0);
@@ -303,7 +303,7 @@ export function encodePacket(packet: Packet): Uint8Array<ArrayBuffer> {
   return bb.buf.subarray(0, bb.len);
 }
 
-export function decodePacket(bytes: Uint8Array<ArrayBuffer>): Packet {
+export function decodePacket(bytes: Uint8Array): Packet {
   const visit = (): Value => {
     switch (bb.read8()) {
       case 0: // null
@@ -352,7 +352,7 @@ class ByteBuffer {
   len = 0;
   ptr = 0;
 
-  constructor(public buf = new Uint8Array(1024)) {
+  constructor(public buf: Uint8Array = new Uint8Array(1024)) {
   }
 
   private _write(delta: number): number {
