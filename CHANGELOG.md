@@ -6,18 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4]
+
+### Added
+
+- JSDoc documentation to all exported functions in `esbuild/mod.ts`
+- JSDoc documentation to module-level and all exported functions in
+  `esbuild/wasm.ts`
+- JSDoc documentation to `ESBUILD_VERSION`, `validateInitializeOptions`,
+  `StreamIn`, `StreamOut`, `StreamFS`, `Refs`, `StreamService`, and
+  `createChannel` in `esbuild/shared/common.ts`
+- JSDoc documentation to all protocol interface types and helper functions in
+  `esbuild/shared/stdio_protocol.ts`
+- JSDoc documentation to `JSON_parse` in
+  `esbuild/shared/uint8array_json_parser.ts`
+- Named type re-exports with `/** @see ... */` JSDoc cross-links in
+  `esbuild/mod.ts` and `esbuild/wasm.ts`
+
+### Changed
+
+- Deno version pinned in CI updated from 2.7.7 to 2.7.14
+- CI workflow restructured from matrix job to three sequential jobs (esbuild →
+  plugins → wrappers) with explicit dependency ordering
+
 ## [0.2.3]
 
 ### Fixed
 
 - CI/CD workflow rewired from a single combined job into a per-package matrix,
   running fmt, lint, check, and test independently in each package directory
-- Removed the `.github/scripts/update-esbuild.ts` auto-updater script as it
-  was causing issues and is not needed
+- Removed the `.github/scripts/update-esbuild.ts` auto-updater script as it was
+  causing issues and is not needed
 
 ### Changed
 
-- GitHub Actions updated to use `denoland/setup-deno@v2` and `actions/checkout@v4`
+- GitHub Actions updated to use `denoland/setup-deno@v2` and
+  `actions/checkout@v4`
 
 ## [0.2.2]
 

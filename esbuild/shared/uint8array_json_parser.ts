@@ -90,6 +90,7 @@ function throwSyntaxError(
   );
 }
 
+/** Parses JSON from a Uint8Array without a string allocation, supporting UTF-8 input. */
 // deno-lint-ignore no-explicit-any
 export function JSON_parse(bytes: Uint8Array): any {
   if (!(bytes instanceof Uint8Array)) {

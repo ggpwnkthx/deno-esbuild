@@ -1,0 +1,17 @@
+{
+  "workspace": [
+    "./esbuild",
+    "./plugins/deno",
+    "./plugins/css",
+    "./wrappers/shared",
+    "./wrappers/hono",
+    "./wrappers/oak"
+  ],
+  "imports": {
+    "esbuild": "file:./esbuild/mod.ts",
+    "@ggpwnkthx/esbuild-wrapper-shared": "file:./wrappers/shared/mod.ts"
+  },
+  "exclude": [
+    "./.*"
+  ]
+}

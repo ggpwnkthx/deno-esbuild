@@ -13,6 +13,7 @@
 
 import type * as types from "./types.ts";
 
+/** Request to run a build. */
 export interface BuildRequest {
   command: "build";
   key: number;
@@ -28,6 +29,7 @@ export interface BuildRequest {
   mangleCache?: Record<string, string | false>;
 }
 
+/** Request to start a dev server. */
 export interface ServeRequest {
   command: "serve";
   key: number;
@@ -41,11 +43,13 @@ export interface ServeRequest {
   corsOrigin?: string[];
 }
 
+/** Response from a serve request. */
 export interface ServeResponse {
   port: number;
   hosts: string[];
 }
 
+/** Plugin registration data embedded in a build request. */
 export interface BuildPlugin {
   name: string;
   onStart: boolean;
@@ -54,6 +58,7 @@ export interface BuildPlugin {
   onLoad: { id: number; filter: string; namespace: string }[];
 }
 
+/** Response from a completed build. */
 export interface BuildResponse {
   errors: types.Message[];
   warnings: types.Message[];
@@ -63,57 +68,68 @@ export interface BuildResponse {
   writeToStdout?: Uint8Array;
 }
 
+/** Request signalling the end of a build (watch/serve). */
 export interface OnEndRequest extends BuildResponse {
   command: "on-end";
 }
 
+/** Response to an on-end request. */
 export interface OnEndResponse {
   errors: types.Message[];
   warnings: types.Message[];
 }
 
+/** A single output file from a build. */
 export interface BuildOutputFile {
   path: string;
   contents: Uint8Array;
   hash: string;
 }
 
+/** A keep-alive ping. */
 export interface PingRequest {
   command: "ping";
 }
 
+/** Request to trigger a rebuild. */
 export interface RebuildRequest {
   command: "rebuild";
   key: number;
 }
 
+/** Response from a rebuild. */
 export interface RebuildResponse {
   errors: types.Message[];
   warnings: types.Message[];
 }
 
+/** Request to dispose a build context. */
 export interface DisposeRequest {
   command: "dispose";
   key: number;
 }
 
+/** Request to cancel an in-flight build. */
 export interface CancelRequest {
   command: "cancel";
   key: number;
 }
 
+/** Request to start file watching. */
 export interface WatchRequest {
   command: "watch";
   key: number;
   delay?: number;
 }
 
+/** Request for a serve event callback. */
 export interface OnServeRequest {
   command: "serve-request";
   key: number;
   args: types.ServeOnRequestArgs;
 }
 
+/** Request to run a transform. */
 export interface TransformRequest {
   command: "transform";
   flags: string[];
@@ -122,6 +138,7 @@ export interface TransformRequest {
   mangleCache?: Record<string, string | false>;
 }
 
+/** Response from a transform. */
 export interface TransformResponse {
   errors: types.Message[];
   warnings: types.Message[];
@@ -136,6 +153,7 @@ export interface TransformResponse {
   mangleCache?: Record<string, string | false>;
 }
 
+/** Request to format log messages. */
 export interface FormatMsgsRequest {
   command: "format-msgs";
   messages: types.Message[];
@@ -144,10 +162,12 @@ export interface FormatMsgsRequest {
   terminalWidth?: number;
 }
 
+/** Response with formatted message strings. */
 export interface FormatMsgsResponse {
   messages: string[];
 }
 
+/** Request to analyze a metafile. */
 export interface AnalyzeMetafileRequest {
   command: "analyze-metafile";
   metafile: string;
@@ -155,20 +175,24 @@ export interface AnalyzeMetafileRequest {
   verbose?: boolean;
 }
 
+/** Response with the analysis result string. */
 export interface AnalyzeMetafileResponse {
   result: string;
 }
 
+/** Request for a plugin onStart callback. */
 export interface OnStartRequest {
   command: "on-start";
   key: number;
 }
 
+/** Response to an on-start request. */
 export interface OnStartResponse {
   errors?: types.PartialMessage[];
   warnings?: types.PartialMessage[];
 }
 
+/** Request to resolve a module path. */
 export interface ResolveRequest {
   command: "resolve";
   key: number;
@@ -182,6 +206,7 @@ export interface ResolveRequest {
   with?: Record<string, string>;
 }
 
+/** Response with resolved module info. */
 export interface ResolveResponse {
   errors: types.Message[];
   warnings: types.Message[];
@@ -194,6 +219,7 @@ export interface ResolveResponse {
   pluginData: number;
 }
 
+/** Request for a plugin onResolve callback. */
 export interface OnResolveRequest {
   command: "on-resolve";
   key: number;
@@ -207,6 +233,7 @@ export interface OnResolveRequest {
   with: Record<string, string>;
 }
 
+/** Response to an on-resolve request. */
 export interface OnResolveResponse {
   id?: number;
   pluginName?: string;
@@ -225,6 +252,7 @@ export interface OnResolveResponse {
   watchDirs?: string[];
 }
 
+/** Request for a plugin onLoad callback. */
 export interface OnLoadRequest {
   command: "on-load";
   key: number;
@@ -236,6 +264,7 @@ export interface OnLoadRequest {
   with: Record<string, string>;
 }
 
+/** Response to an on-load request. */
 export interface OnLoadResponse {
   id?: number;
   pluginName?: string;
@@ -254,12 +283,14 @@ export interface OnLoadResponse {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/** A single binary packet (request or response) on the stdio channel. */
 export interface Packet {
   id: number;
   isRequest: boolean;
   value: Value;
 }
 
+/** The protocol's union type for all serializable values. */
 export type Value =
   | null
   | boolean
@@ -269,6 +300,7 @@ export type Value =
   | Value[]
   | { [key: string]: Value };
 
+/** Encodes a Packet into a byte array. */
 export function encodePacket(packet: Packet): Uint8Array {
   const visit = (value: Value) => {
     if (value === null) {
@@ -310,6 +342,7 @@ export function encodePacket(packet: Packet): Uint8Array {
   return bb.buf.subarray(0, bb.len);
 }
 
+/** Decodes a byte array into a Packet. */
 export function decodePacket(bytes: Uint8Array): Packet {
   const visit = (): Value => {
     switch (bb.read8()) {
@@ -413,7 +446,9 @@ class ByteBuffer {
   }
 }
 
+/** Encodes a string to UTF-8 bytes using TextEncoder. */
 export let encodeUTF8: (text: string) => Uint8Array;
+/** Decodes UTF-8 bytes to a string using TextDecoder. */
 export let decodeUTF8: (bytes: Uint8Array) => string;
 let encodeInvariant: string;
 
@@ -440,6 +475,7 @@ is not a problem with esbuild. You need to fix your environment instead.
   );
 }
 
+/** Reads an unsigned 32-bit little-endian integer from a buffer at the given offset. */
 export function readUInt32LE(buffer: Uint8Array, offset: number): number {
   return (
     buffer[offset++] |

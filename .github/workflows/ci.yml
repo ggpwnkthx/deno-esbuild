@@ -7,37 +7,133 @@ on:
     branches: [main]
 
 jobs:
-  ci:
-    name: CI (${{ matrix.package }})
+  esbuild:
+    name: CI (esbuild)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package:
-          - esbuild
-          - plugins/deno
-          - plugins/css
-          - wrappers/hono
-          - wrappers/oak
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: "2.7.7"
+          deno-version: "2.7.14"
 
       - name: Run fmt
         run: deno fmt --check
-        working-directory: ${{ matrix.package }}
+        working-directory: esbuild
 
       - name: Run lint
         run: deno lint
-        working-directory: ${{ matrix.package }}
+        working-directory: esbuild
 
       - name: Run check
         run: deno check **/*.ts
-        working-directory: ${{ matrix.package }}
+        working-directory: esbuild
+
+      # - name: Run test
+      #   run: deno test
+      #   working-directory: esbuild
+
+  plugins:
+    name: CI (plugins/deno, plugins/css, wrappers/shared)
+    runs-on: ubuntu-latest
+    needs: esbuild
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.7.14"
+
+      - name: Run fmt
+        run: deno fmt --check
+        working-directory: plugins/deno
+
+      - name: Run lint
+        run: deno lint
+        working-directory: plugins/deno
+
+      - name: Run check
+        run: deno check **/*.ts
+        working-directory: plugins/deno
 
       - name: Run test
         run: deno test
-        working-directory: ${{ matrix.package }}
+        working-directory: plugins/deno
+
+      - name: Run fmt
+        run: deno fmt --check
+        working-directory: plugins/css
+
+      - name: Run lint
+        run: deno lint
+        working-directory: plugins/css
+
+      - name: Run check
+        run: deno check **/*.ts
+        working-directory: plugins/css
+
+      - name: Run test
+        run: deno test
+        working-directory: plugins/css
+
+      - name: Run fmt
+        run: deno fmt --check
+        working-directory: wrappers/shared
+
+      - name: Run lint
+        run: deno lint
+        working-directory: wrappers/shared
+
+      - name: Run check
+        run: deno check **/*.ts
+        working-directory: wrappers/shared
+
+      - name: Run test
+        run: deno test
+        working-directory: wrappers/shared
+
+  wrappers:
+    name: CI (wrappers/hono, wrappers/oak)
+    runs-on: ubuntu-latest
+    needs: plugins
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.7.14"
+
+      - name: Run fmt
+        run: deno fmt --check
+        working-directory: wrappers/hono
+
+      - name: Run lint
+        run: deno lint
+        working-directory: wrappers/hono
+
+      - name: Run check
+        run: deno check **/*.ts
+        working-directory: wrappers/hono
+
+      - name: Run test
+        run: deno test
+        working-directory: wrappers/hono
+
+      - name: Run fmt
+        run: deno fmt --check
+        working-directory: wrappers/oak
+
+      - name: Run lint
+        run: deno lint
+        working-directory: wrappers/oak
+
+      - name: Run check
+        run: deno check **/*.ts
+        working-directory: wrappers/oak
+
+      - name: Run test
+        run: deno test
+        working-directory: wrappers/oak

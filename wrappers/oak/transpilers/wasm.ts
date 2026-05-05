@@ -1,6 +1,8 @@
 /**
- * Provides an Oak middleware that uses esbuild's WASM API to transpile
- * TypeScript/TSX responses.
+ * Oak middleware entrypoint that uses esbuild's WASM API to transpile
+ * TypeScript/TSX responses on the fly.
+ *
+ * @module
  */
 import * as esbuild from "esbuild";
 import type { Middleware } from "@oak/oak";

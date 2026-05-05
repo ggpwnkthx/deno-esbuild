@@ -6,6 +6,7 @@ import type * as types from "./types.ts";
 import * as protocol from "./stdio_protocol.ts";
 import { JSON_parse } from "./uint8array_json_parser.ts";
 
+/** The esbuild binary version string. */
 export const ESBUILD_VERSION: string = "0.28.0";
 
 const quote: (x: string) => string = JSON.stringify;
@@ -138,6 +139,7 @@ function checkForInvalidFlags(
   }
 }
 
+/** Validates and normalizes the options passed to `initialize()`. */
 export function validateInitializeOptions(
   options: types.InitializeOptions,
 ): types.InitializeOptions {
@@ -696,6 +698,7 @@ function flagsForTransformOptions(
   };
 }
 
+/** Input end of the stdio channel used to drive the esbuild service process/worker. */
 export interface StreamIn {
   writeToStdin: (data: Uint8Array) => void;
   readFileSync?: (path: string, encoding: "utf8") => string;
@@ -704,12 +707,14 @@ export interface StreamIn {
   esbuild: types.PluginBuild["esbuild"];
 }
 
+/** Output end of the stdio channel from the esbuild service process/worker. */
 export interface StreamOut {
   readFromStdout: (data: Uint8Array) => void;
   afterClose: (error: Error | null) => void;
   service: StreamService;
 }
 
+/** File system shim passed to the transform() service call. */
 export interface StreamFS {
   writeFile(
     contents: string | Uint8Array,
@@ -721,11 +726,13 @@ export interface StreamFS {
   ): void;
 }
 
+/** Reference-counting helpers for stream lifetime management. */
 export interface Refs {
   ref(): void;
   unref(): void;
 }
 
+/** The service RPC interface exposed by `createChannel()`. */
 export interface StreamService {
   buildOrContext(args: {
     callName: string;
@@ -773,6 +780,7 @@ type RequestCallback = (id: number, request: any) => Promise<void> | void;
 // This can't use any promises in the main execution flow because it must work
 // for both sync and async code. There is an exception for plugin code because
 // that can't work in sync code anyway.
+/** Creates a stdio channel pair for communicating with an esbuild service process/worker. */
 export function createChannel(streamIn: StreamIn): StreamOut {
   const requestCallbacksByKey: {
     [key: number]: { [command: string]: RequestCallback };

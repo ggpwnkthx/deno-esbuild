@@ -1,11 +1,11 @@
 {
   "name": "@ggpwnkthx/esbuild-plugin-deno",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "exports": {
     ".": "./mod.ts"
   },
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@0.2.3",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@0.2.4",
     "@deno/loader": "jsr:@deno/loader@^0.5.0",
     "@std/path": "jsr:@std/path@^1.1.4",
     "@std/assert": "jsr:@std/assert@^1.0.19"

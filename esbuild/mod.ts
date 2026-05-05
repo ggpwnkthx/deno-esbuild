@@ -18,35 +18,48 @@
  * ```
  */
 import type * as types from "./shared/types.ts";
-export type {
-  BuildOptions,
-  Loader,
-  OnLoadArgs,
-  OnLoadResult,
-  OnResolveArgs,
-  OnResolveResult,
-  Platform,
-  Plugin,
-  PluginBuild,
-  TransformOptions,
-} from "./shared/types.ts";
+/** @see ../shared/types.ts:BuildOptions */
+export type { BuildOptions } from "./shared/types.ts";
+/** @see ../shared/types.ts:Loader */
+export type { Loader } from "./shared/types.ts";
+/** @see ../shared/types.ts:OnLoadArgs */
+export type { OnLoadArgs } from "./shared/types.ts";
+/** @see ../shared/types.ts:OnLoadResult */
+export type { OnLoadResult } from "./shared/types.ts";
+/** @see ../shared/types.ts:OnResolveArgs */
+export type { OnResolveArgs } from "./shared/types.ts";
+/** @see ../shared/types.ts:OnResolveResult */
+export type { OnResolveResult } from "./shared/types.ts";
+/** @see ../shared/types.ts:Platform */
+export type { Platform } from "./shared/types.ts";
+/** @see ../shared/types.ts:Plugin */
+export type { Plugin } from "./shared/types.ts";
+/** @see ../shared/types.ts:PluginBuild */
+export type { PluginBuild } from "./shared/types.ts";
+/** @see ../shared/types.ts:TransformOptions */
+export type { TransformOptions } from "./shared/types.ts";
 import * as common from "./shared/common.ts";
 import * as ourselves from "./mod.ts";
 
+/** The esbuild binary version string (e.g. "0.28.0"). */
 export const version = common.ESBUILD_VERSION;
 
+/** @see ../shared/types.ts:build */
 export const build: typeof types.build = (options: types.BuildOptions) =>
   ensureServiceIsRunning().then((service) => service.build(options));
 
+/** @see ../shared/types.ts:context */
 export const context: typeof types.context = (options: types.BuildOptions) =>
   ensureServiceIsRunning().then((service) => service.context(options));
 
+/** @see ../shared/types.ts:transform */
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
 ) =>
   ensureServiceIsRunning().then((service) => service.transform(input, options));
 
+/** @see ../shared/types.ts:formatMessages */
 export const formatMessages: typeof types.formatMessages = (
   messages,
   options,
@@ -55,6 +68,7 @@ export const formatMessages: typeof types.formatMessages = (
     service.formatMessages(messages, options)
   );
 
+/** @see ../shared/types.ts:analyzeMetafile */
 export const analyzeMetafile: typeof types.analyzeMetafile = (
   metafile,
   options,
@@ -63,28 +77,34 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
     service.analyzeMetafile(metafile, options)
   );
 
+/** @see ../shared/types.ts:buildSync */
 export const buildSync: typeof types.buildSync = () => {
   throw new Error(`The "buildSync" API does not work in Deno`);
 };
 
+/** @see ../shared/types.ts:transformSync */
 export const transformSync: typeof types.transformSync = () => {
   throw new Error(`The "transformSync" API does not work in Deno`);
 };
 
+/** @see ../shared/types.ts:formatMessagesSync */
 export const formatMessagesSync: typeof types.formatMessagesSync = () => {
   throw new Error(`The "formatMessagesSync" API does not work in Deno`);
 };
 
+/** @see ../shared/types.ts:analyzeMetafileSync */
 export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
   throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
 };
 
+/** @see ../shared/types.ts:stop */
 export const stop = async (): Promise<void> => {
   if (stopService) await stopService();
 };
 
 let initializeWasCalled = false;
 
+/** @see ../shared/types.ts:initialize */
 export const initialize: typeof types.initialize = async (options) => {
   options = common.validateInitializeOptions(options || {});
   if (options.wasmURL) {
