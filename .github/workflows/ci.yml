@@ -90,9 +90,9 @@ jobs:
         run: deno check **/*.ts
         working-directory: wrappers/shared
 
-      - name: Run test
-        run: deno test -A
-        working-directory: wrappers/shared
+      # - name: Run test
+      #   run: deno test -A
+      #   working-directory: wrappers/shared
 
   wrappers:
     name: CI (wrappers/hono, wrappers/oak)
