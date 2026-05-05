@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3]
+
+### Fixed
+
+- CI/CD workflow rewired from a single combined job into a per-package matrix,
+  running fmt, lint, check, and test independently in each package directory
+- Removed the `.github/scripts/update-esbuild.ts` auto-updater script as it
+  was causing issues and is not needed
+
+### Changed
+
+- GitHub Actions updated to use `denoland/setup-deno@v2` and `actions/checkout@v4`
+
 ## [0.2.2]
 
 ### Added

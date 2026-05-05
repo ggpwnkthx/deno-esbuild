@@ -21,10 +21,10 @@
  */
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
+import type { Options } from "@ggpwnkthx/esbuild-wrapper-shared";
 import {
   DEFAULT_CONTENT_TYPE,
   getCachedOrTranspile,
-  Options,
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,

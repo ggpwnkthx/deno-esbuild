@@ -1,6 +1,6 @@
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { Application } from "@oak/oak";
-import * as esbuild from "esbuild";
+import type * as esbuild from "esbuild";
 import esbuildMiddleware from "../mod.ts";
 
 const source = "export const value: number = 1;\n";

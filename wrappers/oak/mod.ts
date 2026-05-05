@@ -22,10 +22,10 @@
  * ```
  */
 import type { Middleware } from "@oak/oak";
+import type { Options } from "@ggpwnkthx/esbuild-wrapper-shared";
 import {
   DEFAULT_CONTENT_TYPE,
   getCachedOrTranspile,
-  Options,
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,

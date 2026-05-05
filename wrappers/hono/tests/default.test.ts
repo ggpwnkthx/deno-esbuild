@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { Hono } from "hono";
-import * as esbuild from "esbuild";
+import type * as esbuild from "esbuild";
 import esbuildMiddleware from "../mod.ts";
 
 const source = "export const value: number = 1;\n";
