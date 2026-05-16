@@ -15,8 +15,8 @@ and this project adheres to
   `esbuild/shared/stdio_protocol.ts`, `esbuild/shared/types.ts`,
   `esbuild/shared/uint8array_json_parser.ts`, and `esbuild/shared/worker.ts`:
   - Added `@module` declarations to all shared modules
-  - Added `@see` cross-links between modules (mod↔wasm, mod↔shared/*,
-    wasm↔shared/*)
+  - Added `@see` cross-links between modules (mod↔wasm, mod↔shared/_,
+    wasm↔shared/_)
   - Added `@param` and `@returns` annotations to all exported functions in
     mod.ts and wasm.ts
   - Added `@throws` annotations to sync-API shims that throw unconditionally
@@ -25,7 +25,8 @@ and this project adheres to
 
 ### Changed
 
-- CI workflow: Removed test step from the `wrappers/shared` CI job (commented out)
+- CI workflow: Removed test step from the `wrappers/shared` CI job (commented
+  out)
 - All packages bumped to version 0.2.5
 
 ## [0.2.4]

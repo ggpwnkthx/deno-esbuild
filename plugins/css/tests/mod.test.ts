@@ -221,3 +221,144 @@ Deno.test({
   sanitizeOps: false,
   sanitizeResources: false,
 });
+
+Deno.test({
+  name:
+    "cssPlugin with emitFile - emits CSS as separate file for CSS entry point",
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir();
+    try {
+      const entry = `${tmpDir}/entry.css`;
+      const imported = `${tmpDir}/imported.css`;
+      await Deno.writeTextFile(imported, `.imported { color: red; }`);
+      await Deno.writeTextFile(
+        entry,
+        `@import "./imported.css";\n.entry { color: blue; }`,
+      );
+
+      const result = await esbuild.build({
+        entryPoints: [entry],
+        bundle: true,
+        plugins: [cssPlugin({ emitFile: true })],
+        write: false,
+      });
+
+      // With emitFile: true and a CSS entry point, outputFiles should contain
+      // the bundled CSS. esbuild may output to stdout (path "<stdout>") when
+      // write: false, so we just check the content exists.
+      assertEquals(result.outputFiles.length, 1);
+      const cssOutput = result.outputFiles[0].text;
+      assertStringIncludes(cssOutput, ".entry");
+      assertStringIncludes(cssOutput, ".imported");
+      assertStringIncludes(cssOutput, "color: blue");
+      assertStringIncludes(cssOutput, "color: red");
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+});
+
+Deno.test({
+  name:
+    "cssPlugin with emitFile - injects CSS imported from nested non-entry point route",
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir();
+    try {
+      // Create entry point
+      const routesDir = `${tmpDir}/routes`;
+      const blogDir = `${routesDir}/blog`;
+      const entryPoint = `${routesDir}/index.tsx`;
+      const nestedRoute = `${blogDir}/[slug].tsx`;
+      const cssFile = `${routesDir}/index.css`;
+
+      await Deno.mkdir(blogDir, { recursive: true });
+
+      // CSS file imported by nested route
+      await Deno.writeTextFile(cssFile, `.main { color: blue; }`);
+
+      // Entry point imports the nested route (which imports CSS)
+      await Deno.writeTextFile(
+        entryPoint,
+        `import "./blog/[slug]";\nexport const App = () => null;`,
+      );
+
+      // Nested route (NOT an entry point) imports the CSS
+      await Deno.writeTextFile(
+        nestedRoute,
+        `import "../index.css";\nexport const BlogPost = () => null;`,
+      );
+
+      const result = await esbuild.build({
+        entryPoints: [entryPoint],
+        bundle: true,
+        outdir: tmpDir,
+        plugins: [cssPlugin({ emitFile: true })],
+        write: false,
+      });
+
+      // CSS files with __virtual_css should be present in outputFiles
+      // even though the CSS is imported from a non-entry point in a subdirectory
+      const cssFiles = result.outputFiles.filter((f) =>
+        f.path.includes("__virtual_css")
+      );
+      assertEquals(cssFiles.length, 1);
+      const cssOutput = cssFiles[0].text;
+      assertStringIncludes(cssOutput, ".main");
+      assertStringIncludes(cssOutput, "color: blue");
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+});
+
+Deno.test({
+  name:
+    "cssPlugin with emitFile - injects CSS imported from non-CSS entry point (TSX) into outputFiles",
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir();
+    try {
+      const tsxEntry = `${tmpDir}/index.tsx`;
+      const importedCss = `${tmpDir}/styles/button.css`;
+      const nestedCss = `${tmpDir}/styles/variables.css`;
+
+      await Deno.mkdir(`${tmpDir}/styles`, { recursive: true });
+      await Deno.writeTextFile(nestedCss, `:root { --primary: blue; }`);
+      await Deno.writeTextFile(
+        importedCss,
+        `@import "./variables.css";\n.button { color: var(--primary); }`,
+      );
+      await Deno.writeTextFile(
+        tsxEntry,
+        `import "./styles/button.css";\nexport const App = () => null;`,
+      );
+
+      const result = await esbuild.build({
+        entryPoints: [tsxEntry],
+        bundle: true,
+        outdir: tmpDir,
+        plugins: [cssPlugin({ emitFile: true })],
+        write: false,
+      });
+
+      // outputFiles should contain both the JS bundle and the injected CSS
+      // The CSS should have the nested @import resolved
+      const cssFiles = result.outputFiles.filter((f) =>
+        f.path.includes("__virtual_css")
+      );
+      assertEquals(cssFiles.length, 1);
+      const cssOutput = cssFiles[0].text;
+      assertStringIncludes(cssOutput, ".button");
+      assertStringIncludes(cssOutput, "color: var(--primary)");
+      assertStringIncludes(cssOutput, ":root");
+      assertStringIncludes(cssOutput, "--primary: blue");
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+});

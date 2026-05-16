@@ -21,29 +21,110 @@
 import type * as esbuild from "esbuild";
 import * as path from "@std/path";
 
+export interface CssPluginOptions {
+  /** When true, emit the fully-resolved CSS as a separate output file.
+   *  The CSS must be added as an entry point (not just imported from JS).
+   *  When used with `bundle: true`, esbuild will emit a bundled .css file
+   *  instead of inlining the CSS into the JS bundle. */
+  emitFile?: boolean;
+}
+
+/**
+ * Information about a CSS entry point's output naming.
+ */
+interface EntryPointOutputName {
+  outputName: string; // e.g. "routes/index" from entryPoints
+  virtualCssCounter: number; // counter for multiple CSS imports
+}
+
+/**
+ * Information about a non-entry CSS file imported from a non-CSS entry point.
+ * These need to be extracted and injected into outputFiles by onEnd.
+ */
+interface TrackedCssEntry {
+  originalPath: string; // path used in virtual entry (for output naming)
+  resolveDir: string; // directory for resolving relative @imports
+  bundledCss: string; // fully resolved CSS content
+}
+
+/**
+ * Minimal OutputFile interface for injecting virtual CSS files.
+ * This matches the structure esbuild expects in outputFiles.
+ */
+interface VirtualOutputFile {
+  path: string;
+  contents: Uint8Array;
+  hash: string;
+  text: string;
+}
+
 /**
  * esbuild plugin that loads CSS files and resolves `@import` rules.
- * @param _options - Plugin options (currently unused).
+ * @param options - Plugin options.
  * @returns An esbuild plugin that resolves local `@import` paths and inlines them.
  */
-export function cssPlugin(_options: object = {}): esbuild.Plugin {
+export function cssPlugin(options: CssPluginOptions = {}): esbuild.Plugin {
+  const {
+    emitFile = false,
+  } = options;
+
+  // When emitFile is enabled, track CSS entry points: resolved path -> original path
+  const cssEntryPoints = emitFile ? new Map<string, string>() : null;
+
+  // Track output names for entry points (used for naming virtual CSS files)
+  const entryPointOutputNames: Map<string, EntryPointOutputName> | null =
+    emitFile ? new Map() : null;
+
+  // Track non-entry CSS imports (CSS imported from non-CSS entry points like TSX)
+  const nonEntryCssImports: Map<string, TrackedCssEntry> | null = emitFile
+    ? new Map()
+    : null;
+
   return {
     name: "css",
 
     setup(ctx) {
-      // Intercept @import rules to resolve relative paths
+      // Compute output names for entry points when emitFile is enabled
+      ctx.onStart(() => {
+        if (!emitFile) return;
+
+        const entryPoints = ctx.initialOptions.entryPoints;
+        if (!entryPoints) return;
+
+        const entryPointArray: Array<[string, string]> =
+          Array.isArray(entryPoints)
+            ? entryPoints.map((ep) =>
+              Array.isArray(ep) ? [ep[0], ep[1]] : [ep, ep]
+            )
+            : Object.entries(entryPoints);
+
+        for (const [input, output] of entryPointArray) {
+          const outputName = output
+            ? output.replace(/\.[^.]+$/, "") // "dist/index" from "dist/index.js"
+            : input.replace(/\.[^.]+$/, ""); // "index" from "index.tsx"
+          entryPointOutputNames!.set(input, {
+            outputName,
+            virtualCssCounter: 0,
+          });
+        }
+      });
+
+      // Intercept CSS imports to resolve relative paths and track non-entry CSS
       ctx.onResolve(
         { filter: /\.css$/ },
         (args): esbuild.OnResolveResult | null => {
-          // Only handle @import rules, pass through everything else
-          if (args.kind !== "import-rule") {
-            return null;
+          // When emitFile is enabled, also intercept CSS entry points
+          if (emitFile && args.kind === "entry-point") {
+            const resolvedPath = path.resolve(args.path);
+            cssEntryPoints!.set(resolvedPath, args.path);
+            return { path: resolvedPath };
           }
 
           // External URL imports — mark as external
           if (
-            args.path.startsWith("https://") ||
-            args.path.startsWith("http://")
+            args.kind === "import-rule" &&
+            (args.path.startsWith("https://") ||
+              args.path.startsWith("http://"))
           ) {
             return {
               path: args.path,
@@ -57,17 +138,137 @@ export function cssPlugin(_options: object = {}): esbuild.Plugin {
             args.path,
           );
 
-          return {
-            path: resolvedPath,
-          };
+          // When emitFile is enabled, track non-entry CSS imports
+          // (CSS imported from non-CSS entry points like TSX/TS/JS)
+          if (emitFile) {
+            // Check if this CSS is tracked as a CSS entry point
+            const isEntryPoint = cssEntryPoints!.has(resolvedPath);
+
+            if (!isEntryPoint) {
+              // Check if the importer is a JS/TSX entry point
+              const importerExt = path.extname(args.importer);
+              const isJsEntry = [".ts", ".tsx", ".js", ".jsx"].includes(
+                importerExt,
+              );
+
+              // Check if importer is a CSS entry point
+              const cssEpPath = Array.from(cssEntryPoints!.keys()).find(
+                (ep) =>
+                  path.resolve(ep) === args.importer ||
+                  path.resolve(ep).endsWith(args.importer),
+              );
+
+              // Find the nearest ancestor entry point for this importer
+              const findAncestorEntryPoint = (
+                importer: string,
+              ): string | undefined => {
+                const normalizedImporter = path.resolve(importer);
+                let bestMatch: string | undefined;
+
+                for (const ep of entryPointOutputNames!.keys()) {
+                  const normalizedEp = path.resolve(ep);
+                  // Check if the entry point is an ancestor of the importer
+                  // The entry point's directory must be a prefix of the importer's path
+                  const epDir = path.dirname(normalizedEp) + "/";
+                  if (
+                    normalizedImporter.startsWith(epDir) ||
+                    normalizedImporter === normalizedEp
+                  ) {
+                    // Prefer the longest match (most specific entry point)
+                    if (
+                      !bestMatch ||
+                      normalizedEp.length > path.resolve(bestMatch).length
+                    ) {
+                      bestMatch = ep;
+                    }
+                  }
+                }
+                return bestMatch;
+              };
+
+              const entryPointInputPath = isJsEntry
+                ? findAncestorEntryPoint(args.importer) ?? args.importer
+                : cssEpPath ?? args.importer;
+
+              // Look up the entry point info to derive a virtual output name
+              const entryInfo = entryPointInputPath
+                ? entryPointOutputNames!.get(entryPointInputPath)
+                : null;
+
+              if (entryInfo) {
+                // Create a virtual path for this CSS that can be identified in onLoad
+                const virtualName =
+                  `${entryInfo.outputName}_${entryInfo.virtualCssCounter}`;
+                entryInfo.virtualCssCounter++;
+                const virtualPath = `__virtual_css/${virtualName}.css`;
+
+                nonEntryCssImports!.set(virtualPath, {
+                  originalPath: path.basename(args.path),
+                  resolveDir: path.dirname(resolvedPath),
+                  bundledCss: "",
+                });
+
+                return {
+                  path: virtualPath,
+                  namespace: "css-plugin-virtual",
+                };
+              }
+            }
+          }
+
+          // For @import rules, resolve the path (existing behavior)
+          if (args.kind === "import-rule") {
+            return {
+              path: resolvedPath,
+            };
+          }
+
+          // For other import kinds (import-statement), let esbuild handle normally
+          return null;
         },
       );
 
       // Load CSS files and inline @import rules
+      // When emitFile is enabled, we need to intercept entry point loads too,
+      // so we remove the namespace filter to catch loads from any namespace
       ctx.onLoad(
-        { filter: /\.css$/, namespace: "file" },
+        { filter: /\.css$/, namespace: emitFile ? undefined : "file" },
         async (args): Promise<esbuild.OnLoadResult> => {
           const filePath = args.path;
+
+          // Handle virtual CSS entries (non-entry CSS imports from JS/TSX entries)
+          if (emitFile && args.namespace === "css-plugin-virtual") {
+            const entry = nonEntryCssImports!.get(filePath)!;
+
+            // Load and resolve the original CSS
+            const cssFilePath = path.resolve(
+              entry.resolveDir,
+              entry.originalPath,
+            );
+            let cssContent: string;
+            try {
+              cssContent = await fetch(
+                path.toFileUrl(cssFilePath),
+              ).then((r) => r.text());
+            } catch {
+              cssContent = await Deno.readTextFile(cssFilePath);
+            }
+
+            // Resolve @import rules recursively
+            const bundledCss = await resolveImports(
+              cssContent,
+              entry.resolveDir,
+              new Set(),
+            );
+            entry.bundledCss = bundledCss;
+
+            return {
+              contents: bundledCss,
+              loader: "css",
+              resolveDir: entry.resolveDir,
+            };
+          }
+
           const fileUrl = path.toFileUrl(filePath);
           let cssContent: string;
 
@@ -92,6 +293,26 @@ export function cssPlugin(_options: object = {}): esbuild.Plugin {
           };
         },
       );
+
+      // Inject virtual CSS files into outputFiles when emitFile is enabled
+      ctx.onEnd((result) => {
+        if (!emitFile || !result.outputFiles || !nonEntryCssImports) return;
+
+        for (const [_virtualPath, entry] of nonEntryCssImports!) {
+          if (entry.bundledCss) {
+            const outputFile: VirtualOutputFile = {
+              path: _virtualPath,
+              contents: new TextEncoder().encode(entry.bundledCss),
+              hash: "",
+              get text() {
+                return new TextDecoder().decode(this.contents);
+              },
+            };
+            // deno-lint-ignore no-explicit-any
+            result.outputFiles.push(outputFile as any);
+          }
+        }
+      });
     },
   };
 
