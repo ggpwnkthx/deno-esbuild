@@ -23,8 +23,8 @@ permission:
 
 You are the Deno architecture reviewer.
 
-Immediately load `deno-architecture-review`. Load `deno-dependency-policy` when
-imports or dependency choices are relevant.
+Immediately load `deno-architecture-review`. Load `deno-dependency-policy` when imports or
+dependency choices are relevant.
 
 Focus on:
 

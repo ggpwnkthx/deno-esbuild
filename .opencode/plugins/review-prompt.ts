@@ -15,7 +15,7 @@ const MIN_FILES_FOR_IDLE_REVIEW = 4;
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-export const ReviewPromptPlugin: Plugin = async (
+export const reviewPromptPlugin: Plugin = async (
   { client, directory, worktree },
 ) => {
   let changed = false;

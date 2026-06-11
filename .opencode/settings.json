@@ -7,17 +7,21 @@
         "baseURL": "https://api.minimax.io/anthropic/v1",
         "apiKey": "{env:MINIMAX_API_KEY}",
         "timeout": 1200000,
-        "chunkTimeout": 60000
+        "chunkTimeout": 600000
       },
       "models": {
-        "MiniMax-M2.7": {
-          "name": "MiniMax-M2.7"
+        "MiniMax-M3": {
+          "name": "MiniMax-M3"
         }
       }
     }
   },
-  "model": "minimax/MiniMax-M2.7",
-  "small_model": "minimax/MiniMax-M2.7",
+  "enabled_providers": [
+    "minimax"
+  ],
+  "model": "minimax/MiniMax-M3",
+  "share": "disabled",
+  "lsp": true,
   "formatter": {
     "deno-fmt": {
       "command": [
@@ -33,7 +37,10 @@
         ".js",
         ".jsx",
         ".mjs",
-        ".cjs"
+        ".cjs",
+        ".json",
+        ".jsonc",
+        ".md"
       ]
     }
   },
@@ -41,19 +48,36 @@
   "permission": {
     "read": {
       "*": "allow",
-      "tests/parity/hono/**": "allow",
       "*.env": "deny",
       "*.env.*": "deny",
+      "**/*.env": "deny",
+      "**/*.env.*": "deny",
       "*.env.example": "allow",
       "*.env.sample": "allow",
       "*.env.template": "allow",
+      "**/*.env.example": "allow",
+      "**/*.env.sample": "allow",
+      "**/*.env.template": "allow",
       "*.pem": "deny",
+      "**/*.pem": "deny",
       "*.p12": "deny",
+      "**/*.p12": "deny",
       "*.pfx": "deny",
+      "**/*.pfx": "deny",
+      "**/id_rsa": "deny",
+      "**/id_ed25519": "deny",
       "**/credentials.json": "deny",
       "**/.npmrc": "deny"
     },
-    "edit": "ask",
+    "edit": {
+      "*": "ask",
+      "node_modules/**": "deny",
+      "dist/**": "deny",
+      "build/**": "deny",
+      "coverage/**": "deny",
+      ".git/**": "deny",
+      ".opencode/.cache/**": "deny"
+    },
     "bash": {
       "*": "ask",
       "git status*": "allow",
@@ -61,27 +85,73 @@
       "git log*": "allow",
       "git show*": "allow",
       "git ls-files*": "allow",
+      "git push*": "deny",
+      "git reset --hard*": "deny",
+      "git clean*": "deny",
       "find *": "allow",
       "ls *": "allow",
       "rg *": "allow",
       "grep *": "allow",
-      "deno task*": "allow",
+      "deno *": "ask",
       "deno fmt*": "allow",
       "deno lint*": "allow",
       "deno check*": "allow",
       "deno test*": "allow",
       "deno info*": "allow",
-      "deno cache*": "ask"
+      "deno doc*": "allow",
+      "deno publish --dry-run*": "allow",
+      "deno task*": "ask",
+      "deno publish*": "ask",
+      "deno run*": "ask",
+      "deno compile*": "ask",
+      "deno eval*": "deny",
+      "deno install*": "deny",
+      "npm*": "deny",
+      "pnpm*": "deny",
+      "yarn*": "deny",
+      "npx*": "deny",
+      "node*": "deny",
+      "bun add*": "deny",
+      "bun install*": "deny",
+      "bunx*": "deny",
+      "python*": "deny",
+      "python3*": "deny",
+      "py *": "deny",
+      "pip*": "deny",
+      "pip3*": "deny",
+      "pipx*": "deny",
+      "uv*": "deny",
+      "curl*": "ask",
+      "wget*": "ask",
+      "rm -rf *": "deny",
+      "chmod +x *": "ask",
+      "sh -c *": "ask",
+      "bash -c *": "ask"
     },
+    "webfetch": "ask",
+    "websearch": "ask",
     "skill": {
       "*": "deny",
       "opencode-session-discipline": "allow",
       "critical-code-review": "allow",
-      "deno-*": "allow"
+      "deno-architecture-review": "allow",
+      "deno-dependency-policy": "allow",
+      "deno-http-boundary-audit": "allow",
+      "deno-performance-check": "allow",
+      "deno-release-checklist": "allow",
+      "deno-test-strategy": "allow",
+      "deno-jsr-score-audit": "allow"
     },
     "task": {
       "*": "deny",
-      "deno-*": "allow"
+      "deno-implementer": "allow",
+      "deno-critical-reviewer": "allow",
+      "deno-architecture-reviewer": "allow",
+      "deno-http-auditor": "allow",
+      "deno-performance-auditor": "allow",
+      "deno-test-strategist": "allow",
+      "deno-release-manager": "allow",
+      "deno-jsr-score-auditor": "allow"
     },
     "external_directory": "ask",
     "doom_loop": "ask"
@@ -90,7 +160,10 @@
     "ignore": [
       ".opencode/**",
       "node_modules/**",
-      ".git/**"
+      ".git/**",
+      "dist/**",
+      "build/**",
+      "coverage/**"
     ]
   }
 }

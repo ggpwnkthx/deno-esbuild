@@ -4,8 +4,7 @@ import { commandReport, runCommand } from "../lib/runtime.ts";
 import { resolveInside } from "../lib/path.ts";
 
 export default tool({
-  description:
-    "Run an approved `deno task` inside the current project worktree.",
+  description: "Run an approved `deno task` inside the current project worktree.",
   args: {
     task: tool.schema.string().min(1).describe(
       "Task name from deno.json or deno.jsonc",
@@ -21,14 +20,16 @@ export default tool({
       .describe("Optional relative working directory inside the worktree"),
   },
   async execute(args, context) {
-    const cwd = resolveInside(context.worktree, args.cwd);
+    const extraArgs = args.extraArgs ?? [];
+    const cwd = args.cwd ? resolveInside(context.worktree, args.cwd) : context.worktree;
 
     validateSafeToken(args.task, "task");
-    for (const item of args.extraArgs) {
+
+    for (const item of extraArgs) {
       validateSafeToken(item, "extraArgs");
     }
 
-    const command = ["deno", "task", args.task, ...args.extraArgs];
+    const command = ["deno", "task", args.task, ...extraArgs];
     const result = await runCommand(context, command, { cwd });
 
     return commandReport(result);

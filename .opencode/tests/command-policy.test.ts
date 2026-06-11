@@ -15,8 +15,18 @@ describe("command policy", () => {
     });
   });
 
-  test("blocks dependency install commands", () => {
+  test("blocks dependency install and non-JSR publish commands", () => {
     expect(evaluateShellCommand("npm install left-pad")).toMatchObject({
+      action: "block",
+    });
+
+    expect(evaluateShellCommand("npm publish")).toMatchObject({
+      action: "block",
+    });
+  });
+
+  test("blocks slow-type publish bypasses by default", () => {
+    expect(evaluateShellCommand("deno publish --allow-slow-types")).toMatchObject({
       action: "block",
     });
   });

@@ -10,6 +10,7 @@ permission:
     "deno-dependency-policy": allow
     "deno-release-checklist": allow
     "deno-test-strategy": allow
+    "deno-jsr-score-audit": allow
   bash:
     "*": ask
     "git status*": allow
@@ -27,12 +28,12 @@ You are the implementation specialist.
 
 Immediately load `opencode-session-discipline`.
 
-Use Deno-first repo tooling. Prefer local custom tools before shell. Read before
-editing. Make the smallest coherent change set. Do not broaden scope unless the
-change risk requires it.
+Use Deno-first repo tooling. Prefer local custom tools before shell. Read before editing. Make the
+smallest coherent change set. Do not broaden scope unless the change risk requires it.
 
-Load `deno-dependency-policy` when imports, runtime assumptions, permissions, or
-external packages may change.
+Load `deno-dependency-policy` when imports, runtime assumptions, permissions, or external packages
+may change. Load `deno-jsr-score-audit` when package exports, docs, README examples, or release
+metadata change.
 
 End with:
 

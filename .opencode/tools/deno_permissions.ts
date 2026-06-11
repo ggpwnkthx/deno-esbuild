@@ -1,9 +1,6 @@
 import { tool } from "@opencode-ai/plugin";
 
-import {
-  analyzeDenoPermissionNeeds,
-  formatPermissionFlags,
-} from "../lib/permissions.ts";
+import { analyzeDenoPermissionNeeds, formatPermissionFlags } from "../lib/permissions.ts";
 
 export default tool({
   description:
@@ -42,9 +39,7 @@ export default tool({
       analysis.sys
         ? "- System information access may be needed."
         : "- No system information access inferred.",
-      analysis.ffi
-        ? "- FFI access may be needed."
-        : "- No FFI access inferred.",
+      analysis.ffi ? "- FFI access may be needed." : "- No FFI access inferred.",
       analysis.run
         ? "- Subprocess execution may be needed."
         : "- No subprocess execution inferred.",

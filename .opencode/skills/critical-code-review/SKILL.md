@@ -31,10 +31,8 @@ Review code with high standards and low drama.
 
 ## Severity labels
 
-- `blocker`: likely incorrect, unsafe, data-losing, security-sensitive, or
-  public-contract breaking.
-- `major`: likely bug, maintainability trap, important missing test, or risky
-  design.
+- `blocker`: likely incorrect, unsafe, data-losing, security-sensitive, or public-contract breaking.
+- `major`: likely bug, maintainability trap, important missing test, or risky design.
 - `minor`: real issue with limited blast radius.
 - `nit`: style/readability only.
 - `question`: missing context that affects the review.

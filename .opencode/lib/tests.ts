@@ -3,18 +3,8 @@ import { join as joinFsPath } from "node:path";
 
 import { collectChangedFiles } from "./git.ts";
 import { commandReport, runCommand, type RuntimeContext } from "./runtime.ts";
-import {
-  basename,
-  dirname,
-  joinPath,
-  normalizePath,
-  resolveInside,
-} from "./path.ts";
-import {
-  candidateRelatedTestPaths,
-  isIgnoredPath,
-  isTestFile,
-} from "./project.ts";
+import { basename, dirname, joinPath, normalizePath, resolveInside } from "./path.ts";
+import { candidateRelatedTestPaths, isIgnoredPath, isTestFile } from "./project.ts";
 
 const TEST_GLOB_SUFFIXES = [
   "test.ts",
@@ -213,9 +203,7 @@ export async function runSelectedTests(
     return "No related test files were found.";
   }
 
-  const cwd = options.cwd
-    ? resolveInside(context.worktree, options.cwd)
-    : context.worktree;
+  const cwd = options.cwd ? resolveInside(context.worktree, options.cwd) : context.worktree;
   const command = options.allowAll
     ? ["deno", "test", "-A", ...testFiles]
     : ["deno", "test", ...testFiles];

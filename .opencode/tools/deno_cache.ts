@@ -3,8 +3,7 @@ import { tool } from "@opencode-ai/plugin";
 import { commandReport, runCommand } from "../lib/runtime.ts";
 
 export default tool({
-  description:
-    "Run `deno cache` for explicit targets inside the current worktree.",
+  description: "Run `deno cache` for explicit targets inside the current worktree.",
   args: {
     targets: tool.schema
       .array(tool.schema.string().min(1))

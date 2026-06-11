@@ -14,11 +14,12 @@ description: Enforce Deno-first dependency conventions: prefer built-ins, pinned
 1. Prefer Deno and Web built-ins before third-party packages.
 2. Prefer small focused `jsr:` packages.
 3. Pin external package versions.
-4. Avoid Node-only APIs in target-repo app code unless the repo explicitly chose
-   Node compatibility.
+4. Avoid Node-only APIs in target-repo app code unless the repo explicitly chose Node compatibility.
 5. Avoid mixing dependency sources without a clear reason.
 6. Flag dependencies that widen permissions.
 7. Reject dependencies that duplicate simple local code.
+8. For publishable JSR packages, treat unpinned `npm:` and remote URL imports in public entrypoints
+   as release risks unless explicitly justified.
 
 ## Output
 

@@ -4,7 +4,7 @@ import { evaluateShellCommand, getStringArg } from "../lib/command-policy.ts";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-export const DenoCommandsPlugin: Plugin = async ({ client }) => {
+export const denoCommandsPlugin: Plugin = async ({ client }) => {
   const log = async (
     level: LogLevel,
     message: string,

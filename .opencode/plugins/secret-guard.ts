@@ -5,7 +5,7 @@ import { looksLikeSecretShellRead, looksSecret } from "../lib/secret-policy.ts";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-export const SecretGuardPlugin: Plugin = async ({ client }) => {
+export const secretGuardPlugin: Plugin = async ({ client }) => {
   const log = async (
     level: LogLevel,
     message: string,

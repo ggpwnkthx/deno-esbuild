@@ -1,11 +1,4 @@
-import {
-  basename,
-  dirname,
-  extname,
-  joinPath,
-  normalizePath,
-  stripExtension,
-} from "./path.ts";
+import { basename, dirname, extname, joinPath, normalizePath, stripExtension } from "./path.ts";
 
 export interface AgentSuggestion {
   readonly name: string;
@@ -21,6 +14,7 @@ export const AGENT_NAMES = {
   performanceAuditor: "deno-performance-auditor",
   testStrategist: "deno-test-strategist",
   releaseManager: "deno-release-manager",
+  jsrScoreAuditor: "deno-jsr-score-auditor",
 } as const;
 
 const REVIEWABLE_EXTENSIONS = new Set([
@@ -52,6 +46,8 @@ const REVIEWABLE_EXTENSIONS = new Set([
 const REVIEWABLE_FILENAMES = new Set([
   "deno.json",
   "deno.jsonc",
+  "jsr.json",
+  "jsr.jsonc",
   "import_map.json",
   "package.json",
   "package-lock.json",
@@ -219,8 +215,7 @@ export function suggestReviewAgents(
   const suggestions: AgentSuggestion[] = [
     {
       name: AGENT_NAMES.criticalReviewer,
-      reason:
-        "evaluate correctness, security, failure modes, test proof, and merge risk",
+      reason: "evaluate correctness, security, failure modes, test proof, and merge risk",
     },
   ];
 
@@ -230,24 +225,29 @@ export function suggestReviewAgents(
   ) {
     suggestions.push({
       name: AGENT_NAMES.architectureReviewer,
-      reason:
-        "changed files span structure, ownership, or dependency boundaries",
+      reason: "changed files span structure, ownership, or dependency boundaries",
     });
   }
 
   if (normalized.some(isHttpRelatedPath)) {
     suggestions.push({
       name: AGENT_NAMES.httpAuditor,
-      reason:
-        "changed files touch HTTP, request/response, auth, route, or config boundaries",
+      reason: "changed files touch HTTP, request/response, auth, route, or config boundaries",
     });
   }
 
   if (normalized.some(isPerformanceSensitivePath)) {
     suggestions.push({
       name: AGENT_NAMES.performanceAuditor,
+      reason: "changed files touch streaming, file, list, search, cache, parser, or batch paths",
+    });
+  }
+
+  if (normalized.some(isJsrScoreRelatedPath)) {
+    suggestions.push({
+      name: AGENT_NAMES.jsrScoreAuditor,
       reason:
-        "changed files touch streaming, file, list, search, cache, parser, or batch paths",
+        "changed files affect JSR package score signals such as docs, exports, package config, examples, or release workflows",
     });
   }
 
@@ -283,6 +283,17 @@ function isPerformanceSensitivePath(path: string): boolean {
     .test(value);
 }
 
+function isJsrScoreRelatedPath(path: string): boolean {
+  const value = normalizePath(path).toLowerCase();
+  return /(^|\/)(readme\.md|deno\.jsonc?|jsr\.jsonc?|mod\.ts|mod\.tsx|main\.ts|index\.ts)$/.test(
+    value,
+  ) ||
+    /(^|\/)src\/.*\.(?:ts|tsx|mts)$/.test(value) ||
+    /(^|\/)examples?\//.test(value) ||
+    /(^|\/)docs?\//.test(value) ||
+    /(^|\/)\.github\/workflows\/.*\.ya?ml$/.test(value);
+}
+
 function dedupeSuggestions(
   suggestions: readonly AgentSuggestion[],
 ): AgentSuggestion[] {
@@ -309,9 +320,9 @@ export function buildProjectReviewPrompt(
   const suggestedAgents = suggestReviewAgents(changedFiles);
   const delegationList = suggestedAgents.length === 0
     ? "- None"
-    : suggestedAgents.map((agent) =>
-      `- ${formatAgentMention(agent.name)} - ${agent.reason}`
-    ).join("\n");
+    : suggestedAgents.map((agent) => `- ${formatAgentMention(agent.name)} - ${agent.reason}`).join(
+      "\n",
+    );
 
   const referencedFiles = reviewFiles.length === 0
     ? "none"
@@ -321,9 +332,7 @@ export function buildProjectReviewPrompt(
     ? "- None"
     : reviewFiles.map((file) => `- @${file}`).join("\n");
 
-  const omittedFiles = changedFiles.filter((file) =>
-    !reviewFiles.includes(file)
-  );
+  const omittedFiles = changedFiles.filter((file) => !reviewFiles.includes(file));
   const omittedFileList = omittedFiles.length === 0
     ? "- None"
     : omittedFiles.map((file) => `- ${file}`).join("\n");
@@ -341,7 +350,7 @@ export function buildProjectReviewPrompt(
     "Instructions:",
     "- Route through the suggested read-only subagents when task delegation is available.",
     "- Grade the work at the change-set level, not file-by-file theater.",
-    "- Focus on correctness, security, ownership, validation, typing, performance, tests, and diff scope.",
+    "- Focus on correctness, security, ownership, validation, typing, performance, tests, JSR score readiness, and diff scope.",
     "- Do not make code changes.",
     "- Any grade below B+ must include concrete corrective work.",
     "- Call out specific files, symbols, code paths, and complexity hot spots.",
@@ -357,6 +366,7 @@ export function buildProjectReviewPrompt(
     "- Memory safety / complexity: <grade>",
     "- Validation / typed failures: <grade>",
     "- Strong typing / interfaces: <grade>",
+    "- JSR package score readiness: <grade>",
     "- Tests / proof: <grade>",
     "",
     "## What is good",
@@ -367,6 +377,9 @@ export function buildProjectReviewPrompt(
     "",
     "## Must address before merge",
     "- Include only if any category or the overall grade is below B+.",
+    "",
+    "## JSR score readiness",
+    "- README/examples/module docs/symbol docs/slow types/package metadata/provenance gaps",
     "",
     "## Complexity and memory hot spots",
     "- <bullets>",

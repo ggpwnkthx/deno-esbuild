@@ -18,10 +18,10 @@ Map changed behavior to proof.
 1. Identify the behavior that changed.
 2. Identify what would fail if the change regressed.
 3. Prefer focused tests before broad suites.
-4. Require negative/boundary tests for validation, auth, parsing, retry, and
-   error behavior.
+4. Require negative/boundary tests for validation, auth, parsing, retry, and error behavior.
 5. Require permission checks when filesystem/network/env/run access changes.
-6. Use broad checks only when scope/risk justifies it.
+6. Require README/example smoke checks when public JSR examples or exports change.
+7. Use broad checks only when scope/risk justifies it.
 
 ## Output
 

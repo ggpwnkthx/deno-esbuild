@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin";
 
 import { collectChangedFilesDetailed } from "../lib/git.ts";
-import {
-  buildProjectReviewPrompt,
-  selectProjectContextFiles,
-} from "../lib/project.ts";
+import { buildProjectReviewPrompt, selectProjectContextFiles } from "../lib/project.ts";
 
 export default tool({
   description:

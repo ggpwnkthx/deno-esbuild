@@ -25,9 +25,10 @@ The OpenCode harness runs on Bun. The target repository is Deno-first.
    - `deno_review_prompt`
    - `deno_info`
    - `deno_permissions`
-4. Prefer `deno task`, `deno fmt`, `deno lint`, `deno check`, and `deno test`.
-5. Avoid Node/npm/pnpm/yarn/npx target-repo workflows unless explicitly
-   required.
+   - `deno_jsr_audit`
+4. Prefer `deno task`, `deno fmt`, `deno lint`, `deno check`, `deno test`, `deno doc --lint`, and
+   `deno publish --dry-run` for release work.
+5. Avoid Node/npm/pnpm/yarn/npx target-repo workflows unless explicitly required.
 6. Run focused verification first.
 7. Broaden verification only when risk justifies it.
 8. State exactly what was and was not verified.

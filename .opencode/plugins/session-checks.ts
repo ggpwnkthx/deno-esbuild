@@ -2,11 +2,7 @@ import type { Plugin } from "@opencode-ai/plugin";
 
 import { commandReport, formatCommand, runCommand } from "../lib/runtime.ts";
 import { collectChangedFiles } from "../lib/git.ts";
-import {
-  chooseRelatedTests,
-  runSelectedTests,
-  scanTestFiles,
-} from "../lib/tests.ts";
+import { chooseRelatedTests, runSelectedTests, scanTestFiles } from "../lib/tests.ts";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -21,15 +17,14 @@ const CHECK_COMMANDS = [
   ["deno", "check"],
 ] as const;
 
-export const SessionChecksPlugin: Plugin = async (
+export const sessionChecksPlugin: Plugin = async (
   { client, directory, worktree },
 ) => {
   let changed = false;
   let running = false;
 
   const idleChecksEnabled = process.env.OPENCODE_IDLE_CHECKS === "1";
-  const autoSubmitCheckFailures =
-    process.env.OPENCODE_AUTO_SUBMIT_CHECK_FAILURES === "1";
+  const autoSubmitCheckFailures = process.env.OPENCODE_AUTO_SUBMIT_CHECK_FAILURES === "1";
 
   const log = async (
     level: LogLevel,
