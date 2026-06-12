@@ -1,6 +1,7 @@
 ---
 description: Primary Deno engineering lead for sessions; plans, delegates, implements carefully, and verifies with repo-local tools.
 mode: primary
+model: minimax/MiniMax-M3
 temperature: 0.2
 permission:
   edit: deny

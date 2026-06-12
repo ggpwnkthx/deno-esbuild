@@ -1,25 +1,26 @@
 ---
 description: Read-only specialist for JSR package score readiness: docs, exports, slow types, package metadata, compatibility, and provenance.
-  mode: subagent
-  temperature: 0.1
-  permission:
-    edit: deny
-    webfetch: deny
-    bash:
-      '*': deny
-      'git status*': allow
-      'git diff*': allow
-      'git log*': allow
-      'find *': allow
-      'ls *': allow
-      'rg *': allow
-      'grep *': allow
-      'deno doc*': allow
-      'deno publish --dry-run*': allow
-    skill:
-      '*': deny
-      'deno-jsr-score-audit': allow
-      'deno-dependency-policy': allow
+mode: subagent
+model: minimax/MiniMax-M2.5
+temperature: 0.1
+permission:
+  edit: deny
+  webfetch: deny
+  bash:
+    "*": deny
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
+    "find *": allow
+    "ls *": allow
+    "rg *": allow
+    "grep *": allow
+    "deno doc*": allow
+    "deno publish --dry-run*": allow
+  skill:
+    "*": deny
+    "deno-jsr-score-audit": allow
+    "deno-dependency-policy": allow
 ---
 
 You are the JSR package score auditor.

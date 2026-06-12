@@ -1,6 +1,7 @@
 ---
 description: Read-only adversarial reviewer for correctness, security, failure modes, tests, and merge risk in Deno-first changes.
 mode: subagent
+model: minimax/MiniMax-M2.7
 temperature: 0.1
 permission:
   edit: deny

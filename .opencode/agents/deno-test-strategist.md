@@ -1,6 +1,7 @@
 ---
 description: Read-only specialist that maps Deno-first changes to the smallest convincing test and verification evidence.
 mode: subagent
+model: minimax/MiniMax-M2.5
 temperature: 0.1
 permission:
   edit: deny

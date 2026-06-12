@@ -1,6 +1,7 @@
 ---
 description: Read-only Deno architecture reviewer for folder boundaries, type ownership, dependency placement, and maintainability.
 mode: subagent
+model: minimax/MiniMax-M3
 temperature: 0.1
 permission:
   edit: deny

@@ -1,6 +1,7 @@
 ---
 description: Read-only pre-merge/release specialist for checks, dependency hygiene, permissions, and operational readiness.
 mode: subagent
+model: minimax/MiniMax-M2.5
 temperature: 0.1
 permission:
   edit: deny

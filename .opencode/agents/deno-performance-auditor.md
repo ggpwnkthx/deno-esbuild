@@ -1,6 +1,7 @@
 ---
 description: Read-only specialist for Deno performance, memory behavior, streaming, pagination, and algorithmic complexity.
 mode: subagent
+model: minimax/MiniMax-M2.7
 temperature: 0.1
 permission:
   edit: deny

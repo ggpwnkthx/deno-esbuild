@@ -1,6 +1,7 @@
 ---
 description: Implementation specialist for Deno-first repos; edits carefully, prefers local OpenCode tools, and verifies the smallest meaningful scope.
 mode: subagent
+model: minimax/MiniMax-M2.7
 temperature: 0.1
 permission:
   edit: allow
