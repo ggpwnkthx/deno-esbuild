@@ -3,9 +3,20 @@
  * Main entrypoint for the `@ggpwnkthx/esbuild` package, providing the full
  * esbuild JavaScript API for Deno with automatic binary management.
  *
- * The module downloads the appropriate esbuild binary for your platform on
- * first use and keeps it cached. All standard esbuild build functions are
+ * The module selects the appropriate packaged esbuild binary for your platform,
+ * verifies it against the generated manifest, copies it into a writable cache,
+ * and executes the cached copy. All standard esbuild build functions are
  * available, including `build`, `context`, `transform`, and `formatMessages`.
+ *
+ * If the current `Deno.build.target` does not have a packaged native binary
+ * (for example `x86_64-unknown-linux-musl` or `aarch64-unknown-linux-musl`),
+ * the module automatically falls back to the bundled `esbuild.wasm` and uses
+ * the same API as `./wasm`. The fallback is transparent for the async API
+ * (`build`, `context`, `transform`, `formatMessages`, `analyzeMetafile`).
+ * `initialize()` accepts `wasmURL`, `wasmModule`, and `worker` options in
+ * this mode; in native mode these options are rejected. The CLI entry point
+ * (`deno run -A jsr:@ggpwnkthx/esbuild --bundle ...`) is not available in
+ * wasm mode — use the programmatic API.
  *
  * All API calls are asynchronous and return promises. The synchronous APIs
  * (`buildSync`, `transformSync`, `formatMessagesSync`, `analyzeMetafileSync`)
@@ -53,8 +64,10 @@ export type { Plugin } from "./shared/types.ts";
 export type { PluginBuild } from "./shared/types.ts";
 /** @see ../shared/types.ts:TransformOptions */
 export type { TransformOptions } from "./shared/types.ts";
+import binaryManifestJson from "./manifest.json" with { type: "json" };
 import * as common from "./shared/common.ts";
 import * as ourselves from "./mod.ts";
+import * as wasm from "./wasm.ts";
 
 /** The esbuild binary version string (e.g. "0.28.0").
  * @see https://github.com/evanw/esbuild/releases */
@@ -71,8 +84,10 @@ export const version = common.ESBUILD_VERSION;
  * });
  * ```
  */
-export const build: typeof types.build = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.build(options));
+export const build: typeof types.build = (options: types.BuildOptions) => {
+  if (useWasm) return wasm.build(options);
+  return ensureServiceIsRunning().then((service) => service.build(options));
+};
 
 /** @see ../shared/types.ts:context
  * @param options - Configuration options for the build context.
@@ -88,8 +103,10 @@ export const build: typeof types.build = (options: types.BuildOptions) =>
  * await ctx.dispose();
  * ```
  */
-export const context: typeof types.context = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.context(options));
+export const context: typeof types.context = (options: types.BuildOptions) => {
+  if (useWasm) return wasm.context(options);
+  return ensureServiceIsRunning().then((service) => service.context(options));
+};
 
 /** @see ../shared/types.ts:transform
  * @param input - The source code (string) or raw bytes to transform.
@@ -106,8 +123,12 @@ export const context: typeof types.context = (options: types.BuildOptions) =>
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
-) =>
-  ensureServiceIsRunning().then((service) => service.transform(input, options));
+) => {
+  if (useWasm) return wasm.transform(input, options);
+  return ensureServiceIsRunning().then((service) =>
+    service.transform(input, options)
+  );
+};
 
 /** @see ../shared/types.ts:formatMessages
  * @param messages - An array of diagnostic messages to format.
@@ -122,10 +143,12 @@ export const transform: typeof types.transform = (
 export const formatMessages: typeof types.formatMessages = (
   messages,
   options,
-) =>
-  ensureServiceIsRunning().then((service) =>
+) => {
+  if (useWasm) return wasm.formatMessages(messages, options);
+  return ensureServiceIsRunning().then((service) =>
     service.formatMessages(messages, options)
   );
+};
 
 /** @see ../shared/types.ts:analyzeMetafile
  * @param metafile - The metafile JSON string or object to analyze.
@@ -140,10 +163,12 @@ export const formatMessages: typeof types.formatMessages = (
 export const analyzeMetafile: typeof types.analyzeMetafile = (
   metafile,
   options,
-) =>
-  ensureServiceIsRunning().then((service) =>
+) => {
+  if (useWasm) return wasm.analyzeMetafile(metafile, options);
+  return ensureServiceIsRunning().then((service) =>
     service.analyzeMetafile(metafile, options)
   );
+};
 
 /** @see ../shared/types.ts:buildSync
  * @example
@@ -197,6 +222,7 @@ export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
  * ```
  */
 export const stop = async (): Promise<void> => {
+  if (useWasm) return wasm.stop();
   if (stopService) await stopService();
 };
 
@@ -211,6 +237,9 @@ let initializeWasCalled = false;
  */
 export const initialize: typeof types.initialize = async (options) => {
   options = common.validateInitializeOptions(options || {});
+  if (useWasm) {
+    return wasm.initialize(options);
+  }
   if (options.wasmURL) {
     throw new Error(`The "wasmURL" option only works in the browser`);
   }
@@ -227,36 +256,81 @@ export const initialize: typeof types.initialize = async (options) => {
   initializeWasCalled = true;
 };
 
-async function installFromNPM(name: string, subpath: string): Promise<string> {
-  const { finalPath, finalDir } = getCachePath(name);
-  try {
-    await Deno.stat(finalPath);
-    return finalPath;
-  } catch {
-    // Cache miss, need to download
+interface BinaryManifestEntry {
+  readonly denoTarget: string;
+  readonly slug: string;
+  readonly executableName: string;
+  readonly executablePath: string;
+  readonly sha256: string;
+}
+
+interface BinaryManifest {
+  readonly esbuildVersion: string;
+  readonly binaries: readonly BinaryManifestEntry[];
+}
+
+const binaryManifest = binaryManifestJson as BinaryManifest;
+
+function findNativeBinary(): BinaryManifestEntry | undefined {
+  if (binaryManifest.esbuildVersion !== version) {
+    throw new Error(
+      `Invalid esbuild package: manifest version "${binaryManifest.esbuildVersion}" does not match host version "${version}"`,
+    );
   }
 
-  const npmRegistry = Deno.env.get("NPM_CONFIG_REGISTRY") ||
-    "https://registry.npmjs.org";
-  const url = `${npmRegistry}/${name}/-/${
-    name.replace("@esbuild/", "")
-  }-${version}.tgz`;
-  const buffer = await fetch(url).then((r) => r.arrayBuffer());
-  const executable = await extractFileFromTarGzip(
-    new Uint8Array(buffer),
-    subpath,
+  return binaryManifest.binaries.find((entry) =>
+    entry.denoTarget === Deno.build.target
   );
+}
 
-  await Deno.mkdir(finalDir, {
-    recursive: true,
-    mode: 0o700, // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-  });
+function selectPackagedBinary(): BinaryManifestEntry {
+  const binary = findNativeBinary();
+  if (!binary) throw new Error(`Unsupported platform: ${Deno.build.target}`);
+  return binary;
+}
 
-  await Deno.writeFile(finalPath, executable, { mode: 0o755 });
+const nativeBinary = findNativeBinary();
+const useWasm = nativeBinary === undefined;
+
+async function install(): Promise<string> {
+  const overridePath = Deno.env.get("ESBUILD_BINARY_PATH");
+  if (overridePath) return overridePath;
+
+  const binary = selectPackagedBinary();
+  const { finalPath, finalDir } = getCachePath(binary);
+
+  try {
+    const cached = await Deno.readFile(finalPath);
+    const cachedHash = await sha256(cached);
+    if (cachedHash === binary.sha256) {
+      if (Deno.build.os !== "windows") await Deno.chmod(finalPath, 0o755);
+      return finalPath;
+    }
+  } catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) throw err;
+  }
+
+  const packagedBinaryURL = new URL(binary.executablePath, import.meta.url);
+  const packagedBinary = await Deno.readFile(packagedBinaryURL);
+  const packagedHash = await sha256(packagedBinary);
+  if (packagedHash !== binary.sha256) {
+    throw new Error(
+      `Invalid esbuild binary ${
+        JSON.stringify(binary.executablePath)
+      }: expected SHA-256 ${binary.sha256}, got ${packagedHash}`,
+    );
+  }
+
+  await Deno.mkdir(finalDir, { recursive: true, mode: 0o700 });
+  await Deno.writeFile(finalPath, packagedBinary, { mode: 0o755 });
+  if (Deno.build.os !== "windows") await Deno.chmod(finalPath, 0o755);
+
   return finalPath;
 }
 
-function getCachePath(name: string): { finalPath: string; finalDir: string } {
+function getCachePath(
+  binary: BinaryManifestEntry,
+): { finalPath: string; finalDir: string } {
   let baseDir: string | undefined;
 
   switch (Deno.build.os) {
@@ -288,83 +362,21 @@ function getCachePath(name: string): { finalPath: string; finalDir: string } {
   }
 
   if (!baseDir) throw new Error("Failed to find cache directory");
-  const finalDir = baseDir + `/esbuild/bin`;
-  const finalPath = finalDir + `/${name.replace("/", "-")}@${version}`;
+
+  const finalDir = baseDir + "/esbuild/bin";
+  const slug = binary.slug.replaceAll("/", "-");
+  const executableSuffix = binary.executableName.endsWith(".exe") ? ".exe" : "";
+  const finalPath = `${finalDir}/esbuild-${slug}@${version}${executableSuffix}`;
   return { finalPath, finalDir };
 }
 
-async function gunzip(buffer: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream("gzip");
-  const writer = ds.writable.getWriter();
-  writer.write(buffer as BufferSource);
-  writer.close();
-  const result = await new Response(ds.readable).arrayBuffer();
-  return new Uint8Array(result);
-}
-
-async function extractFileFromTarGzip(
-  buffer: Uint8Array,
-  file: string,
-): Promise<Uint8Array> {
-  try {
-    buffer = await gunzip(buffer);
-    // deno-lint-ignore no-explicit-any
-  } catch (err: any) {
-    throw new Error(
-      `Invalid gzip data in archive: ${err && err.message || err}`,
-    );
-  }
-  const str = (i: number, n: number) =>
-    String.fromCharCode(...buffer.subarray(i, i + n)).replace(/\0.*$/, "");
-  let offset = 0;
-  file = `package/${file}`;
-  while (offset < buffer.length) {
-    const name = str(offset, 100);
-    const size = parseInt(str(offset + 124, 12), 8);
-    offset += 512;
-    if (!isNaN(size)) {
-      if (name === file) return buffer.subarray(offset, offset + size);
-      offset += (size + 511) & ~511;
-    }
-  }
-  throw new Error(`Could not find ${JSON.stringify(file)} in archive`);
-}
-
-async function install(): Promise<string> {
-  const overridePath = Deno.env.get("ESBUILD_BINARY_PATH");
-  if (overridePath) return overridePath;
-
-  const platformKey = Deno.build.target;
-  const knownWindowsPackages: Record<string, string> = {
-    "x86_64-pc-windows-msvc": "@esbuild/win32-x64",
-  };
-  const knownUnixlikePackages: Record<string, string> = {
-    // These are the only platforms that Deno supports
-    "aarch64-apple-darwin": "@esbuild/darwin-arm64",
-    "aarch64-unknown-linux-gnu": "@esbuild/linux-arm64",
-    "x86_64-apple-darwin": "@esbuild/darwin-x64",
-    "x86_64-unknown-linux-gnu": "@esbuild/linux-x64",
-
-    // These platforms are not supported by Deno
-    "aarch64-linux-android": "@esbuild/android-arm64",
-    "x86_64-unknown-freebsd": "@esbuild/freebsd-x64",
-    "x86_64-alpine-linux-musl": "@esbuild/linux-x64",
-  };
-
-  // Pick a package to install
-  if (platformKey in knownWindowsPackages) {
-    return await installFromNPM(
-      knownWindowsPackages[platformKey],
-      "esbuild.exe",
-    );
-  } else if (platformKey in knownUnixlikePackages) {
-    return await installFromNPM(
-      knownUnixlikePackages[platformKey],
-      "bin/esbuild",
-    );
-  } else {
-    throw new Error(`Unsupported platform: ${platformKey}`);
-  }
+async function sha256(bytes: Uint8Array): Promise<string> {
+  const digestBytes: Uint8Array<ArrayBuffer> = new Uint8Array(bytes);
+  const hash = await crypto.subtle.digest("SHA-256", digestBytes);
+  return Array.from(
+    new Uint8Array(hash),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
 }
 
 interface Service {
@@ -595,6 +607,15 @@ const ensureServiceIsRunning = (): Promise<Service> => {
 
 // If we're called as the main script, forward the CLI to the underlying executable
 if (import.meta.main) {
+  if (useWasm) {
+    console.error(
+      "esbuild CLI is not available in wasm mode: " +
+        `no native binary for Deno.build.target=${Deno.build.target}. ` +
+        "Use the programmatic API (e.g. `await build(...)`) on a platform with a native binary, " +
+        "or import from `@ggpwnkthx/esbuild/wasm` directly.",
+    );
+    Deno.exit(1);
+  }
   spawn(await install(), {
     args: Deno.args,
     stdin: "inherit",

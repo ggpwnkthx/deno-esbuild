@@ -8,10 +8,17 @@
     "./wrappers/oak"
   ],
   "imports": {
+    "@std/cli": "jsr:@std/cli@^1.0.30",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
+    "@std/path": "jsr:@std/path@^1.1.5",
+    "@std/semver": "jsr:@std/semver@^1.0.8",
     "esbuild": "file:./esbuild/mod.ts",
     "@ggpwnkthx/esbuild-wrapper-shared": "file:./wrappers/shared/mod.ts"
   },
   "exclude": [
     "./.*"
-  ]
+  ],
+  "tasks": {
+    "build": "deno run --allow-run=git,go --allow-read --allow-write --allow-env=PATH,HOME,USERPROFILE,LOCALAPPDATA,XDG_CACHE_HOME scripts/build/main.ts"
+  }
 }

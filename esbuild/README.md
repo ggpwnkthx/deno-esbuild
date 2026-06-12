@@ -249,13 +249,3 @@ The package can also be used as a CLI tool by running the module directly:
 ```bash
 deno run --allow-run -A jsr:@ggpwnkthx/esbuild --bundle --outfile=dist/bundle.js src/index.ts
 ```
-
-## Version
-
-This wrapper targets the current esbuild version. The wrapped esbuild version is
-exported as `esbuild.version`.
-
-```typescript
-import { version } from "@ggpwnkthx/esbuild";
-console.log("esbuild version:", version);
-```
