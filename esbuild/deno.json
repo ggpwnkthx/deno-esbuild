@@ -21,7 +21,10 @@
   },
   "publish": {
     "exclude": [
-      "!manifest.json"
+      "!bin",
+      "!manifest.json",
+      "!THIRD_PARTY_NOTICES.md",
+      "!wasm_exec.js"
     ]
   }
 }
