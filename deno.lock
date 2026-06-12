@@ -113,11 +113,6 @@
       "jsr:@std/semver@^1.0.8"
     ],
     "members": {
-      "esbuild": {
-        "dependencies": [
-          "jsr:@std/assert@^1.0.19"
-        ]
-      },
       "plugins/css": {
         "dependencies": [
           "jsr:@ggpwnkthx/esbuild@0.2",
