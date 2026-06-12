@@ -3,3 +3,4 @@ node_modules
 .env
 AGENTS.md
 .build/
+deno-lock.json
