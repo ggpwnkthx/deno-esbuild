@@ -18,5 +18,10 @@
     "lint": "deno lint .",
     "check": "deno check .",
     "test": "deno test -A"
+  },
+  "publish": {
+    "exclude": [
+      "!manifest.json"
+    ]
   }
 }

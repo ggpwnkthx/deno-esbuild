@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6]
+
+### Fixed
+
+- Publish workflow now runs `deno task build` before `deno publish` so the
+  gitignored build artifacts (`bin/`, `manifest.json`, `THIRD_PARTY_NOTICES.md`,
+  `wasm_exec.js`) are regenerated and shipped in the published JSR package.
+- Added `publish.exclude` negations in `esbuild/deno.json` to un-ignore the
+  build artifacts for `deno publish`.
+
+### Changed
+
+- `plugins/css` is published at `0.2.7`; it had an additional release cycle for
+  the CSS plugin bundling feature added in commit `3cd82c2`. All other packages
+  are published at `0.2.6`.
+
 ## [0.2.5]
 
 ### Added
