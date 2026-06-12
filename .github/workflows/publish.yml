@@ -16,7 +16,6 @@ jobs:
   esbuild:
     name: CI + publish (JSR)
     runs-on: ubuntu-latest
-    needs: bin
 
     steps:
       - uses: actions/checkout@v6
