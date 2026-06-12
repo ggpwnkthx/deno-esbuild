@@ -59,7 +59,7 @@ jobs:
 
       - name: Build release assets
         run: |
-          deno task build:binaries \
+          deno task bin:build \
             --clean \
             --out-dir ./dist \
             --version "${{ steps.version.outputs.version }}"
