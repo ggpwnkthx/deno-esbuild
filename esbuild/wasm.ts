@@ -1,39 +1,47 @@
 /**
  * @module
- * WASM entrypoint for the `@ggpwnkthx/esbuild` package, used as the fallback
- * when no native binary is available for the current `Deno.build.target`.
- *
- * The wasm build is loaded into a Deno Worker and uses the Go WebAssembly
- * runtime (`wasm_exec.js`) shipped alongside `esbuild.wasm` in the package.
+ * Browser/WASM entrypoint for the `@ggpwnkthx/esbuild` package, providing the
+ * same async API as mod.ts but using the WebAssembly version of esbuild running
+ * in a browser worker by default.
  *
  * All standard esbuild build functions are available, including `build`,
  * `context`, `transform`, `formatMessages`, `analyzeMetafile`, `initialize`,
  * and `stop`. Sync variants (e.g., `buildSync`, `transformSync`) are not
  * supported and throw errors.
  *
- * The `initialize()` function must be called before other API calls to load
- * the WebAssembly module.
+ * The `initialize()` function must be called before other API calls in the
+ * browser to load the WebAssembly module.
  *
  * @see ./mod
  * @example
  * ```ts
- * import { initialize, build, stop } from "@ggpwnkthx/esbuild/wasm";
+ * import { initialize, build } from "@ggpwnkthx/esbuild/wasm";
  *
- * await initialize({}); // wasmURL defaults to the bundled esbuild.wasm
+ * await initialize({
+ *   worker: true,
+ *   wasmURL: new URL("./esbuild.wasm", import.meta.url),
+ * });
  *
  * const result = await build({
  *   entryPoints: ["src/index.ts"],
  *   outfile: "dist/bundle.js",
  *   bundle: true,
  * });
- *
- * await stop();
  * ```
  */
 import type * as types from "./shared/types.ts";
 import * as common from "./shared/common.ts";
 import * as ourselves from "./wasm.ts";
 import { version } from "./mod.ts";
+
+interface Go {
+  _scheduledTimeouts: Map<number, ReturnType<typeof setTimeout>>;
+}
+
+declare let WEB_WORKER_SOURCE_CODE: string;
+declare let WEB_WORKER_FUNCTION: (
+  postMessage: (data: Uint8Array) => void,
+) => (event: { data: Uint8Array | ArrayBuffer | WebAssembly.Module }) => Go;
 
 /** The esbuild binary version string (e.g. "0.28.0"). @see ../mod.ts */
 export { version };
@@ -158,34 +166,35 @@ let stopService: (() => void) | undefined;
 
 const ensureServiceIsRunning = (): Promise<Service> => {
   return initializePromise ||
-    startRunningService("bin/js/wasm/esbuild.wasm", undefined);
+    startRunningService("esbuild.wasm", undefined, true);
 };
 
 /**
  * Initializes the esbuild WASM service with the provided configuration.
  *
- * This function must be called before any other API calls. It loads the
- * WebAssembly module and starts a Deno Worker to run esbuild off the main
- * thread.
+ * This function must be called before any other API calls in browser environments.
+ * It loads the WebAssembly module and (by default) starts a web worker to run
+ * esbuild off the main thread.
  *
- * The `options.worker` field is accepted for back-compat (still validated
- * as a boolean) but no longer toggles between code paths; the service always
- * runs in a worker.
- *
- * @param options - Configuration for the WASM service, including `wasmURL`
- *   (optional; defaults to the bundled `esbuild.wasm`) and `wasmModule`
- *   (optional pre-loaded module).
+ * @param options - Configuration for the WASM service, including `wasmURL` (required
+ *   in browsers), `wasmModule` (optional pre-loaded module), and `worker` (whether
+ *   to run in a worker, default true).
  * @returns A promise that resolves when initialization is complete.
  * @see ../shared/types.ts:initialize
  */
 export const initialize: typeof types.initialize = async (options) => {
   options = common.validateInitializeOptions(options || {});
+  const wasmURL = options.wasmURL;
+  const wasmModule = options.wasmModule;
+  const useWorker = options.worker !== false;
   if (initializePromise) {
     throw new Error('Cannot call "initialize" more than once');
   }
-  const wasmURL = options.wasmURL || "bin/js/wasm/esbuild.wasm";
-  const wasmModule = options.wasmModule;
-  initializePromise = startRunningService(wasmURL, wasmModule);
+  initializePromise = startRunningService(
+    wasmURL || "esbuild.wasm",
+    wasmModule,
+    useWorker,
+  );
   initializePromise.catch(() => {
     // Let the caller try again if this fails
     initializePromise = void 0;
@@ -196,41 +205,61 @@ export const initialize: typeof types.initialize = async (options) => {
 const startRunningService = async (
   wasmURL: string | URL,
   wasmModule: WebAssembly.Module | undefined,
+  useWorker: boolean,
 ): Promise<Service> => {
-  // Run esbuild in a Deno-spawned Web Worker. Deno 1.20+ supports importing
-  // a module as a Worker via URL; this replaces the upstream bundler-based
-  // pattern that required WEB_WORKER_SOURCE_CODE injection.
-  const worker = new Worker(
-    new URL("./shared/worker.ts", import.meta.url),
-    { type: "module" },
-  );
+  let worker: {
+    // deno-lint-ignore no-explicit-any
+    onmessage?: ((event: any) => void) | null | undefined;
+    postMessage: (data: Uint8Array | ArrayBuffer | WebAssembly.Module) => void;
+    terminate: () => void;
+  };
+
+  if (useWorker) {
+    // Run esbuild off the main thread
+    const blob = new Blob(
+      [`onmessage=${WEB_WORKER_SOURCE_CODE}(postMessage)`],
+      {
+        type: "text/javascript",
+      },
+    );
+    worker = new Worker(URL.createObjectURL(blob), { type: "module" });
+  } else {
+    // Run esbuild on the main thread
+    const onmessage = WEB_WORKER_FUNCTION((data: Uint8Array) =>
+      worker.onmessage!({ data })
+    );
+    let go: Go | undefined;
+    worker = {
+      onmessage: null,
+      postMessage: (data) => setTimeout(() => go = onmessage({ data })),
+      terminate() {
+        if (go) {
+          for (const timeout of go._scheduledTimeouts.values()) {
+            clearTimeout(timeout);
+          }
+        }
+      },
+    };
+  }
 
   let firstMessageResolve: (value: void) => void;
   // deno-lint-ignore no-explicit-any
   let firstMessageReject: (error: any) => void;
 
-  const firstMessagePromise = new Promise<void>((resolve, reject) => {
+  const firstMessagePromise = new Promise((resolve, reject) => {
     firstMessageResolve = resolve;
     firstMessageReject = reject;
   });
 
-  // The worker posts `{ type: "ready" }` once its async setup (loading
-  // `wasm_exec.js`, evaluating the Go runtime) is complete and its
-  // `onmessage` listener is installed. Deno's module workers do not buffer
-  // messages sent before that point, so we have to wait for the handshake
-  // before sending the wasm URL.
-  worker.onmessage = ({ data }) => {
-    if (data?.type === "ready") {
-      worker.onmessage = ({ data: error }) => {
-        worker.onmessage = ({ data }) => readFromStdout(data);
-        if (error) firstMessageReject(error);
-        else firstMessageResolve();
-      };
-      worker.postMessage(
-        wasmModule || new URL(wasmURL, import.meta.url).toString(),
-      );
-    }
+  worker.onmessage = ({ data: error }) => {
+    worker.onmessage = ({ data }) => readFromStdout(data);
+    if (error) firstMessageReject(error);
+    else firstMessageResolve();
   };
+
+  worker.postMessage(
+    wasmModule || new URL(wasmURL, import.meta.url).toString(),
+  );
 
   const { readFromStdout, service } = common.createChannel({
     writeToStdin(bytes) {

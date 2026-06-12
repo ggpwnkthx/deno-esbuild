@@ -1,6 +1,6 @@
 import { encodeHex } from "@std/encoding/hex";
 import { CommandError } from "./errors.ts";
-import { type CommandOpts } from "./types.ts";
+import type { CommandOpts } from "./types.ts";
 
 const dec = new TextDecoder();
 

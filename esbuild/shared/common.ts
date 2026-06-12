@@ -16,7 +16,7 @@ import * as protocol from "./stdio_protocol.ts";
 import { JSON_parse } from "./uint8array_json_parser.ts";
 
 /** The esbuild binary version string. */
-export const ESBUILD_VERSION: string = "0.28.1";
+export const ESBUILD_VERSION: string = "0.28.0";
 
 const quote: (x: string) => string = JSON.stringify;
 

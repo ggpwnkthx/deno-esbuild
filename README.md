@@ -10,10 +10,45 @@ resolver, and framework middleware wrappers for Hono and Oak.
 | --------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | [`esbuild`](./esbuild/)                 | [@ggpwnkthx/esbuild](https://jsr.io/@ggpwnkthx/esbuild)                               | Deno wrapper around the esbuild binary                       |
 | [`plugins/deno`](./plugins/deno/)       | [@ggpwnkthx/esbuild-plugin-deno](https://jsr.io/@ggpwnkthx/esbuild-plugin-deno)       | esbuild plugin with Deno import resolution and transpilation |
-| [`plugins/css`](./plugins/css/)         | [@ggpwnkthx/esbuild-plugin-css](https://jsr.io/@ggpwnkthx/esbuild-plugin-css)         | esbuild plugin that resolves and inlines CSS `@import` rules |
+| [`plugins/css`](./plugins/css/)         | [@ggpwnkthx/esbuild-plugin-css](https://jsr.io/@ggpwnkthx/esbuild-plugin-css)         | esbuild plugin that resolves `@import` rules and bundles CSS |
 | [`wrappers/hono`](./wrappers/hono/)     | [@ggpwnkthx/esbuild-wrapper-hono](https://jsr.io/@ggpwnkthx/esbuild-wrapper-hono)     | Hono middleware for on-the-fly TypeScript transpilation      |
 | [`wrappers/oak`](./wrappers/oak/)       | [@ggpwnkthx/esbuild-wrapper-oak](https://jsr.io/@ggpwnkthx/esbuild-wrapper-oak)       | Oak middleware for on-the-fly TypeScript transpilation       |
 | [`wrappers/shared`](./wrappers/shared/) | [@ggpwnkthx/esbuild-wrapper-shared](https://jsr.io/@ggpwnkthx/esbuild-wrapper-shared) | Shared utilities used by both middleware wrappers            |
+
+## Building esbuild binaries
+
+The repo ships a Go-based build pipeline under `scripts/` that compiles esbuild
+for every platform. See `### Build locally` for local builds and
+`### Release workflow` for automated releases.
+
+### Build locally
+
+Invoke with `deno task bin:build`.
+
+Flags: `--version X.Y.Z` (default: latest stable `vX.Y.Z` tag in the esbuild
+repo), `--repo-dir <path>` (default `./.build`), `--out-dir <path>` (default
+`./bin`), `--platforms <list>` / `--targets <list>` (default `all`; accepts
+`wasm` or a comma-separated list of slugs), `--wasm` / `--no-wasm`, `--list`
+(print the build plan without building), `--clean` (remove previously generated
+assets for the selected targets first).
+
+`./bin/` is gitignored at the repo root. It is **not** shipped in the JSR
+package.
+
+The pipeline writes, per build: the platform executable, `esbuild-browser.wasm`,
+`manifest.json` (machine-readable: version, source tag/commit, SHA-256, size for
+every artifact), `SHA256SUMS`, `THIRD_PARTY_NOTICES.md`, and `RELEASE_NOTES.md`.
+
+The pipeline requires `git` and `go` on `PATH`. It refuses to write into a path
+that contains the esbuild checkout.
+
+### Release workflow
+
+The pipeline powers the `.github/workflows/release-binaries.yml` workflow, which
+on `vX.Y.Z` tag push (or `workflow_dispatch`) resolves the version, runs the
+build, and uses `gh release create` to attach every `esbuild-*` plus
+`manifest.json`/`SHA256SUMS`/`THIRD_PARTY_NOTICES.md` to a GitHub release with
+notes from `RELEASE_NOTES.md`.
 
 ## Quick start
 

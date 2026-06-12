@@ -3,7 +3,7 @@ import { compare, format, type SemVer, tryParse } from "@std/semver";
 import { REPO } from "./constants.ts";
 import { CliError } from "./errors.ts";
 import { isDirectory, run, text } from "./process.ts";
-import { type GitTag } from "./types.ts";
+import type { GitTag } from "./types.ts";
 
 export async function repo(dir: string): Promise<void> {
   if (await isDirectory(joinPath(dir, ".git"))) {

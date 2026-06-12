@@ -13,20 +13,6 @@
  */
 import { ESBUILD_VERSION } from "./common.ts";
 
-// Load the Go WebAssembly runtime, which provides the `Go` class and `fs`
-// object that the rest of this module depends on. The file is shipped with
-// the package and copied there by the build script from `$GOROOT/lib/wasm/`.
-const wasmExecScript = await Deno.readTextFile(
-  new URL("../wasm_exec.js", import.meta.url),
-);
-// eslint-disable-next-line @typescript-eslint/no-implied-eval
-new Function(wasmExecScript)();
-
-// Signal the main thread that we are ready to receive the wasm URL.
-// Deno's module workers do not buffer messages sent before `onmessage` is
-// set, so the main thread has to wait for this handshake before posting.
-postMessage({ type: "ready" });
-
 interface Go {
   argv: string[];
   importObject: WebAssembly.Imports;

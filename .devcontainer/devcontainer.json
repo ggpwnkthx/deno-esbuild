@@ -11,6 +11,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
+        "denoland.vscode-deno",
         "justjavac.vscode-deno-extensionpack",
         "vscode-icons-team.vscode-icons"
       ],

@@ -1,8 +1,7 @@
 import { join as joinPath } from "@std/path";
-import { join as joinRel } from "@std/path/posix";
-import { NAME, SKIP, WASM, WASM_RELPATH } from "./constants.ts";
+import { NAME, SKIP, WASM } from "./constants.ts";
 import { CliError } from "./errors.ts";
-import { type Def, type Native, type Parsed } from "./types.ts";
+import type { Def, Native, Parsed } from "./types.ts";
 
 function parse(text: string): Parsed[] {
   const acc: { name: string; deps: string[]; body: string[] }[] = [];
@@ -38,12 +37,14 @@ function parse(text: string): Parsed[] {
     cur = m
       ? { name: m[1], deps: m[2].split(/\s+/).filter(Boolean), body: [] }
       : null;
+
     if (cur) acc.push(cur);
   }
 
   if (buf.length) {
     const line = buf.join(" ");
     const m = /^([A-Za-z0-9_.-]+):(.*)$/.exec(line);
+
     if (m) {
       acc.push({
         name: m[1],
@@ -66,9 +67,11 @@ function env(body: string, name: string): string | null {
 
 function kindOf(goos: string, goarch: string, bin: string): "native" | "wasi" {
   if (goos === "wasip1" && goarch === "wasm" && bin === WASM) return "wasi";
+
   if ((bin === "bin/esbuild" || bin === "esbuild.exe") && goos !== "wasip1") {
     return "native";
   }
+
   throw new CliError(
     `Unrecognized native target shape: GOOS=${goos}, GOARCH=${goarch}, BINPATH=${bin}.`,
   );
@@ -87,11 +90,13 @@ export function defs(makefile: string): Def[] {
     }
 
     const slug = t.name.slice(9);
+
     if (seen.has(slug)) {
       throw new CliError(
         `Duplicate platform slug "${slug}" discovered in Makefile.`,
       );
     }
+
     seen.add(slug);
 
     const goos = env(t.body, "GOOS");
@@ -100,6 +105,7 @@ export function defs(makefile: string): Def[] {
 
     if (goos && goarch && bin) {
       const kind = kindOf(goos, goarch, bin);
+
       out.push({
         kind,
         slug,
@@ -132,6 +138,7 @@ export function assertDefs(d: readonly Def[]): void {
 
 export function pick(all: readonly Def[], raw: string, wasm: boolean): Def[] {
   const t = raw.trim();
+
   if (!t || t === "all") {
     return wasm ? [...all] : all.filter((d) => d.kind !== "wasm");
   }
@@ -176,40 +183,30 @@ export function order(d: readonly Def[]): Def[] {
   return [...groups.wasm, ...groups.native, ...groups.wasi];
 }
 
-export function plan(d: readonly Def[], pkg: string): void {
+export function plan(d: readonly Def[], out: string): void {
   console.log(`Build plan: ${d.length} artifact${d.length === 1 ? "" : "s"}`);
 
   for (const x of d) {
     if (x.kind === "wasm") {
       console.log(
-        `- kind=wasm, slug=wasm, goos=js, goarch=wasm, executable=${WASM}, output=${
-          joinPath(pkg, relPath(x))
+        `- kind=wasm, slug=browser-wasm, goos=js, goarch=wasm, executable=${WASM}, output=${
+          joinPath(out, assetName(x))
         }`,
       );
     } else {
       console.log(
         `- kind=${x.kind}, slug=${x.slug}, goos=${x.goos}, goarch=${x.goarch}, executable=${x.exe}, output=${
-          joinPath(pkg, relPath(x))
+          joinPath(out, assetName(x))
         }`,
       );
     }
   }
 }
 
-export function split(slug: string): { os: string; arch: string } {
-  const i = slug.indexOf("-");
-  if (i <= 0 || i === slug.length - 1) {
-    throw new CliError(
-      `Invalid platform slug "${slug}": expected "<os>-<arch>" (e.g. "linux-x64").`,
-    );
-  }
+export function assetName(d: Def): string {
+  if (d.kind === "wasm") return "esbuild-browser.wasm";
+  if (d.kind === "wasi") return `esbuild-${d.slug}.wasm`;
 
-  return { os: slug.slice(0, i), arch: slug.slice(i + 1) };
-}
-
-export function relPath(d: Def): string {
-  if (d.kind === "wasm") return WASM_RELPATH;
-
-  const { os, arch } = split(d.slug);
-  return joinRel("bin", os, arch, d.exe);
+  const ext = d.goos === "windows" ? ".exe" : "";
+  return `esbuild-${d.slug}${ext}`;
 }

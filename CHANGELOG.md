@@ -6,6 +6,74 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7]
+
+### Added
+
+- `scripts/`: new Go-based build pipeline for esbuild binaries (10 files:
+  `assets.ts`, `build.ts`, `cli.ts`, `constants.ts`, `errors.ts`, `git.ts`,
+  `main.ts`, `makefile.ts`, `process.ts`, `types.ts`). Clones
+  `https://github.com/evanw/esbuild.git`, checks out the requested (or latest)
+  `vX.Y.Z` tag, and runs
+  `go build -trimpath -ldflags="-s -w -buildid="
+  -buildvcs=false` per platform
+  (CGO disabled). It parses the esbuild Makefile to enumerate every `platform-*`
+  target, picking `GOOS`/`GOARCH`/`BINPATH`, always including the browser WASM
+  (`js/wasm` → `esbuild-browser.wasm`) unless `--no-wasm`. Output is written to
+  `./bin`: per-platform executable, `esbuild-browser.wasm`, `manifest.json`
+  (version, source tag/commit, SHA-256, size per artifact), `SHA256SUMS`,
+  `THIRD_PARTY_NOTICES.md`, and `RELEASE_NOTES.md`. SHA-256 computed via
+  `crypto.subtle.digest`. Native binaries get `chmod 0o755`. The script refuses
+  to write into a path that contains the esbuild checkout. Invoked via
+  `deno task bin:build
+  [--version X.Y.Z] [--platforms ...] [--no-wasm] [--clean]`.
+- `.github/workflows/release-binaries.yml`: GitHub Actions workflow for
+  releasing binaries. Runs on `workflow_dispatch` or push of a `vX.Y.Z` tag,
+  resolves the version, runs
+  `deno task bin:build --clean --out-dir ./dist
+  --version <v>`, and uses
+  `gh release create` to attach every `./dist/esbuild-*` plus
+  `manifest.json`/`SHA256SUMS`/`THIRD_PARTY_NOTICES.md` to the release, with
+  release notes drawn from `RELEASE_NOTES.md`.
+- `plugins/css/mod.ts`: new `bundleCss` resolver that walks `@import` chains,
+  deduplicates cycles, and emits a single bundled CSS output via
+  `onResolve`/`onLoad` + `resolve`/`load` helpers.
+- Go toolchain now available in the devcontainer.
+
+### Changed
+
+- `bin/` is now at the repo root and is gitignored; it is never shipped in the
+  JSR package. `esbuild/deno.json` no longer carries `publish.exclude`
+  negations.
+- `esbuild/mod.ts` simplified back to using `installFromNPM` (downloads the
+  platform-specific `@esbuild/<slug>` tarball from npm on first use; cache
+  respects `XDG_CACHE_HOME` on Linux, `~/Library/Caches` on macOS, and
+  `LOCALAPPDATA`/`USERPROFILE` on Windows). `ESBUILD_BINARY_PATH` override still
+  honoured. `shared/worker.ts` and `esbuild/wasm.ts` simplified accordingly.
+- `shared/common.ts`: `ESBUILD_VERSION = "0.28.0"` (hardcoded constant, not read
+  from manifest).
+- CI restructured: `.github/workflows/ci.yml` removed;
+  `.github/workflows/publish.yml` now runs fmt/lint/check/test per package and
+  publishes in dependency order (esbuild → shared → others).
+- All packages bumped to `0.2.7`; `plugins/css` is published at `0.2.7` for the
+  CSS bundling feature.
+
+### Fixed
+
+- Cross-package `jsr:` import version typo in `wrappers/hono/deno.json` and
+  `wrappers/oak/deno.json` (`^0.2.5` → `^0.2.6`).
+- `publish.exclude` issue on `esbuild` that could have excluded build artifacts.
+- Publish order: esbuild package now publishes before shared and wrapper
+  packages.
+
+### Removed
+
+- `esbuild/tests/` entirely: the test suite added in this release cycle
+  (manifest, native binary, public API, sync shims, version match, and WASM
+  tests) was removed before release as part of the build-pipeline redesign;
+  coverage of those behaviours is deferred.
+- `esbuild/.gitignore`: no longer needed since `bin/` lives at the repo root.
+
 ## [0.2.6]
 
 ### Fixed

@@ -1,7 +1,8 @@
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve as resolvePath } from "@std/path";
+import { DEFAULT_OUT_DIR } from "./constants.ts";
 import { CliError } from "./errors.ts";
-import { type Opt } from "./types.ts";
+import type { Opt } from "./types.ts";
 
 export function cli(args: readonly string[]): Opt {
   if (args.includes("--wasm") && args.includes("--no-wasm")) {
@@ -11,12 +12,11 @@ export function cli(args: readonly string[]): Opt {
   const a = parseArgs(args, {
     alias: { h: "help", targets: "platforms" },
     boolean: ["clean", "help", "list", "wasm"],
-    string: ["repo-dir", "out-dir", "scope", "version", "platforms"],
+    string: ["repo-dir", "out-dir", "version", "platforms"],
     negatable: ["wasm"],
     default: {
       "repo-dir": "./.build",
-      "out-dir": "./",
-      scope: "@ggpwnkthx",
+      "out-dir": DEFAULT_OUT_DIR,
       platforms: "all",
       wasm: true,
     },
@@ -26,6 +26,7 @@ export function cli(args: readonly string[]): Opt {
   });
 
   if (a.help) help();
+
   if (a._.length) {
     throw new CliError(`Unexpected positional argument: ${String(a._[0])}`);
   }
@@ -33,7 +34,6 @@ export function cli(args: readonly string[]): Opt {
   return {
     repo: resolvePath(str(a["repo-dir"], "--repo-dir")),
     out: resolvePath(str(a["out-dir"], "--out-dir")),
-    scope: scopeName(str(a.scope, "--scope")),
     version: a.version === undefined ? null : str(a.version, "--version"),
     platforms: str(a.platforms, "--platforms"),
     wasm: bool(a.wasm, "--wasm"),
@@ -43,20 +43,20 @@ export function cli(args: readonly string[]): Opt {
 }
 
 function help(): never {
-  console.log(`Build esbuild binaries and generate one unified JSR package.
+  console.log(`Build esbuild binaries into one flat release asset directory.
 
-Usage: deno run -A build.ts --scope @your-scope --clean
+Usage:
+  deno task build:binaries -- --version 0.28.0 --clean
 
 Options:
-  --scope <scope>       JSR scope. Default: @ggpwnkthx
   --repo-dir <path>     Local esbuild checkout. Default: ./.build
-  --out-dir <path>      Parent output directory. Default: ./
+  --out-dir <path>      Release asset output directory. Default: ./bin
   --version <version>   esbuild version, e.g. 0.28.0 or v0.28.0
   --platforms <list>    Comma-separated slugs, "wasm", or "all"
   --targets <list>      Alias for --platforms
   --wasm/--no-wasm      Include/skip main browser wasm
   --list                Print build plan
-  --clean               Remove generated artifacts first`);
+  --clean               Remove generated assets for selected targets first`);
   Deno.exit(0);
 }
 
@@ -68,14 +68,4 @@ function str(v: unknown, flag: string): string {
 function bool(v: unknown, flag: string): boolean {
   if (typeof v === "boolean") return v;
   throw new CliError(`Expected a boolean value for ${flag}.`);
-}
-
-function scopeName(s: string): string {
-  const t = s.trim();
-  if (!/^@[a-z0-9][a-z0-9_-]*$/i.test(t)) {
-    throw new CliError(
-      `Invalid JSR scope "${s}". Expected a value like "@your-scope".`,
-    );
-  }
-  return t.toLowerCase();
 }

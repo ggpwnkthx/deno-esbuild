@@ -1,6 +1,5 @@
-/core
-node_modules
+.build
 .env
-AGENTS.md
-.build/
+/bin
+/core
 deno-lock.json

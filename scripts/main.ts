@@ -1,16 +1,16 @@
 import { isAbsolute, join as joinPath, relative } from "@std/path";
+import { clean, writeReleaseAssets } from "./assets.ts";
 import { buildOne } from "./build.ts";
 import { cli } from "./cli.ts";
-import { NAME } from "./constants.ts";
 import { CliError, CommandError } from "./errors.ts";
 import { latest, normTag, repo } from "./git.ts";
 import { assertDefs, defs, order, pick, plan } from "./makefile.ts";
-import { clean, copyWasmExec, writePkg } from "./packaging.ts";
 import { isFile, removeIfExists, run, text } from "./process.ts";
-import { type Built, type Opt } from "./types.ts";
+import type { Built, Opt } from "./types.ts";
 
-async function list(o: Opt, pkg: string): Promise<void> {
+async function list(o: Opt): Promise<void> {
   const mf = joinPath(o.repo, "Makefile");
+
   if (!await isFile(mf)) {
     throw new CliError(
       `Cannot list build plan: Makefile not found at ${mf}.\nRun without --list to clone the esbuild repository and generate a Makefile first.`,
@@ -19,25 +19,26 @@ async function list(o: Opt, pkg: string): Promise<void> {
 
   const all = defs(mf);
   assertDefs(all);
-  plan(pick(all, o.platforms, o.wasm), pkg);
+  plan(pick(all, o.platforms, o.wasm), o.out);
 }
 
-function guard(pkg: string, repo: string): void {
-  const repoFromPkg = relative(pkg, repo);
+function guard(out: string, repo: string): void {
+  const repoFromOut = relative(out, repo);
+
   if (
-    repoFromPkg === "" ||
-    repoFromPkg === "." ||
-    (!repoFromPkg.startsWith("..") && !isAbsolute(repoFromPkg))
+    repoFromOut === "" ||
+    repoFromOut === "." ||
+    (!repoFromOut.startsWith("..") && !isAbsolute(repoFromOut))
   ) {
     throw new CliError(
-      `Refusing to use a package output directory that contains the esbuild repository.\npackageDir: ${pkg}\nrepoDir: ${repo}\nChoose a different --out-dir or --repo-dir.`,
+      `Refusing to use an output directory that contains the esbuild repository.\noutDir: ${out}\nrepoDir: ${repo}\nChoose a different --out-dir or --repo-dir.`,
     );
   }
 }
 
-async function build(o: Opt, pkg: string): Promise<void> {
-  guard(pkg, o.repo);
-  await Deno.mkdir(o.out, { recursive: true });
+async function build(o: Opt): Promise<void> {
+  guard(o.out, o.repo);
+
   await repo(o.repo);
 
   const tag = o.version === null ? await latest(o.repo) : normTag(o.version);
@@ -52,44 +53,43 @@ async function build(o: Opt, pkg: string): Promise<void> {
   assertDefs(all);
 
   const chosen = pick(all, o.platforms, o.wasm);
+
   if (!chosen.length) {
     throw new CliError(
       "No artifacts selected. Pass --platforms <list> or remove --no-wasm.",
     );
   }
 
-  const slugs = all.flatMap((d) => d.kind === "wasm" ? [] : [d.slug]);
-  if (o.clean) await clean(pkg, slugs);
+  if (o.clean) {
+    await clean(o.out, chosen);
+  } else {
+    await Deno.mkdir(o.out, { recursive: true });
+  }
 
   const tmp = await Deno.makeTempDir({ prefix: `esbuild-${ver}-` });
 
   try {
     const built: Built[] = [];
+
     for (const d of order(chosen)) {
-      built.push(await buildOne(o.repo, tmp, pkg, d));
+      built.push(await buildOne(o.repo, tmp, d));
     }
 
-    const goRoot = (await text("go", ["env", "GOROOT"], {})).trim();
-    await copyWasmExec(goRoot, pkg);
-
-    const manifest = await writePkg(
-      o.out,
-      o.scope,
-      ver,
-      tag,
-      commit,
-      built,
-      slugs,
-    );
+    const manifest = await writeReleaseAssets(o.out, ver, tag, commit, built);
 
     console.log(`Built esbuild ${ver} from ${tag} (${commit}).`);
-    console.log(`Wrote unified JSR package ${manifest.packageName} to ${pkg}:`);
-    for (const b of manifest.binaries) {
-      console.log(`- ${b.slug} -> ${joinPath(pkg, b.executablePath)}`);
-    }
+    console.log(`Wrote release assets to ${o.out}:`);
+
     if (manifest.wasm) {
-      console.log(`- wasm -> ${joinPath(pkg, manifest.wasm.path)}`);
+      console.log(`- wasm -> ${joinPath(o.out, manifest.wasm.fileName)}`);
     }
+
+    for (const b of manifest.binaries) {
+      console.log(`- ${b.slug} -> ${joinPath(o.out, b.fileName)}`);
+    }
+
+    console.log(`- manifest -> ${joinPath(o.out, "manifest.json")}`);
+    console.log(`- checksums -> ${joinPath(o.out, "SHA256SUMS")}`);
   } finally {
     await removeIfExists(tmp);
   }
@@ -98,9 +98,9 @@ async function build(o: Opt, pkg: string): Promise<void> {
 export async function main(args: readonly string[]): Promise<void> {
   try {
     const o = cli(args);
-    const pkg = joinPath(o.out, NAME);
-    if (o.list) await list(o, pkg);
-    else await build(o, pkg);
+
+    if (o.list) await list(o);
+    else await build(o);
   } catch (e: unknown) {
     console.error(
       e instanceof CliError || e instanceof CommandError

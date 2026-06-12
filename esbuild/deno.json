@@ -10,21 +10,10 @@
     "./shared/uint8array_json_parser": "./shared/uint8array_json_parser.ts",
     "./shared/worker": "./shared/worker.ts"
   },
-  "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.19"
-  },
   "tasks": {
     "fmt": "deno fmt .",
     "lint": "deno lint .",
     "check": "deno check .",
     "test": "deno test -A"
-  },
-  "publish": {
-    "exclude": [
-      "!bin",
-      "!manifest.json",
-      "!THIRD_PARTY_NOTICES.md",
-      "!wasm_exec.js"
-    ]
   }
 }
