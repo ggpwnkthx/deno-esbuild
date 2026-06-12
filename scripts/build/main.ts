@@ -106,8 +106,8 @@ export async function main(args: readonly string[]): Promise<void> {
       e instanceof CliError || e instanceof CommandError
         ? e.message
         : e instanceof Error
-          ? e.stack ?? e.message
-          : String(e),
+        ? e.stack ?? e.message
+        : String(e),
     );
     Deno.exit(1);
   }

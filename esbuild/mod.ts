@@ -315,7 +315,8 @@ async function install(): Promise<string> {
   const packagedHash = await sha256(packagedBinary);
   if (packagedHash !== binary.sha256) {
     throw new Error(
-      `Invalid esbuild binary ${JSON.stringify(binary.executablePath)
+      `Invalid esbuild binary ${
+        JSON.stringify(binary.executablePath)
       }: expected SHA-256 ${binary.sha256}, got ${packagedHash}`,
     );
   }
@@ -609,9 +610,9 @@ if (import.meta.main) {
   if (useWasm) {
     console.error(
       "esbuild CLI is not available in wasm mode: " +
-      `no native binary for Deno.build.target=${Deno.build.target}. ` +
-      "Use the programmatic API (e.g. `await build(...)`) on a platform with a native binary, " +
-      "or import from `@ggpwnkthx/esbuild/wasm` directly.",
+        `no native binary for Deno.build.target=${Deno.build.target}. ` +
+        "Use the programmatic API (e.g. `await build(...)`) on a platform with a native binary, " +
+        "or import from `@ggpwnkthx/esbuild/wasm` directly.",
     );
     Deno.exit(1);
   }
