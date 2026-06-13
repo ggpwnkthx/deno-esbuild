@@ -6,6 +6,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8]
+
+### Added
+
+- `esbuild/shared/go_wasm.ts`: typed Go WASM runtime shim adapted for Deno and
+  browser-like runtimes, including minimal `fs`, `process`, and `path` shims.
+- `esbuild/tests/binary.test.ts`: integration coverage for native binary
+  download/cache behavior, direct cached executable execution, CLI forwarding,
+  cache reuse without network access, and WASM transform/build execution.
+- Native binary installation now verifies downloaded release assets against
+  `SHA256SUMS` before caching them.
+- Native binary cache writes now use a temporary file plus rename to avoid
+  leaving partially-written executables behind on failed downloads or writes.
+- Additional release-asset mappings for `aarch64-pc-windows-msvc` and
+  `aarch64-unknown-freebsd`.
+
+### Changed
+
+- All packages bumped to `0.2.8`.
+- Bundled esbuild binary/API target updated from `0.28.0` to `0.28.1`.
+- Native binary installation now downloads flat release assets from this
+  repository's GitHub releases instead of downloading and extracting
+  platform-specific `@esbuild/*` npm tarballs.
+- Cached native binary filenames now use the release asset name directly, for
+  example `esbuild-linux-x64@0.28.1`.
+- WASM service startup now uses `esbuild/shared/worker.ts` as a module worker
+  instead of generating an inline blob from embedded worker source.
+- `esbuild/shared/worker.ts` now exports `createWorkerMessageHandler()` so the
+  WASM API can share the same worker bridge for both Worker-backed and
+  `worker: false` execution paths.
+- README documentation for the workspace and core package was substantially
+  expanded with package layout, permissions, supported release assets, cache
+  behavior, CLI usage, WASM usage, plugin options, wrapper options, and
+  development notes.
+- Script help and validation examples updated from esbuild `0.28.0` to `0.28.1`.
+- Deno plugin HTTPS fixture updated to reference `deno.land/x/esbuild@v0.28.1`.
+
+### Fixed
+
+- WASM worker startup now reports initialization errors as `Error` instances and
+  validates stdout/stdin message types before forwarding them to the esbuild
+  service.
+- Main-thread WASM execution now clears scheduled Go runtime timeouts on
+  termination.
+- Native binary downloads now fail fast with clearer HTTP and checksum errors.
+
+### Removed
+
+- npm tarball extraction helpers from `esbuild/mod.ts`, including the gzip/tar
+  extraction path used by the old `installFromNPM()` flow.
+- `NPM_CONFIG_REGISTRY` support for native binary installation; binaries now
+  come from this repository's GitHub release assets.
+
 ## [0.2.7]
 
 ### Added
