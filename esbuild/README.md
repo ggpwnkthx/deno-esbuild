@@ -1,60 +1,168 @@
 # @ggpwnkthx/esbuild
 
-A thin Deno wrapper around the official [esbuild](https://esbuild.github.io/)
-binary. Provides the full esbuild JavaScript API for Deno with automatic binary
-management.
+A Deno wrapper around the official [esbuild](https://esbuild.github.io/) binary.
+It exposes esbuild's asynchronous JavaScript API, starts the esbuild service on
+demand, and downloads/caches the matching native binary when needed.
+
+This package targets Deno. It does not use npm package metadata or npm registry
+downloads for its binary installation path.
 
 ## Installation
 
-No manual installation required. The package automatically downloads and caches
-the esbuild binary for your platform on first use.
+Import the package from JSR:
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 ```
+
+No manual binary installation is required for supported platforms. On first use,
+the package downloads the appropriate release asset, verifies it against the
+release `SHA256SUMS` file, stores it in the local cache, and then starts the
+esbuild service.
+
+## Required Deno permissions
+
+A first run usually needs these permissions:
+
+```bash
+deno run \
+  --allow-env \
+  --allow-net=github.com \
+  --allow-read \
+  --allow-write \
+  --allow-run \
+  build.ts
+```
+
+Why:
+
+| Permission               | Used for                                                                            |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| `--allow-env`            | Read `ESBUILD_BINARY_PATH`, cache-location variables, and home-directory variables. |
+| `--allow-net=github.com` | Download the binary and `SHA256SUMS` from GitHub releases on a cache miss.          |
+| `--allow-read`           | Check the binary cache and read temporary transform outputs.                        |
+| `--allow-write`          | Create/update the binary cache and temporary transform files.                       |
+| `--allow-run`            | Start the downloaded or configured esbuild executable.                              |
+
+After the binary is cached, you can reduce permissions for your own workflow.
+For example, using `ESBUILD_BINARY_PATH` with a preinstalled binary can avoid
+network and cache writes, but the binary still has to match the package's
+`version` because the JavaScript host and esbuild service perform a version
+handshake.
 
 ## Platform support
 
-| Platform | Architecture  | Package                 |
-| -------- | ------------- | ----------------------- |
-| macOS    | arm64         | `@esbuild/darwin-arm64` |
-| macOS    | x64           | `@esbuild/darwin-x64`   |
-| Linux    | arm64 (glibc) | `@esbuild/linux-arm64`  |
-| Linux    | x64 (glibc)   | `@esbuild/linux-x64`    |
-| Windows  | x64           | `@esbuild/win32-x64`    |
+The native entry point chooses a release asset from `Deno.build.target`:
 
-The correct binary is selected automatically based on `Deno.build.target`. If
-your platform is not listed, the package throws an error.
+| `Deno.build.target`         | Release asset             |
+| --------------------------- | ------------------------- |
+| `aarch64-apple-darwin`      | `esbuild-darwin-arm64`    |
+| `x86_64-apple-darwin`       | `esbuild-darwin-x64`      |
+| `aarch64-unknown-linux-gnu` | `esbuild-linux-arm64`     |
+| `x86_64-unknown-linux-gnu`  | `esbuild-linux-x64`       |
+| `x86_64-pc-windows-msvc`    | `esbuild-win32-x64.exe`   |
+| `aarch64-pc-windows-msvc`   | `esbuild-win32-arm64.exe` |
+| `aarch64-linux-android`     | `esbuild-android-arm64`   |
+| `x86_64-unknown-freebsd`    | `esbuild-freebsd-x64`     |
+| `aarch64-unknown-freebsd`   | `esbuild-freebsd-arm64`   |
+| `x86_64-alpine-linux-musl`  | `esbuild-linux-x64`       |
+
+Unsupported targets throw an `Unsupported platform: <target>` error.
+
+## Binary download and cache behavior
+
+The native entry point downloads assets from:
+
+```txt
+https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${version}/
+```
+
+For a given asset, it downloads both the executable and `SHA256SUMS`, verifies
+the executable's SHA-256 checksum, and writes the executable to the cache with
+executable permissions.
+
+Cache locations:
+
+| OS      | Cache directory                                                                        |
+| ------- | -------------------------------------------------------------------------------------- |
+| macOS   | `~/Library/Caches/esbuild/bin`                                                         |
+| Linux   | `$XDG_CACHE_HOME/esbuild/bin`, or `~/.cache/esbuild/bin`                               |
+| Windows | `%LOCALAPPDATA%/Cache/esbuild/bin`, or `%USERPROFILE%/AppData/Local/Cache/esbuild/bin` |
+
+The cached file name includes the esbuild binary version, for example:
+
+```txt
+esbuild-linux-x64@0.28.1
+```
+
+Set `ESBUILD_BINARY_PATH` to bypass download/cache lookup and run a specific
+binary:
+
+```bash
+ESBUILD_BINARY_PATH=/usr/local/bin/esbuild deno run \
+  --allow-env=ESBUILD_BINARY_PATH \
+  --allow-run=/usr/local/bin/esbuild \
+  build.ts
+```
 
 ## API overview
 
-All asynchronous API calls return promises and communicate with the esbuild
-service over stdio using the same protocol as the official Node.js bindings.
+All supported root APIs are asynchronous except for the exported sync variants,
+which are present for API compatibility but throw in Deno.
+
+The root entry point exports:
+
+- `version`
+- `build`
+- `context`
+- `transform`
+- `formatMessages`
+- `analyzeMetafile`
+- `initialize`
+- `stop`
+- `buildSync`, `transformSync`, `formatMessagesSync`, `analyzeMetafileSync` as
+  throwing compatibility stubs
+
+### `version`
+
+The esbuild binary version string used by this package.
+
+```ts
+import { version } from "jsr:@ggpwnkthx/esbuild";
+
+console.log(version);
+```
 
 ### `build`
 
-Bundles a set of entry points into output files.
+Runs an esbuild build.
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
-const result = await esbuild.build({
-  entryPoints: ["src/index.ts"],
-  bundle: true,
-  outfile: "dist/bundle.js",
-  minify: true,
-});
+try {
+  const result = await esbuild.build({
+    entryPoints: ["src/index.ts"],
+    bundle: true,
+    outfile: "dist/bundle.js",
+    minify: true,
+  });
 
-console.log("Build completed:", result);
+  console.log("Build completed with", result.warnings.length, "warnings");
+} finally {
+  await esbuild.stop();
+}
 ```
+
+Call `stop()` when finished. The native service is kept alive between calls for
+performance, and Deno does not automatically clean up this child process.
 
 ### `context`
 
-Creates a long-lived build context with support for watch mode and a local
-development server.
+Creates a long-lived build context for rebuilds, watch mode, and serve mode.
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
 const ctx = await esbuild.context({
   entryPoints: ["src/index.ts"],
@@ -62,190 +170,218 @@ const ctx = await esbuild.context({
   outdir: "dist",
 });
 
-// Watch for file changes
-await ctx.watch();
-console.log("Watching for changes...");
+try {
+  await ctx.watch();
 
-// Start a local dev server
-const server = await ctx.serve({ servedir: "dist", port: 8000 });
-console.log(`Server running at http://localhost:${server.port}`);
+  const server = await ctx.serve({
+    servedir: "dist",
+    port: 8000,
+  });
 
-// When done, clean up
-await ctx.dispose();
+  console.log(`Serving on http://localhost:${server.port}`);
+} finally {
+  await ctx.dispose();
+  await esbuild.stop();
+}
 ```
 
 ### `transform`
 
-Transforms a single input string or `Uint8Array` without touching the
-filesystem.
+Transforms a single string or `Uint8Array`.
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
-const result = await esbuild.transform("const x: number = 1;", {
-  loader: "ts",
-  minify: true,
-});
+try {
+  const result = await esbuild.transform("const x: number = 1;", {
+    loader: "ts",
+    minify: true,
+  });
 
-console.log(result.code);
+  console.log(result.code);
+} finally {
+  await esbuild.stop();
+}
 ```
+
+For small inputs, the native implementation sends the input over the service
+protocol. For inputs larger than 1 MiB, it tries to use a temporary file for
+better performance and falls back to protocol transfer if temporary-file I/O is
+unavailable.
 
 ### `formatMessages`
 
-Formats esbuild diagnostic messages for terminal output.
+Formats esbuild diagnostic messages.
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
-const messages = [
-  {
-    text: "Something went wrong",
-    location: {
-      file: "src/index.ts",
-      line: 1,
-      column: 0,
-      lineText: "",
-      length: 0,
-    },
-  },
-];
-const formatted = await esbuild.formatMessages(messages, { kind: "error" });
+const formatted = await esbuild.formatMessages(
+  [{ text: "Unexpected token" }],
+  { kind: "error" },
+);
+
 console.log(formatted.join("\n"));
 ```
 
 ### `analyzeMetafile`
 
-Pretty-prints an esbuild metafile for inspection.
+Formats a metafile returned by a build with `metafile: true`.
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
-const result = await esbuild.build({
-  entryPoints: ["src/index.ts"],
-  metafile: true,
-});
-const analysis = await esbuild.analyzeMetafile(result.metafile);
-console.log(analysis);
+try {
+  const result = await esbuild.build({
+    entryPoints: ["src/index.ts"],
+    bundle: true,
+    metafile: true,
+    write: false,
+  });
+
+  const analysis = await esbuild.analyzeMetafile(result.metafile, {
+    verbose: true,
+  });
+
+  console.log(analysis);
+} finally {
+  await esbuild.stop();
+}
 ```
 
 ### `initialize`
 
-Pre-initializes the esbuild service. Usually not needed as the service starts
-lazily on first API call.
+Pre-starts the native esbuild service. This is optional because the service
+starts lazily on the first API call.
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
 await esbuild.initialize({});
 ```
 
+For the native entry point, browser/WASM-only options such as `wasmURL`,
+`wasmModule`, and `worker` throw if provided. `initialize()` can only be called
+once.
+
 ### `stop`
 
-Terminates the esbuild child process and releases resources.
+Stops the native esbuild child process.
 
-**Important:** Unlike Node.js, Deno does not automatically terminate child
-processes on exit. You **must** call `esbuild.stop()` explicitly when you are
-done using esbuild, or your Deno process will hang indefinitely. This is
-particularly critical in tests — Deno fails tests that leave child processes
-running.
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild";
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
-
-// ... use esbuild ...
-
-await esbuild.stop();
+try {
+  await esbuild.build({
+    entryPoints: ["src/index.ts"],
+    bundle: true,
+    outfile: "dist/index.js",
+  });
+} finally {
+  await esbuild.stop();
+}
 ```
 
-### Exported types
+Always call and await `stop()` when the native entry point is done, especially
+in `Deno.test`, because Deno reports leaked child processes as test failures.
 
-The package exports all esbuild types for use in TypeScript:
+## Exported TypeScript types
 
-```typescript
+The root entry point re-exports this subset of types:
+
+```ts
 import type {
   BuildOptions,
-  BuildResult,
-  Message,
+  Loader,
+  OnLoadArgs,
+  OnLoadResult,
+  OnResolveArgs,
+  OnResolveResult,
+  Platform,
   Plugin,
   PluginBuild,
   TransformOptions,
+} from "jsr:@ggpwnkthx/esbuild";
+```
+
+Additional API types are available from the shared types subpath:
+
+```ts
+import type {
+  AnalyzeMetafileOptions,
+  BuildContext,
+  BuildFailure,
+  BuildResult,
+  FormatMessagesOptions,
+  Message,
+  Metafile,
+  OutputFile,
   TransformResult,
-} from "@ggpwnkthx/esbuild";
+} from "jsr:@ggpwnkthx/esbuild/shared/types";
 ```
 
 ## Synchronous APIs
 
-The synchronous APIs (`buildSync`, `transformSync`, `formatMessagesSync`,
-`analyzeMetafileSync`) are **not supported in Deno** and throw errors if called:
+These functions are exported but intentionally unsupported in Deno:
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild";
+- `buildSync`
+- `transformSync`
+- `formatMessagesSync`
+- `analyzeMetafileSync`
 
-esbuild.buildSync({ entryPoints: ["src/index.ts"] });
-// Error: The "buildSync" API does not work in Deno
+Each one throws an error such as:
+
+```txt
+The "buildSync" API does not work in Deno
 ```
 
-This is a fundamental limitation because synchronous APIs require the Go binary
-to block on stdin/stdout, which Deno's permission model does not allow. Use the
-async APIs instead.
+Use the asynchronous APIs instead.
 
-## WASM variant
+## WASM entry point
 
-For environments where spawning a subprocess is not possible, import the WASM
-variant:
+Use the WASM entry point when spawning a subprocess is not available:
 
-```typescript
-import * as esbuild from "@ggpwnkthx/esbuild/wasm";
+```ts
+import * as esbuild from "jsr:@ggpwnkthx/esbuild/wasm";
 
-// Must call initialize with a wasmURL or wasmModule before other API calls
 await esbuild.initialize({
   wasmURL: new URL("./esbuild.wasm", import.meta.url),
 });
 
-const result = await esbuild.build({ entryPoints: ["./src/index.ts"] });
+const result = await esbuild.transform("let x: number = 1", {
+  loader: "ts",
+});
+
+console.log(result.code);
+
+await esbuild.stop();
 ```
 
-Note: The WASM variant requires you to supply the `esbuild.wasm` file yourself
-and call `initialize()` before use.
+The WASM entry point defaults to running in a worker. Pass `worker: false` to
+run on the current thread. It has no file-system-backed service, so APIs that
+require native filesystem functionality, such as `watch()` and `serve()`, are
+not available there.
 
-## Environment variables
-
-| Variable              | Description                                                                                   | Default                      |
-| --------------------- | --------------------------------------------------------------------------------------------- | ---------------------------- |
-| `ESBUILD_BINARY_PATH` | Override the path to the esbuild binary. Use this to supply your own binary or a cached copy. | —                            |
-| `NPM_CONFIG_REGISTRY` | npm registry URL for downloading the esbuild package.                                         | `https://registry.npmjs.org` |
-
-### Example: Offline/cached binary
-
-```bash
-ESBUILD_BINARY_PATH=/usr/local/bin/esbuild deno run --allow-net --allow-run build.ts
-```
-
-### Example: Private registry
-
-```bash
-NPM_CONFIG_REGISTRY=https://my-private-registry.example.com deno run --allow-net build.ts
-```
-
-## Binary caching
-
-The esbuild binary is downloaded from npm on first use and cached locally:
-
-| OS      | Cache location                                         |
-| ------- | ------------------------------------------------------ |
-| macOS   | `~/Library/Caches/esbuild/bin`                         |
-| Linux   | `$XDG_CACHE_HOME/esbuild/bin` → `~/.cache/esbuild/bin` |
-| Windows | `%LOCALAPPDATA%\Cache\esbuild\bin`                     |
-
-The cache path follows the
-[XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html)
-on Linux. The binary is stored with a version suffix (e.g.,
-`esbuild-darwin-arm64@0.28.0`) so multiple versions can coexist.
+The package does not bundle `esbuild.wasm`; provide it yourself via `wasmURL` or
+`wasmModule`.
 
 ## CLI usage
 
-The package can also be used as a CLI tool by running the module directly:
+Run the native entry point directly to forward CLI arguments to the esbuild
+binary:
 
 ```bash
-deno run --allow-run -A jsr:@ggpwnkthx/esbuild --bundle --outfile=dist/bundle.js src/index.ts
+deno run \
+  --allow-env \
+  --allow-net=github.com \
+  --allow-read \
+  --allow-write \
+  --allow-run \
+  jsr:@ggpwnkthx/esbuild \
+  --bundle \
+  --outfile=dist/bundle.js \
+  src/index.ts
 ```
+
+The first run may need network and cache permissions. Once the binary is cached,
+you can narrow permissions to match your environment and command.

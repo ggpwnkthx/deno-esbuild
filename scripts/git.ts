@@ -42,7 +42,7 @@ export function normTag(v: string): string {
   const version = stableVersion(v);
   if (!version) {
     throw new CliError(
-      `Invalid esbuild version "${v}". Expected a stable version like 0.28.0.`,
+      `Invalid esbuild version "${v}". Expected a stable version like 0.28.1.`,
     );
   }
   return `v${format(version)}`;

@@ -396,7 +396,7 @@ Deno.test({
       // Import a well-known HTTPS URL - esbuild CDN is already cached
       await Deno.writeTextFile(
         mainFile,
-        `import * as esbuild from "https://deno.land/x/esbuild@v0.28.0/mod.js";\nexport { esbuild };`,
+        `import * as esbuild from "https://deno.land/x/esbuild@v0.28.1/mod.js";\nexport { esbuild };`,
       );
 
       const result = await esbuild.build({

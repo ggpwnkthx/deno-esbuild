@@ -46,12 +46,12 @@ function help(): never {
   console.log(`Build esbuild binaries into one flat release asset directory.
 
 Usage:
-  deno task build:binaries -- --version 0.28.0 --clean
+  deno task build:binaries -- --version 0.28.1 --clean
 
 Options:
   --repo-dir <path>     Local esbuild checkout. Default: ./.build
   --out-dir <path>      Release asset output directory. Default: ./bin
-  --version <version>   esbuild version, e.g. 0.28.0 or v0.28.0
+  --version <version>   esbuild version, e.g. 0.28.1 or v0.28.1
   --platforms <list>    Comma-separated slugs, "wasm", or "all"
   --targets <list>      Alias for --platforms
   --wasm/--no-wasm      Include/skip main browser wasm

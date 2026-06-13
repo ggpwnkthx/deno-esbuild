@@ -30,20 +30,26 @@
  * ```
  */
 import type * as types from "./shared/types.ts";
+import type {
+  GoWasmRuntimeHandle,
+  WorkerInputMessage,
+} from "./shared/worker.ts";
 import * as common from "./shared/common.ts";
 import * as ourselves from "./wasm.ts";
 import { version } from "./mod.ts";
 
-interface Go {
-  _scheduledTimeouts: Map<number, ReturnType<typeof setTimeout>>;
+interface WorkerMessageEvent {
+  readonly data: unknown;
 }
 
-declare let WEB_WORKER_SOURCE_CODE: string;
-declare let WEB_WORKER_FUNCTION: (
-  postMessage: (data: Uint8Array) => void,
-) => (event: { data: Uint8Array | ArrayBuffer | WebAssembly.Module }) => Go;
+interface WorkerLike {
+  postMessage(message: WorkerInputMessage): void;
+  terminate(): void;
+  onmessage: ((event: WorkerMessageEvent) => void) | null;
+  onerror?: ((event: ErrorEvent) => void) | null;
+}
 
-/** The esbuild binary version string (e.g. "0.28.0"). @see ../mod.ts */
+/** The esbuild binary version string (e.g. "0.28.1"). @see ../mod.ts */
 export { version };
 
 /**
@@ -207,53 +213,81 @@ const startRunningService = async (
   wasmModule: WebAssembly.Module | undefined,
   useWorker: boolean,
 ): Promise<Service> => {
-  let worker: {
-    // deno-lint-ignore no-explicit-any
-    onmessage?: ((event: any) => void) | null | undefined;
-    postMessage: (data: Uint8Array | ArrayBuffer | WebAssembly.Module) => void;
-    terminate: () => void;
-  };
+  let worker: WorkerLike;
 
   if (useWorker) {
-    // Run esbuild off the main thread
-    const blob = new Blob(
-      [`onmessage=${WEB_WORKER_SOURCE_CODE}(postMessage)`],
-      {
-        type: "text/javascript",
+    // Run esbuild off the main thread.
+    const nativeWorker = new Worker(
+      new URL("./shared/worker.ts", import.meta.url).href,
+      { type: "module" },
+    );
+
+    const workerAdapter: WorkerLike = {
+      onmessage: null,
+      onerror: null,
+
+      postMessage(message) {
+        nativeWorker.postMessage(message);
       },
-    );
-    worker = new Worker(URL.createObjectURL(blob), { type: "module" });
+
+      terminate() {
+        nativeWorker.terminate();
+      },
+    };
+
+    nativeWorker.onmessage = (event: MessageEvent<unknown>) => {
+      workerAdapter.onmessage?.({ data: event.data });
+    };
+
+    nativeWorker.onerror = (event: ErrorEvent) => {
+      workerAdapter.onerror?.(event);
+    };
+
+    worker = workerAdapter;
   } else {
-    // Run esbuild on the main thread
-    const onmessage = WEB_WORKER_FUNCTION((data: Uint8Array) =>
-      worker.onmessage!({ data })
-    );
-    let go: Go | undefined;
+    // Run esbuild on the current thread.
+    const { createWorkerMessageHandler } = await import("./shared/worker.ts");
+    let go: GoWasmRuntimeHandle | undefined;
+    const onmessage = createWorkerMessageHandler((data) => {
+      worker.onmessage?.({ data });
+    });
+
     worker = {
       onmessage: null,
-      postMessage: (data) => setTimeout(() => go = onmessage({ data })),
+      postMessage: (data) => {
+        setTimeout(() => {
+          go = onmessage({ data });
+        });
+      },
       terminate() {
-        if (go) {
-          for (const timeout of go._scheduledTimeouts.values()) {
-            clearTimeout(timeout);
-          }
+        if (!go) return;
+        for (const timeout of go._scheduledTimeouts.values()) {
+          clearTimeout(timeout);
         }
       },
     };
   }
 
-  let firstMessageResolve: (value: void) => void;
-  // deno-lint-ignore no-explicit-any
-  let firstMessageReject: (error: any) => void;
+  let firstMessageResolve!: () => void;
+  let firstMessageReject!: (error: Error) => void;
 
-  const firstMessagePromise = new Promise((resolve, reject) => {
+  const firstMessagePromise = new Promise<void>((resolve, reject) => {
     firstMessageResolve = resolve;
     firstMessageReject = reject;
   });
 
   worker.onmessage = ({ data: error }) => {
-    worker.onmessage = ({ data }) => readFromStdout(data);
-    if (error) firstMessageReject(error);
+    worker.onmessage = ({ data }) => {
+      if (data instanceof Uint8Array) {
+        readFromStdout(data);
+      } else if (data instanceof ArrayBuffer) {
+        readFromStdout(new Uint8Array(data));
+      } else {
+        throw new Error("Expected stdout data to be a Uint8Array");
+      }
+    };
+
+    if (error) firstMessageReject(toError(error));
     else firstMessageResolve();
   };
 
@@ -351,3 +385,7 @@ const startRunningService = async (
       ),
   };
 };
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}

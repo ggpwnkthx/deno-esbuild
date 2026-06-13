@@ -56,7 +56,7 @@ export type { TransformOptions } from "./shared/types.ts";
 import * as common from "./shared/common.ts";
 import * as ourselves from "./mod.ts";
 
-/** The esbuild binary version string (e.g. "0.28.0").
+/** The esbuild binary version string (e.g. "0.28.1").
  * @see https://github.com/evanw/esbuild/releases */
 export const version = common.ESBUILD_VERSION;
 
@@ -227,36 +227,120 @@ export const initialize: typeof types.initialize = async (options) => {
   initializeWasCalled = true;
 };
 
-async function installFromNPM(name: string, subpath: string): Promise<string> {
-  const { finalPath, finalDir } = getCachePath(name);
+const RELEASE_BASE_URL =
+  `https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${version}`;
+
+interface ReleaseBinary {
+  assetName: string;
+}
+
+async function installFromRelease(assetName: string): Promise<string> {
+  const { finalPath, finalDir } = getCachePath(assetName);
+
   try {
     await Deno.stat(finalPath);
     return finalPath;
   } catch {
-    // Cache miss, need to download
+    // Cache miss, download below
   }
 
-  const npmRegistry = Deno.env.get("NPM_CONFIG_REGISTRY") ||
-    "https://registry.npmjs.org";
-  const url = `${npmRegistry}/${name}/-/${
-    name.replace("@esbuild/", "")
-  }-${version}.tgz`;
-  const buffer = await fetch(url).then((r) => r.arrayBuffer());
-  const executable = await extractFileFromTarGzip(
-    new Uint8Array(buffer),
-    subpath,
-  );
+  const assetURL = `${RELEASE_BASE_URL}/${assetName}`;
+  const sumsURL = `${RELEASE_BASE_URL}/SHA256SUMS`;
+
+  const [executable, checksumText] = await Promise.all([
+    fetchBytes(assetURL, assetName),
+    fetchText(sumsURL, "SHA256SUMS"),
+  ]);
+
+  const expectedHash = findExpectedSHA256(checksumText, assetName);
+  const actualHash = await sha256Hex(executable);
+
+  if (actualHash !== expectedHash) {
+    throw new Error(
+      `Checksum mismatch for ${assetName}: expected ${expectedHash}, got ${actualHash}`,
+    );
+  }
 
   await Deno.mkdir(finalDir, {
     recursive: true,
-    mode: 0o700, // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    mode: 0o700,
   });
 
-  await Deno.writeFile(finalPath, executable, { mode: 0o755 });
+  const tempPath = `${finalPath}.${crypto.randomUUID()}.tmp`;
+
+  try {
+    await Deno.writeFile(tempPath, executable, { mode: 0o755 });
+    if (Deno.build.os !== "windows") await Deno.chmod(tempPath, 0o755);
+    await Deno.rename(tempPath, finalPath);
+  } catch (err) {
+    try {
+      await Deno.remove(tempPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw err;
+  }
+
   return finalPath;
 }
 
-function getCachePath(name: string): { finalPath: string; finalDir: string } {
+async function fetchBytes(url: string, name: string): Promise<Uint8Array> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to download ${name}: HTTP ${response.status} ${response.statusText}`,
+    );
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function fetchText(url: string, name: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to download ${name}: HTTP ${response.status} ${response.statusText}`,
+    );
+  }
+  return await response.text();
+}
+
+function findExpectedSHA256(checksumText: string, assetName: string): string {
+  for (const line of checksumText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    // Standard sha256sum format:
+    // <64-hex-digest><spaces><filename>
+    const match = /^([a-fA-F0-9]{64})\s+\*?(.+)$/.exec(trimmed);
+    if (match && match[2] === assetName) {
+      return match[1].toLowerCase();
+    }
+
+    // Also tolerate:
+    // sha256:<64-hex-digest> <filename>
+    const alternate = /^sha256:([a-fA-F0-9]{64})\s+(.+)$/.exec(trimmed);
+    if (alternate && alternate[2] === assetName) {
+      return alternate[1].toLowerCase();
+    }
+  }
+
+  throw new Error(`Could not find SHA-256 checksum for ${assetName}`);
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const copy = new Uint8Array(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", copy.buffer);
+
+  return Array.from(
+    new Uint8Array(digest),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+function getCachePath(assetName: string): {
+  finalPath: string;
+  finalDir: string;
+} {
   let baseDir: string | undefined;
 
   switch (Deno.build.os) {
@@ -275,7 +359,6 @@ function getCachePath(name: string): { finalPath: string; finalDir: string } {
       break;
 
     case "linux": {
-      // https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
       const xdg = Deno.env.get("XDG_CACHE_HOME");
       if (xdg && xdg[0] === "/") baseDir = xdg;
       break;
@@ -288,46 +371,10 @@ function getCachePath(name: string): { finalPath: string; finalDir: string } {
   }
 
   if (!baseDir) throw new Error("Failed to find cache directory");
-  const finalDir = baseDir + `/esbuild/bin`;
-  const finalPath = finalDir + `/${name.replace("/", "-")}@${version}`;
+
+  const finalDir = `${baseDir}/esbuild/bin`;
+  const finalPath = `${finalDir}/${assetName}@${version}`;
   return { finalPath, finalDir };
-}
-
-async function gunzip(buffer: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream("gzip");
-  const writer = ds.writable.getWriter();
-  writer.write(buffer as BufferSource);
-  writer.close();
-  const result = await new Response(ds.readable).arrayBuffer();
-  return new Uint8Array(result);
-}
-
-async function extractFileFromTarGzip(
-  buffer: Uint8Array,
-  file: string,
-): Promise<Uint8Array> {
-  try {
-    buffer = await gunzip(buffer);
-    // deno-lint-ignore no-explicit-any
-  } catch (err: any) {
-    throw new Error(
-      `Invalid gzip data in archive: ${err && err.message || err}`,
-    );
-  }
-  const str = (i: number, n: number) =>
-    String.fromCharCode(...buffer.subarray(i, i + n)).replace(/\0.*$/, "");
-  let offset = 0;
-  file = `package/${file}`;
-  while (offset < buffer.length) {
-    const name = str(offset, 100);
-    const size = parseInt(str(offset + 124, 12), 8);
-    offset += 512;
-    if (!isNaN(size)) {
-      if (name === file) return buffer.subarray(offset, offset + size);
-      offset += (size + 511) & ~511;
-    }
-  }
-  throw new Error(`Could not find ${JSON.stringify(file)} in archive`);
 }
 
 async function install(): Promise<string> {
@@ -335,36 +382,28 @@ async function install(): Promise<string> {
   if (overridePath) return overridePath;
 
   const platformKey = Deno.build.target;
-  const knownWindowsPackages: Record<string, string> = {
-    "x86_64-pc-windows-msvc": "@esbuild/win32-x64",
-  };
-  const knownUnixlikePackages: Record<string, string> = {
-    // These are the only platforms that Deno supports
-    "aarch64-apple-darwin": "@esbuild/darwin-arm64",
-    "aarch64-unknown-linux-gnu": "@esbuild/linux-arm64",
-    "x86_64-apple-darwin": "@esbuild/darwin-x64",
-    "x86_64-unknown-linux-gnu": "@esbuild/linux-x64",
+  const knownReleaseAssets: Record<string, ReleaseBinary> = {
+    // Deno-supported platforms
+    "aarch64-apple-darwin": { assetName: "esbuild-darwin-arm64" },
+    "x86_64-apple-darwin": { assetName: "esbuild-darwin-x64" },
+    "aarch64-unknown-linux-gnu": { assetName: "esbuild-linux-arm64" },
+    "x86_64-unknown-linux-gnu": { assetName: "esbuild-linux-x64" },
+    "x86_64-pc-windows-msvc": { assetName: "esbuild-win32-x64.exe" },
 
-    // These platforms are not supported by Deno
-    "aarch64-linux-android": "@esbuild/android-arm64",
-    "x86_64-unknown-freebsd": "@esbuild/freebsd-x64",
-    "x86_64-alpine-linux-musl": "@esbuild/linux-x64",
+    // Extra release assets, kept for compatibility if Deno exposes these targets
+    "aarch64-pc-windows-msvc": { assetName: "esbuild-win32-arm64.exe" },
+    "aarch64-linux-android": { assetName: "esbuild-android-arm64" },
+    "x86_64-unknown-freebsd": { assetName: "esbuild-freebsd-x64" },
+    "aarch64-unknown-freebsd": { assetName: "esbuild-freebsd-arm64" },
+    "x86_64-alpine-linux-musl": { assetName: "esbuild-linux-x64" },
   };
 
-  // Pick a package to install
-  if (platformKey in knownWindowsPackages) {
-    return await installFromNPM(
-      knownWindowsPackages[platformKey],
-      "esbuild.exe",
-    );
-  } else if (platformKey in knownUnixlikePackages) {
-    return await installFromNPM(
-      knownUnixlikePackages[platformKey],
-      "bin/esbuild",
-    );
-  } else {
+  const releaseBinary = knownReleaseAssets[platformKey];
+  if (!releaseBinary) {
     throw new Error(`Unsupported platform: ${platformKey}`);
   }
+
+  return await installFromRelease(releaseBinary.assetName);
 }
 
 interface Service {
