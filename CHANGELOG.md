@@ -9,6 +9,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### fix(ci): checkout repo before resolving local publish action
+
+- `.github/workflows/publish.yml`: each of the three jobs (`publish-base`, `publish-deps`,
+  `publish-wrappers`) now runs `actions/checkout@v6` (with
+  `ref: ${{ github.event.workflow_run.head_sha }}` when triggered by `workflow_run`, or a plain
+  checkout when triggered by `workflow_dispatch`), `denoland/setup-deno@v2`, and `actions/cache@v5`
+  before the `uses: ./.github/actions/publish-package` step. The `workflow_run` trigger starts the
+  runner with an empty workspace, so GitHub could not resolve the local composite action's
+  `action.yml` and the publish job failed immediately with
+  `Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '.github/actions/publish-package'`.
+  Moving the checkout to the calling workflow ensures the local action is on disk before the runner
+  tries to resolve it.
+- `.github/actions/publish-package/action.yml`: slimmed down to just the package-selection filter
+  and the `deno publish` invocation. The checkout, setup-deno, and cache steps previously inlined
+  inside the composite action were too late — they ran only after the action had already failed to
+  resolve — and have moved up into `publish.yml` alongside the new checkout.
+
+## bcf90c - 2026-07-24
+
 ### docs(changelog): record 0.2.9 notes across all packages
 
 - Added a `0.2.9` entry to every package CHANGELOG covering the synchronized version bump, the
