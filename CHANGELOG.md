@@ -9,6 +9,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### chore(ci): publish via workflow_run and split by dependency order
+
+- `.github/workflows/publish.yml` now triggers on `workflow_run` (CI success) instead of
+  `push: tags: v*.*.*`, so packages are only published when CI is green. The trigger still accepts
+  `workflow_dispatch` for manual single-package releases.
+- Split the single `publish` job into three ordered jobs that publish in JSR dependency order:
+  `publish-base` (`packages/esbuild`), `publish-deps` (`packages/wrappers/shared`,
+  `packages/plugins/deno`, `packages/plugins/css`), and `publish-wrappers`
+  (`packages/wrappers/hono`, `packages/wrappers/oak`). Each stage is gated by `needs:` on the
+  previous job.
+- Extracted the per-package publish steps into a new composite action at
+  `.github/actions/publish-package/action.yml` that checks out the CI head SHA when triggered by
+  `workflow_run` (or the branch when triggered by `workflow_dispatch`), sets up Deno, restores the
+  dependency cache, honors the `package` input filter, and runs `deno publish`.
+- `.github/workflows/ci.yml`: bumped `actions/cache` from `@v4` to `@v5`, and hoisted `DENO_VERSION`
+  from step-level to job-level `env` so the `setup-deno` step and the `deno` invocation share the
+  same value.
+- `.github/workflows/ci.yml`: added `--allow-run` to the `test` matrix entries for `plugins/deno`,
+  `plugins/css`, `wrappers/hono`, and `wrappers/oak` (these packages spawn esbuild subprocesses in
+  their tests).
+- `packages/wrappers/shared/deno.json`: added `@std/assert` to `imports`.
+- `packages/wrappers/shared/tests/mod.test.ts`: new unit tests covering `shouldTranspile` (default
+  and custom extensions), the `DEFAULT_EXTENSIONS` / `DEFAULT_CONTENT_TYPE` constants, and
+  `createTranspiler` cache behavior (mocks `EsbuildLike` to verify `cache: true` reuses prior
+  transforms, the default `cache: false` re-runs, and `clearCache()` empties stored entries).
+- `deno.lock`: pinned `jsr:@ggpwnkthx/esbuild-wrapper-shared` from `@1` to `@~0.2.10` in the
+  `packages/wrappers/hono` and `packages/wrappers/oak` workspace entries to match the actual
+  published version.
+
+## 0b1e8ee - 2026-07-24
+
 ### refactor(wrappers): isolate transpiler state per middleware instance
 
 - Added `.github/workflows/ci.yml`: a package-matrix CI workflow that runs `fmt`, `lint`, `check`,

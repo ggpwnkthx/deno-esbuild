@@ -1,0 +1,40 @@
+name: "Publish Deno package"
+description: "Checkout, set up Deno, and run deno publish for one workspace member. Honors the workflow_dispatch 'package' input."
+inputs:
+  package:
+    description: "Workspace member directory (e.g. packages/esbuild)."
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Checkout CI run commit
+      if: ${{ github.event_name == 'workflow_run' }}
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event.workflow_run.head_sha }}
+
+    - name: Checkout
+      if: ${{ github.event_name == 'workflow_dispatch' }}
+      uses: actions/checkout@v6
+
+    - uses: denoland/setup-deno@v2
+      with:
+        deno-version: ${{ env.DENO_VERSION }}
+
+    - name: Cache Deno dependencies
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/deno
+        key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+        restore-keys: ${{ runner.os }}-deno-
+
+    - name: Select package
+      if: ${{ github.event.inputs.package != '' && github.event.inputs.package != inputs.package }}
+      shell: bash
+      run: echo "Skipping ${{ inputs.package }} (selected: ${{ github.event.inputs.package }})"
+
+    - name: Publish
+      if: ${{ github.event.inputs.package == '' || github.event.inputs.package == inputs.package }}
+      working-directory: ${{ inputs.package }}
+      shell: bash
+      run: deno publish

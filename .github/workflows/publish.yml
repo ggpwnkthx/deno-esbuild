@@ -1,9 +1,9 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       package:
@@ -15,8 +15,9 @@ env:
   DENO_VERSION: "2.9.4"
 
 jobs:
-  publish:
-    name: publish (${{ matrix.package }})
+  publish-base:
+    name: publish-base (${{ matrix.package }})
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,32 +25,48 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - package: packages/esbuild
-          - package: packages/wrappers/shared
-          - package: packages/plugins/deno
-          - package: packages/plugins/css
-          - package: packages/wrappers/hono
-          - package: packages/wrappers/oak
+        package:
+          - packages/esbuild
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: denoland/setup-deno@v2
+      - uses: ./.github/actions/publish-package
         with:
-          deno-version: ${{ env.DENO_VERSION }}
+          package: ${{ matrix.package }}
 
-      - name: Cache Deno dependencies
-        uses: actions/cache@v4
+  publish-deps:
+    name: publish-deps (${{ matrix.package }})
+    needs: publish-base
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - packages/wrappers/shared
+          - packages/plugins/deno
+          - packages/plugins/css
+    steps:
+      - uses: ./.github/actions/publish-package
         with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
-          restore-keys: ${{ runner.os }}-deno-
+          package: ${{ matrix.package }}
 
-      - name: Select package
-        if: ${{ inputs.package != '' && inputs.package != matrix.package }}
-        run: echo "Skipping ${{ matrix.package }} (selected: ${{ inputs.package }})" && exit 0
-
-      - name: Publish
-        if: ${{ inputs.package == '' || inputs.package == matrix.package }}
-        working-directory: ${{ matrix.package }}
-        run: deno publish
+  publish-wrappers:
+    name: publish-wrappers (${{ matrix.package }})
+    needs: publish-deps
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - packages/wrappers/hono
+          - packages/wrappers/oak
+    steps:
+      - uses: ./.github/actions/publish-package
+        with:
+          package: ${{ matrix.package }}
