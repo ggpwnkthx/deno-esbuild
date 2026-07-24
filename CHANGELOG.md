@@ -9,6 +9,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### fix(ci): quote composite action `run` value to avoid YAML mapping parse error
+
+- `.github/actions/publish-package/action.yml`: wrapped the `Select package` step's `run` value in
+  single quotes. The previous value
+  `run: echo "Skipping ${{ inputs.package }} (selected: ${{ github.event.inputs.package }})"` was
+  misevaluated by the runner's YAML parser at column 58: the `:` after `selected` followed by a
+  `${{ ... }}` expression was read as a nested mapping, producing
+  `System.ArgumentException: Unexpected type '' encountered while reading 'action manifest root'.
+  The type 'MappingToken' was expected.`
+  and failing the `publish-base (packages/esbuild)` job before any step ran. Single-quoting the
+  whole scalar makes the YAML parser treat it as a literal string while preserving the inner
+  `${{ ... }}` expressions for GitHub Actions to evaluate.
+
+## 372a70e - 2026-07-24
+
 ### fix(ci): checkout repo before resolving local publish action
 
 - `.github/workflows/publish.yml`: each of the three jobs (`publish-base`, `publish-deps`,

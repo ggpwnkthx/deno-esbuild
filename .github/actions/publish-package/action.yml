@@ -10,7 +10,7 @@ runs:
     - name: Select package
       if: ${{ github.event.inputs.package != '' && github.event.inputs.package != inputs.package }}
       shell: bash
-      run: echo "Skipping ${{ inputs.package }} (selected: ${{ github.event.inputs.package }})"
+      run: 'echo "Skipping ${{ inputs.package }} (selected: ${{ github.event.inputs.package }})"'
 
     - name: Publish
       if: ${{ github.event.inputs.package == '' || github.event.inputs.package == inputs.package }}
