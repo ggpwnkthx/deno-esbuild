@@ -19,15 +19,10 @@
  * });
  * ```
  */
-import type * as esbuild from "esbuild";
-import * as path from "@std/path";
-import { RequestedModuleType, ResolutionMode, Workspace } from "@deno/loader";
-import {
-  externalToRegex,
-  getModuleType,
-  getPlatform,
-  mediaToLoader,
-} from "./utils.ts";
+import type * as esbuild from 'esbuild'
+import * as path from '@std/path'
+import { RequestedModuleType, ResolutionMode, Workspace, type WorkspaceOptions } from '@deno/loader'
+import { externalToRegex, getModuleType, getPlatform, mediaToLoader } from './utils.ts'
 
 export interface DenoPluginOptions {
   /**
@@ -35,35 +30,35 @@ export interface DenoPluginOptions {
    * When `true`, the plugin logs resolution and loading decisions to the console.
    * @default false
    */
-  debug?: boolean;
+  debug?: boolean
   /**
    * Use this path to a `deno.json` instead of auto-discovering it.
    * If not set, the plugin searches for `deno.json` in the current working directory.
    */
-  configPath?: string;
+  configPath?: string
   /**
    * Don't transpile files when loading them.
    * When `true`, source files are passed through as-is without Deno's transpilation step.
    * @default false
    */
-  noTranspile?: boolean;
+  noTranspile?: boolean
   /**
    * Keep JSX as is, instead of transpiling it according to compilerOptions.
    * Useful when the runtime environment handles JSX natively.
    * @default false
    */
-  preserveJsx?: boolean;
+  preserveJsx?: boolean
   /**
    * Prefix for public environment variables that should be inlined during
    * bundling. Environment variables whose names start with this prefix will
    * have their values embedded at build time via `Deno.env.get()` calls.
    * @example `FRESH_PUBLIC_`
    */
-  publicEnvVarPrefix?: string;
+  publicEnvVarPrefix?: string
 }
 
 const SKIP_ASSET_PATTERN =
-  /\.(svg|png|jpg|jpeg|gif|webp|ico|avif|apng|tiff|bmp|heic|heif|av1|woff|woff2|ttf|otf|eot|mp3|wav|ogg|flac|aac|m4a|opus|mp4|webm|avi|mov|mkv|flv|wmv|glb|gltf|obj|fbx|usdz|pdf|bin|dat|wasm|sqlite|db|parquet|arrow|css)$/i;
+  /\.(svg|png|jpg|jpeg|gif|webp|ico|avif|apng|tiff|bmp|heic|heif|av1|woff|woff2|ttf|otf|eot|mp3|wav|ogg|flac|aac|m4a|opus|mp4|webm|avi|mov|mkv|flv|wmv|glb|gltf|obj|fbx|usdz|pdf|bin|dat|wasm|sqlite|db|parquet|arrow|css)$/i
 
 /**
  * Create an esbuild plugin that resolves and loads Deno modules.
@@ -89,238 +84,261 @@ const SKIP_ASSET_PATTERN =
  */
 export function denoPlugin(options: DenoPluginOptions = {}): esbuild.Plugin {
   return {
-    name: "deno",
+    name: 'deno',
     async setup(ctx) {
-      const workspace = new Workspace({
-        debug: options.debug,
-        configPath: options.configPath,
-        nodeConditions: ctx.initialOptions.conditions,
-        noTranspile: options.noTranspile,
-        preserveJsx: options.preserveJsx,
-        platform: getPlatform(ctx.initialOptions.platform),
-      });
+      const workspaceOptions: WorkspaceOptions = {}
+      if (ctx.initialOptions.conditions !== undefined) {
+        workspaceOptions.nodeConditions = ctx.initialOptions.conditions
+      }
+      const platform = getPlatform(ctx.initialOptions.platform)
+      if (platform !== undefined) {
+        workspaceOptions.platform = platform
+      }
+      if (options.debug !== undefined) workspaceOptions.debug = options.debug
+      if (options.configPath !== undefined) {
+        workspaceOptions.configPath = options.configPath
+      }
+      if (options.noTranspile !== undefined) {
+        workspaceOptions.noTranspile = options.noTranspile
+      }
+      if (options.preserveJsx !== undefined) {
+        workspaceOptions.preserveJsx = options.preserveJsx
+      }
+      const workspace = new Workspace(workspaceOptions)
 
-      const loader = await workspace.createLoader();
+      const loader = await workspace.createLoader()
 
       const workspaceRoot = options.configPath
         ? path.resolve(path.dirname(options.configPath))
-        : undefined;
+        : undefined
 
       ctx.onDispose(() => {
-        loader[Symbol.dispose]?.();
-      });
+        loader[Symbol.dispose]?.()
+      })
 
-      const externals = (ctx.initialOptions.external ?? []).map((item) =>
-        externalToRegex(item)
-      );
+      const externals = (ctx.initialOptions.external ?? []).map((item) => externalToRegex(item))
 
       const onResolve = async (
         args: esbuild.OnResolveArgs,
       ): Promise<esbuild.OnResolveResult | null> => {
         // Skip asset extensions and CSS - the respective plugins handle those
         if (SKIP_ASSET_PATTERN.test(args.path)) {
-          return null;
+          return null
         }
         if (
-          args.path.startsWith("node:") ||
+          args.path.startsWith('node:') ||
           externals.some((reg) => reg.test(args.path))
         ) {
           return {
             path: args.path,
             external: true,
-          };
+          }
         }
-        const kind =
-          args.kind === "require-call" || args.kind === "require-resolve"
-            ? ResolutionMode.Require
-            : ResolutionMode.Import;
+        const kind = args.kind === 'require-call' || args.kind === 'require-resolve'
+          ? ResolutionMode.Require
+          : ResolutionMode.Import
 
         try {
-          const importerUrl = args.importer;
+          const importerUrl = args.importer
 
           // If the importer is outside the workspace root, use a synthetic
           // referrer inside the workspace so the import map is applied correctly.
-          let effectiveImporter = importerUrl;
+          let effectiveImporter = importerUrl
           if (!importerUrl && workspaceRoot) {
             // Entry point with no importer — use synthetic referrer so import map applies
             effectiveImporter = path.toFileUrl(
-              workspaceRoot + "/.deno-resolver-referrer",
-            ).toString();
+              workspaceRoot + '/.deno-resolver-referrer',
+            ).toString()
           } else if (importerUrl && workspaceRoot) {
             // Only substitute local importers that fall outside the workspace.
             // Remote URLs (https://, jsr://, npm://, etc.) must be passed through so
             // the resolver resolves relative imports within the remote package.
             if (
-              importerUrl.startsWith("file://") || importerUrl.startsWith("/")
+              importerUrl.startsWith('file://') || importerUrl.startsWith('/')
             ) {
-              let importerPath: string;
-              if (importerUrl.startsWith("file://")) {
-                importerPath = path.fromFileUrl(importerUrl);
+              let importerPath: string
+              if (importerUrl.startsWith('file://')) {
+                importerPath = path.fromFileUrl(importerUrl)
               } else {
-                importerPath = importerUrl;
+                importerPath = importerUrl
               }
               if (!importerPath.startsWith(workspaceRoot)) {
-                effectiveImporter = path.toFileUrl(
-                  workspaceRoot + "/.deno-resolver-referrer",
-                ).toString();
+                // Pass through importers that are inside a managed package
+                // location (Deno's npm cache, the built-in deps cache, or a
+                // user-side node_modules tree). Substituting those to a
+                // synthetic workspace referrer causes relative require()
+                // calls inside CJS source — such as
+                // `module.exports = require('./sibling')` in an npm CJS
+                // entry — to resolve against the workspace path instead of
+                // the package's own directory, which makes esbuild's
+                // CJS-to-ESM conversion emit import paths for files that
+                // do not exist where the substituted referrer points.
+                const looksManaged = importerPath.includes(
+                  '/node_modules/',
+                ) || importerPath.includes('/deno/')
+                if (!looksManaged) {
+                  effectiveImporter = path.toFileUrl(
+                    workspaceRoot + '/.deno-resolver-referrer',
+                  ).toString()
+                }
               }
             }
             // else: remote URL — keep effectiveImporter as importerUrl unchanged
           }
 
-          const res = await loader.resolve(args.path, effectiveImporter, kind);
+          const res = await loader.resolve(args.path, effectiveImporter, kind)
 
-          let namespace: string | undefined;
-          if (res.startsWith("file:")) {
-            namespace = "file";
-          } else if (res.startsWith("http:")) {
-            namespace = "http";
-          } else if (res.startsWith("https:")) {
-            namespace = "https";
-          } else if (res.startsWith("npm:")) {
-            namespace = "npm";
-          } else if (res.startsWith("jsr:")) {
-            namespace = "jsr";
+          let namespace: string | undefined
+          if (res.startsWith('file:')) {
+            namespace = 'file'
+          } else if (res.startsWith('http:')) {
+            namespace = 'http'
+          } else if (res.startsWith('https:')) {
+            namespace = 'https'
+          } else if (res.startsWith('npm:')) {
+            namespace = 'npm'
+          } else if (res.startsWith('jsr:')) {
+            namespace = 'jsr'
           }
 
-          const resolved = res.startsWith("file:")
-            ? path.fromFileUrl(res)
-            : res;
+          const resolved = res.startsWith('file:') ? path.fromFileUrl(res) : res
 
           options.debug && console.debug(
-            "[DEBUG onResolve result]",
+            '[DEBUG onResolve result]',
             JSON.stringify({ path: resolved, namespace }),
-          );
+          )
 
-          return {
-            path: resolved,
-            namespace,
-          };
+          return namespace === undefined ? { path: resolved } : { path: resolved, namespace }
         } catch (err) {
           const couldNotResolveReg =
-            /not a dependency and not in import map|Relative import path ".*?" not prefixed with/;
+            /not a dependency and not in import map|Relative import path ".*?" not prefixed with/
 
           if (
-            err instanceof Error && couldNotResolveReg.test(err.message ?? "")
+            err instanceof Error && couldNotResolveReg.test(err.message ?? '')
           ) {
-            return null;
+            return null
           }
 
-          throw err;
+          throw err
         }
-      };
+      }
 
       // Esbuild doesn't detect namespaces in entrypoints. We need
       // a catchall resolver for that.
-      ctx.onResolve({ filter: /.*/ }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "file" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "http" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "https" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "data" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "npm" }, onResolve);
-      ctx.onResolve({ filter: /.*/, namespace: "jsr" }, onResolve);
+      ctx.onResolve({ filter: /.*/ }, onResolve)
+      ctx.onResolve({ filter: /.*/, namespace: 'file' }, onResolve)
+      ctx.onResolve({ filter: /.*/, namespace: 'http' }, onResolve)
+      ctx.onResolve({ filter: /.*/, namespace: 'https' }, onResolve)
+      ctx.onResolve({ filter: /.*/, namespace: 'data' }, onResolve)
+      ctx.onResolve({ filter: /.*/, namespace: 'npm' }, onResolve)
+      ctx.onResolve({ filter: /.*/, namespace: 'jsr' }, onResolve)
 
       const onLoad = async (
         args: esbuild.OnLoadArgs,
       ): Promise<esbuild.OnLoadResult | null> => {
         // If the path doesn't look like a URL, convert it to a file:// URL
-        const url =
-          args.path.startsWith("http:") || args.path.startsWith("https:") ||
-            args.path.startsWith("npm:") || args.path.startsWith("jsr:")
-            ? args.path
-            : path.toFileUrl(args.path).toString();
+        const url = args.path.startsWith('http:') || args.path.startsWith('https:') ||
+            args.path.startsWith('npm:') || args.path.startsWith('jsr:')
+          ? args.path
+          : path.toFileUrl(args.path).toString()
 
-        const moduleType = getModuleType(args.path, args.with);
-        const res = await loader.load(url, moduleType);
+        const moduleType = getModuleType(args.path, args.with)
+        const res = await loader.load(url, moduleType)
 
-        if (res.kind === "external") {
-          return null;
+        if (res.kind === 'external') {
+          return null
         }
 
-        const esbuildLoader = mediaToLoader(res.mediaType);
+        const esbuildLoader = mediaToLoader(res.mediaType)
 
-        const envPrefix = options.publicEnvVarPrefix;
+        // esbuild's onResolve returns null when the importer sits outside the
+        // plugin workspace root (see onResolve importer substitution), which
+        // would normally leave esbuild with no way to resolve relative paths
+        // the file may emit (e.g. require('./util.cjs') inside a CJS entry
+        // file loaded from an npm cache directory). Setting resolveDir from
+        // the loaded file's directory lets esbuild's default resolver find
+        // those siblings when the plugin declines to handle them. Skip the
+        // URL-pathed namespaces where path.dirname of an http(s)/npm/jsr URL
+        // would be a meaningless base.
+        const isUrlArg = args.path.startsWith('http:') ||
+          args.path.startsWith('https:') ||
+          args.path.startsWith('npm:') ||
+          args.path.startsWith('jsr:')
+
+        const envPrefix = options.publicEnvVarPrefix
         if (
           envPrefix && envPrefix.length > 0 &&
           moduleType === RequestedModuleType.Default
         ) {
-          let code = new TextDecoder().decode(res.code);
+          let code = new TextDecoder().decode(res.code)
 
           code = code.replaceAll(
             /Deno\.env\.get\(["']([^)]+)['"]\)|process\.env\.([\w_-]+)|import\.meta\.env\.([\w_]+)/g,
             (m, name, processName, importMetaName) => {
               if (name !== undefined && name.startsWith(envPrefix)) {
-                const val = Deno.env.get(name) ?? null;
-                const stringified = JSON.stringify(val);
+                const val = Deno.env.get(name) ?? null
+                const stringified = JSON.stringify(val)
                 // JSON.stringify(null) returns the literal "null" (no quotes).
                 // We need a string literal, so wrap in quotes only when the value is null.
-                return stringified === "null"
-                  ? `"${stringified}"`
-                  : stringified;
+                return stringified === 'null' ? `"${stringified}"` : stringified
               }
               if (
                 processName !== undefined && processName.startsWith(envPrefix)
               ) {
-                const val = Deno.env.get(processName) ?? null;
-                const stringified = JSON.stringify(val);
-                return stringified === "null"
-                  ? `"${stringified}"`
-                  : stringified;
+                const val = Deno.env.get(processName) ?? null
+                const stringified = JSON.stringify(val)
+                return stringified === 'null' ? `"${stringified}"` : stringified
               }
               if (
                 importMetaName !== undefined &&
                 importMetaName.startsWith(envPrefix)
               ) {
-                const val = Deno.env.get(importMetaName) ?? null;
-                const stringified = JSON.stringify(val);
-                return stringified === "null"
-                  ? `"${stringified}"`
-                  : stringified;
+                const val = Deno.env.get(importMetaName) ?? null
+                const stringified = JSON.stringify(val)
+                return stringified === 'null' ? `"${stringified}"` : stringified
               }
-              return m;
+              return m
             },
-          );
+          )
 
           // Handle destructuring pattern: const { MY_VAR } = Deno.env or const { A, B, C } = Deno.env
           code = code.replaceAll(
             /const\s+\{\s*([\w_]+(?:\s*,\s*[\w_]+)*)\s*\}\s*=\s*Deno\.env/g,
             (match: string, identList: string) => {
-              const ids = identList.split(",").map((s: string) => s.trim());
-              const allMatch = ids.every((id: string) =>
-                id.startsWith(envPrefix)
-              );
-              if (!allMatch) return match;
+              const ids = identList.split(',').map((s: string) => s.trim())
+              const allMatch = ids.every((id: string) => id.startsWith(envPrefix))
+              if (!allMatch) return match
               const inlined = ids.map((id: string) => {
-                const val = Deno.env.get(id) ?? null;
-                const stringified = JSON.stringify(val);
+                const val = Deno.env.get(id) ?? null
+                const stringified = JSON.stringify(val)
                 // JSON.stringify(null) returns the literal "null" (no quotes).
                 // We need a string literal, so wrap in quotes only when the value is null.
-                const literal = stringified === "null"
-                  ? `"${stringified}"`
-                  : stringified;
-                return `${id} = ${literal}`;
-              });
-              return `const { ${inlined.join(", ")} } = Deno.env`;
+                const literal = stringified === 'null' ? `"${stringified}"` : stringified
+                return `${id} = ${literal}`
+              })
+              return `const { ${inlined.join(', ')} } = Deno.env`
             },
-          );
+          )
 
           return {
             contents: code,
             loader: esbuildLoader,
-          };
+            ...(isUrlArg ? {} : { resolveDir: path.dirname(args.path) }),
+          }
         }
 
         return {
           contents: res.code,
           loader: esbuildLoader,
-        };
-      };
-      ctx.onLoad({ filter: /.*/, namespace: "file" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "jsr" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "npm" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "http" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "https" }, onLoad);
-      ctx.onLoad({ filter: /.*/, namespace: "data" }, onLoad);
+          ...(isUrlArg ? {} : { resolveDir: path.dirname(args.path) }),
+        }
+      }
+      ctx.onLoad({ filter: /.*/, namespace: 'file' }, onLoad)
+      ctx.onLoad({ filter: /.*/, namespace: 'jsr' }, onLoad)
+      ctx.onLoad({ filter: /.*/, namespace: 'npm' }, onLoad)
+      ctx.onLoad({ filter: /.*/, namespace: 'http' }, onLoad)
+      ctx.onLoad({ filter: /.*/, namespace: 'https' }, onLoad)
+      ctx.onLoad({ filter: /.*/, namespace: 'data' }, onLoad)
     },
-  };
+  }
 }

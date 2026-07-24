@@ -1,8 +1,7 @@
 # `@ggpwnkthx/esbuild-wrapper-shared`
 
-Shared utility library for Deno esbuild middleware wrappers. Used by both the
-Hono and Oak esbuild middleware packages to provide a consistent transformation
-pipeline with built-in caching support.
+Shared utility library for Deno esbuild middleware wrappers. Used by both the Hono and Oak esbuild
+middleware packages to provide a consistent transformation pipeline with built-in caching support.
 
 ## Exports
 
@@ -21,38 +20,38 @@ pipeline with built-in caching support.
 
 ## The Caching Mechanism
 
-The shared module uses an in-memory `Map<string, CacheEntry>` to store
-transformation results. Two eviction strategies are available:
+The shared module uses an in-memory `Map<string, CacheEntry>` to store transformation results. Two
+eviction strategies are available:
 
 ### TTL (Time-To-Live)
 
-Each cached entry carries a `timestamp`. When the entry is retrieved, if a `ttl`
-was configured and the elapsed time since `timestamp` exceeds that value, the
-entry is deleted and re-transpiled on the next request.
+Each cached entry carries a `timestamp`. When the entry is retrieved, if a `ttl` was configured and
+the elapsed time since `timestamp` exceeds that value, the entry is deleted and re-transpiled on the
+next request.
 
 ```typescript
 // Example: entries expire after 60 seconds
 const opts: Options = {
   cache: true,
   ttl: 60_000,
-};
+}
 ```
 
 ### LRU (Least Recently Used) — `maxSize`
 
-When `maxSize` is set and the cache reaches that limit, the entry with the
-oldest `timestamp` is evicted to make room for the new entry.
+When `maxSize` is set and the cache reaches that limit, the entry with the oldest `timestamp` is
+evicted to make room for the new entry.
 
 ```typescript
 // Example: keep at most 100 entries in the cache
 const opts: Options = {
   cache: true,
   maxSize: 100,
-};
+}
 ```
 
-Both strategies can be used together. TTL checks run on every cache read;
-`maxSize` checks run on every cache write.
+Both strategies can be used together. TTL checks run on every cache read; `maxSize` checks run on
+every cache write.
 
 ---
 
@@ -65,42 +64,42 @@ interface Options {
    * these extensions will be processed.
    * @default [".ts", ".tsx"]
    */
-  extensions?: string[];
+  extensions?: string[]
 
   /**
    * Enable caching of transformed responses.
    * @default false
    */
-  cache?: boolean;
+  cache?: boolean
 
   /**
    * The esbuild API to use for transformation. Defaults to the top-level
    * `esbuild` import. Allows injecting a custom esbuild instance (e.g., WASM).
    */
-  esbuild?: typeof esbuild;
+  esbuild?: typeof esbuild
 
   /**
    * Value for the `content-type` response header after transformation.
    * @default "text/javascript"
    */
-  contentType?: string;
+  contentType?: string
 
   /**
    * Additional options passed to `esbuild.transform()` (e.g., `loader`,
    * `jsx`, `target`, `minify`).
    */
-  transformOptions?: esbuild.TransformOptions;
+  transformOptions?: esbuild.TransformOptions
 
   /**
    * Maximum number of entries in the cache. When exceeded, the oldest entry
    * is evicted.
    */
-  maxSize?: number;
+  maxSize?: number
 
   /**
    * Time-to-live for cache entries in milliseconds.
    */
-  ttl?: number;
+  ttl?: number
 }
 ```
 
@@ -108,42 +107,39 @@ interface Options {
 
 ## Injecting a Custom `esbuild` Instance
 
-By default, the module imports esbuild from `jsr:@ggpwnkthx/esbuild`. You can
-supply an alternate esbuild-compatible instance — for example, a WASM build —
-via the `esbuild` option:
+By default, the module imports esbuild from `jsr:@ggpwnkthx/esbuild`. You can supply an alternate
+esbuild-compatible instance — for example, a WASM build — via the `esbuild` option:
 
 ```typescript
-import * as esbuildWasm from "esbuild-wasm";
+import * as esbuildWasm from 'esbuild-wasm'
 
 const opts: Options = {
   cache: true,
   esbuild: esbuildWasm,
   // WASM builds typically require initializing before use:
   transformOptions: {
-    loader: "tsx",
+    loader: 'tsx',
     // ...
   },
-};
+}
 ```
 
-When injecting a custom instance, be aware of two differences from the default
-native binary:
+When injecting a custom instance, be aware of two differences from the default native binary:
 
-1. **Do not call `esbuild.stop()`** after transformation if the injected
-   instance does not support it (most WASM builds do not). The
-   `getCachedOrTranspile` function accepts a `shouldStop` flag (defaulting to
-   `true`) to control this behavior. Set it to `false` when using WASM:
+1. **Do not call `esbuild.stop()`** after transformation if the injected instance does not support
+   it (most WASM builds do not). The `getCachedOrTranspile` function accepts a `shouldStop` flag
+   (defaulting to `true`) to control this behavior. Set it to `false` when using WASM:
 
    ```typescript
    await getCachedOrTranspile({
      // ...
      esbuild: esbuildWasm,
      shouldStop: false, // WASM instances should not be stopped
-   });
+   })
    ```
 
-2. The `transformOptions.loader` defaults to `"tsx"` if not specified. Adjust it
-   to match your injected instance's expected loader value.
+2. The `transformOptions.loader` defaults to `"tsx"` if not specified. Adjust it to match your
+   injected instance's expected loader value.
 
 ---
 
@@ -158,7 +154,7 @@ import {
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,
-} from "@ggpwnkthx/esbuild-wrapper-shared";
+} from '@ggpwnkthx/esbuild-wrapper-shared'
 
 const opts = {
   extensions: DEFAULT_EXTENSIONS,
@@ -166,15 +162,15 @@ const opts = {
   cache: true,
   maxSize: 200,
   ttl: 30_000,
-};
+}
 
 async function handleRequest(
-  framework: "hono" | "oak",
+  framework: 'hono' | 'oak',
   ctx: unknown,
   pathname: string,
   body: string,
 ) {
-  if (!shouldTranspile(pathname, opts.extensions)) return;
+  if (!shouldTranspile(pathname, opts.extensions)) return
 
   const { code } = await getCachedOrTranspile({
     pathname,
@@ -185,14 +181,14 @@ async function handleRequest(
     transformOptions: opts.transformOptions,
     esbuild: opts.esbuild,
     shouldStop: true,
-  });
+  })
 
   setSuccessResponse(
     framework,
     ctx,
     code,
     opts.contentType ?? DEFAULT_CONTENT_TYPE,
-  );
+  )
 }
 ```
 
@@ -200,12 +196,9 @@ async function handleRequest(
 
 ## Framework Support
 
-`setSuccessResponse` and `setErrorResponse` handle both Hono and Oak contexts
-automatically:
+`setSuccessResponse` and `setErrorResponse` handle both Hono and Oak contexts automatically:
 
-- **Hono** — manipulates `c.res` directly, replacing the response body and
-  headers.
+- **Hono** — manipulates `c.res` directly, replacing the response body and headers.
 - **Oak** — manipulates `ctx.response.body` and `ctx.response.headers`.
 
-Pass `"hono"` or `"oak"` as the `framework` argument to select the correct
-backend.
+Pass `"hono"` or `"oak"` as the `framework` argument to select the correct backend.

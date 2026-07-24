@@ -21,283 +21,283 @@
 // additional byte array primitive. You must send a response after receiving a
 // request because the other end is blocking on the response coming back.
 
-import type * as types from "./types.ts";
+import type * as types from './types.ts'
 
 /** Request to run a build. */
 export interface BuildRequest {
-  command: "build";
-  key: number;
-  entries: [string, string][]; // Use an array instead of a map to preserve order
-  flags: string[];
-  write: boolean;
-  stdinContents: Uint8Array | null;
-  stdinResolveDir: string | null;
-  absWorkingDir: string;
-  nodePaths: string[];
-  context: boolean;
-  plugins?: BuildPlugin[];
-  mangleCache?: Record<string, string | false>;
+  command: 'build'
+  key: number
+  entries: [string, string][] // Use an array instead of a map to preserve order
+  flags: string[]
+  write: boolean
+  stdinContents: Uint8Array | null
+  stdinResolveDir: string | null
+  absWorkingDir: string
+  nodePaths: string[]
+  context: boolean
+  plugins?: BuildPlugin[]
+  mangleCache?: Record<string, string | false>
 }
 
 /** Request to start a dev server. */
 export interface ServeRequest {
-  command: "serve";
-  key: number;
-  onRequest: boolean;
-  port?: number;
-  host?: string;
-  servedir?: string;
-  keyfile?: string;
-  certfile?: string;
-  fallback?: string;
-  corsOrigin?: string[];
+  command: 'serve'
+  key: number
+  onRequest: boolean
+  port?: number
+  host?: string
+  servedir?: string
+  keyfile?: string
+  certfile?: string
+  fallback?: string
+  corsOrigin?: string[]
 }
 
 /** Response from a serve request. */
 export interface ServeResponse {
-  port: number;
-  hosts: string[];
+  port: number
+  hosts: string[]
 }
 
 /** Plugin registration data embedded in a build request. */
 export interface BuildPlugin {
-  name: string;
-  onStart: boolean;
-  onEnd: boolean;
-  onResolve: { id: number; filter: string; namespace: string }[];
-  onLoad: { id: number; filter: string; namespace: string }[];
+  name: string
+  onStart: boolean
+  onEnd: boolean
+  onResolve: { id: number; filter: string; namespace: string }[]
+  onLoad: { id: number; filter: string; namespace: string }[]
 }
 
 /** Response from a completed build. */
 export interface BuildResponse {
-  errors: types.Message[];
-  warnings: types.Message[];
-  outputFiles?: BuildOutputFile[];
-  metafile?: Uint8Array;
-  mangleCache?: Record<string, string | false>;
-  writeToStdout?: Uint8Array;
+  errors: types.Message[]
+  warnings: types.Message[]
+  outputFiles?: BuildOutputFile[]
+  metafile?: Uint8Array
+  mangleCache?: Record<string, string | false>
+  writeToStdout?: Uint8Array
 }
 
 /** Request signalling the end of a build (watch/serve). */
 export interface OnEndRequest extends BuildResponse {
-  command: "on-end";
+  command: 'on-end'
 }
 
 /** Response to an on-end request. */
 export interface OnEndResponse {
-  errors: types.Message[];
-  warnings: types.Message[];
+  errors: types.Message[]
+  warnings: types.Message[]
 }
 
 /** A single output file from a build. */
 export interface BuildOutputFile {
-  path: string;
-  contents: Uint8Array;
-  hash: string;
+  path: string
+  contents: Uint8Array
+  hash: string
 }
 
 /** A keep-alive ping. */
 export interface PingRequest {
-  command: "ping";
+  command: 'ping'
 }
 
 /** Request to trigger a rebuild. */
 export interface RebuildRequest {
-  command: "rebuild";
-  key: number;
+  command: 'rebuild'
+  key: number
 }
 
 /** Response from a rebuild. */
 export interface RebuildResponse {
-  errors: types.Message[];
-  warnings: types.Message[];
+  errors: types.Message[]
+  warnings: types.Message[]
 }
 
 /** Request to dispose a build context. */
 export interface DisposeRequest {
-  command: "dispose";
-  key: number;
+  command: 'dispose'
+  key: number
 }
 
 /** Request to cancel an in-flight build. */
 export interface CancelRequest {
-  command: "cancel";
-  key: number;
+  command: 'cancel'
+  key: number
 }
 
 /** Request to start file watching. */
 export interface WatchRequest {
-  command: "watch";
-  key: number;
-  delay?: number;
+  command: 'watch'
+  key: number
+  delay?: number
 }
 
 /** Request for a serve event callback. */
 export interface OnServeRequest {
-  command: "serve-request";
-  key: number;
-  args: types.ServeOnRequestArgs;
+  command: 'serve-request'
+  key: number
+  args: types.ServeOnRequestArgs
 }
 
 /** Request to run a transform. */
 export interface TransformRequest {
-  command: "transform";
-  flags: string[];
-  input: Uint8Array;
-  inputFS: boolean;
-  mangleCache?: Record<string, string | false>;
+  command: 'transform'
+  flags: string[]
+  input: Uint8Array
+  inputFS: boolean
+  mangleCache?: Record<string, string | false>
 }
 
 /** Response from a transform. */
 export interface TransformResponse {
-  errors: types.Message[];
-  warnings: types.Message[];
+  errors: types.Message[]
+  warnings: types.Message[]
 
-  code: string;
-  codeFS: boolean;
+  code: string
+  codeFS: boolean
 
-  map: string;
-  mapFS: boolean;
+  map: string
+  mapFS: boolean
 
-  legalComments?: string;
-  mangleCache?: Record<string, string | false>;
+  legalComments?: string
+  mangleCache?: Record<string, string | false>
 }
 
 /** Request to format log messages. */
 export interface FormatMsgsRequest {
-  command: "format-msgs";
-  messages: types.Message[];
-  isWarning: boolean;
-  color?: boolean;
-  terminalWidth?: number;
+  command: 'format-msgs'
+  messages: types.Message[]
+  isWarning: boolean
+  color?: boolean
+  terminalWidth?: number
 }
 
 /** Response with formatted message strings. */
 export interface FormatMsgsResponse {
-  messages: string[];
+  messages: string[]
 }
 
 /** Request to analyze a metafile. */
 export interface AnalyzeMetafileRequest {
-  command: "analyze-metafile";
-  metafile: string;
-  color?: boolean;
-  verbose?: boolean;
+  command: 'analyze-metafile'
+  metafile: string
+  color?: boolean
+  verbose?: boolean
 }
 
 /** Response with the analysis result string. */
 export interface AnalyzeMetafileResponse {
-  result: string;
+  result: string
 }
 
 /** Request for a plugin onStart callback. */
 export interface OnStartRequest {
-  command: "on-start";
-  key: number;
+  command: 'on-start'
+  key: number
 }
 
 /** Response to an on-start request. */
 export interface OnStartResponse {
-  errors?: types.PartialMessage[];
-  warnings?: types.PartialMessage[];
+  errors?: types.PartialMessage[]
+  warnings?: types.PartialMessage[]
 }
 
 /** Request to resolve a module path. */
 export interface ResolveRequest {
-  command: "resolve";
-  key: number;
-  path: string;
-  pluginName: string;
-  importer?: string;
-  namespace?: string;
-  resolveDir?: string;
-  kind?: string;
-  pluginData?: number;
-  with?: Record<string, string>;
+  command: 'resolve'
+  key: number
+  path: string
+  pluginName: string
+  importer?: string
+  namespace?: string
+  resolveDir?: string
+  kind?: string
+  pluginData?: number
+  with?: Record<string, string>
 }
 
 /** Response with resolved module info. */
 export interface ResolveResponse {
-  errors: types.Message[];
-  warnings: types.Message[];
+  errors: types.Message[]
+  warnings: types.Message[]
 
-  path: string;
-  external: boolean;
-  sideEffects: boolean;
-  namespace: string;
-  suffix: string;
-  pluginData: number;
+  path: string
+  external: boolean
+  sideEffects: boolean
+  namespace: string
+  suffix: string
+  pluginData: number
 }
 
 /** Request for a plugin onResolve callback. */
 export interface OnResolveRequest {
-  command: "on-resolve";
-  key: number;
-  ids: number[];
-  path: string;
-  importer: string;
-  namespace: string;
-  resolveDir: string;
-  kind: types.ImportKind;
-  pluginData: number;
-  with: Record<string, string>;
+  command: 'on-resolve'
+  key: number
+  ids: number[]
+  path: string
+  importer: string
+  namespace: string
+  resolveDir: string
+  kind: types.ImportKind
+  pluginData: number
+  with: Record<string, string>
 }
 
 /** Response to an on-resolve request. */
 export interface OnResolveResponse {
-  id?: number;
-  pluginName?: string;
+  id?: number
+  pluginName?: string
 
-  errors?: types.PartialMessage[];
-  warnings?: types.PartialMessage[];
+  errors?: types.PartialMessage[]
+  warnings?: types.PartialMessage[]
 
-  path?: string;
-  external?: boolean;
-  sideEffects?: boolean;
-  namespace?: string;
-  suffix?: string;
-  pluginData?: number;
+  path?: string
+  external?: boolean
+  sideEffects?: boolean
+  namespace?: string
+  suffix?: string
+  pluginData?: number
 
-  watchFiles?: string[];
-  watchDirs?: string[];
+  watchFiles?: string[]
+  watchDirs?: string[]
 }
 
 /** Request for a plugin onLoad callback. */
 export interface OnLoadRequest {
-  command: "on-load";
-  key: number;
-  ids: number[];
-  path: string;
-  namespace: string;
-  suffix: string;
-  pluginData: number;
-  with: Record<string, string>;
+  command: 'on-load'
+  key: number
+  ids: number[]
+  path: string
+  namespace: string
+  suffix: string
+  pluginData: number
+  with: Record<string, string>
 }
 
 /** Response to an on-load request. */
 export interface OnLoadResponse {
-  id?: number;
-  pluginName?: string;
+  id?: number
+  pluginName?: string
 
-  errors?: types.PartialMessage[];
-  warnings?: types.PartialMessage[];
+  errors?: types.PartialMessage[]
+  warnings?: types.PartialMessage[]
 
-  contents?: Uint8Array;
-  resolveDir?: string;
-  loader?: string;
-  pluginData?: number;
+  contents?: Uint8Array
+  resolveDir?: string
+  loader?: string
+  pluginData?: number
 
-  watchFiles?: string[];
-  watchDirs?: string[];
+  watchFiles?: string[]
+  watchDirs?: string[]
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 /** A single binary packet (request or response) on the stdio channel. */
 export interface Packet {
-  id: number;
-  isRequest: boolean;
-  value: Value;
+  id: number
+  isRequest: boolean
+  value: Value
 }
 
 /** The protocol's union type for all serializable values. */
@@ -308,7 +308,7 @@ export type Value =
   | string
   | Uint8Array
   | Value[]
-  | { [key: string]: Value };
+  | { [key: string]: Value }
 
 /**
  * Encodes a {@link Packet} into a byte array for transmission over the stdio channel.
@@ -321,42 +321,42 @@ export type Value =
 export function encodePacket(packet: Packet): Uint8Array {
   const visit = (value: Value) => {
     if (value === null) {
-      bb.write8(0);
-    } else if (typeof value === "boolean") {
-      bb.write8(1);
-      bb.write8(+value);
-    } else if (typeof value === "number") {
-      bb.write8(2);
-      bb.write32(value | 0);
-    } else if (typeof value === "string") {
-      bb.write8(3);
-      bb.write(encodeUTF8(value));
+      bb.write8(0)
+    } else if (typeof value === 'boolean') {
+      bb.write8(1)
+      bb.write8(+value)
+    } else if (typeof value === 'number') {
+      bb.write8(2)
+      bb.write32(value | 0)
+    } else if (typeof value === 'string') {
+      bb.write8(3)
+      bb.write(encodeUTF8(value))
     } else if (value instanceof Uint8Array) {
-      bb.write8(4);
-      bb.write(value);
+      bb.write8(4)
+      bb.write(value)
     } else if (value instanceof Array) {
-      bb.write8(5);
-      bb.write32(value.length);
+      bb.write8(5)
+      bb.write32(value.length)
       for (const item of value) {
-        visit(item);
+        visit(item)
       }
     } else {
-      const keys = Object.keys(value);
-      bb.write8(6);
-      bb.write32(keys.length);
+      const keys = Object.keys(value)
+      bb.write8(6)
+      bb.write32(keys.length)
       for (const key of keys) {
-        bb.write(encodeUTF8(key));
-        visit(value[key]);
+        bb.write(encodeUTF8(key))
+        visit(value[key]!)
       }
     }
-  };
+  }
 
-  const bb = new ByteBuffer();
-  bb.write32(0); // Reserve space for the length
-  bb.write32((packet.id << 1) | +!packet.isRequest);
-  visit(packet.value);
-  writeUInt32LE(bb.buf, bb.len - 4, 0); // Patch the length in
-  return bb.buf.subarray(0, bb.len);
+  const bb = new ByteBuffer()
+  bb.write32(0) // Reserve space for the length
+  bb.write32((packet.id << 1) | +!packet.isRequest)
+  visit(packet.value)
+  writeUInt32LE(bb.buf, bb.len - 4, 0) // Patch the length in
+  return bb.buf.subarray(0, bb.len)
 }
 
 /**
@@ -372,124 +372,124 @@ export function decodePacket(bytes: Uint8Array): Packet {
   const visit = (): Value => {
     switch (bb.read8()) {
       case 0: // null
-        return null;
+        return null
       case 1: // boolean
-        return !!bb.read8();
+        return !!bb.read8()
       case 2: // number
-        return bb.read32();
+        return bb.read32()
       case 3: // string
-        return decodeUTF8(bb.read());
+        return decodeUTF8(bb.read())
       case 4: // Uint8Array
-        return bb.read();
+        return bb.read()
       case 5: { // Value[]
-        const count = bb.read32();
-        const value: Value[] = [];
+        const count = bb.read32()
+        const value: Value[] = []
         for (let i = 0; i < count; i++) {
-          value.push(visit());
+          value.push(visit())
         }
-        return value;
+        return value
       }
       case 6: { // { [key: string]: Value }
-        const count = bb.read32();
-        const value: { [key: string]: Value } = {};
+        const count = bb.read32()
+        const value: { [key: string]: Value } = {}
         for (let i = 0; i < count; i++) {
-          value[decodeUTF8(bb.read())] = visit();
+          value[decodeUTF8(bb.read())] = visit()
         }
-        return value;
+        return value
       }
       default:
-        throw new Error("Invalid packet");
+        throw new Error('Invalid packet')
     }
-  };
-
-  const bb = new ByteBuffer(bytes);
-  const id = bb.read32();
-  const isRequest = (id & 1) === 0;
-  const id2 = id >>> 1;
-  const value = visit();
-  if (bb.ptr !== bytes.length) {
-    throw new Error("Invalid packet");
   }
-  return { id: id2, isRequest, value };
+
+  const bb = new ByteBuffer(bytes)
+  const id = bb.read32()
+  const isRequest = (id & 1) === 0
+  const id2 = id >>> 1
+  const value = visit()
+  if (bb.ptr !== bytes.length) {
+    throw new Error('Invalid packet')
+  }
+  return { id: id2, isRequest, value }
 }
 
 class ByteBuffer {
-  len = 0;
-  ptr = 0;
+  len = 0
+  ptr = 0
 
   constructor(public buf: Uint8Array = new Uint8Array(1024)) {
   }
 
   private _write(delta: number): number {
     if (this.len + delta > this.buf.length) {
-      const clone = new Uint8Array((this.len + delta) * 2);
-      clone.set(this.buf);
-      this.buf = clone;
+      const clone = new Uint8Array((this.len + delta) * 2)
+      clone.set(this.buf)
+      this.buf = clone
     }
-    this.len += delta;
-    return this.len - delta;
+    this.len += delta
+    return this.len - delta
   }
 
   write8(value: number): void {
-    const offset = this._write(1);
-    this.buf[offset] = value;
+    const offset = this._write(1)
+    this.buf[offset] = value
   }
 
   write32(value: number): void {
-    const offset = this._write(4);
-    writeUInt32LE(this.buf, value, offset);
+    const offset = this._write(4)
+    writeUInt32LE(this.buf, value, offset)
   }
 
   write(bytes: Uint8Array): void {
-    const offset = this._write(4 + bytes.length);
-    writeUInt32LE(this.buf, bytes.length, offset);
-    this.buf.set(bytes, offset + 4);
+    const offset = this._write(4 + bytes.length)
+    writeUInt32LE(this.buf, bytes.length, offset)
+    this.buf.set(bytes, offset + 4)
   }
 
   private _read(delta: number): number {
     if (this.ptr + delta > this.buf.length) {
-      throw new Error("Invalid packet");
+      throw new Error('Invalid packet')
     }
-    this.ptr += delta;
-    return this.ptr - delta;
+    this.ptr += delta
+    return this.ptr - delta
   }
 
   read8(): number {
-    return this.buf[this._read(1)];
+    return this.buf[this._read(1)]!
   }
 
   read32(): number {
-    return readUInt32LE(this.buf, this._read(4));
+    return readUInt32LE(this.buf, this._read(4))
   }
 
   read(): Uint8Array {
-    const length = this.read32();
-    const bytes = new Uint8Array(length);
-    const ptr = this._read(bytes.length);
-    bytes.set(this.buf.subarray(ptr, ptr + length));
-    return bytes;
+    const length = this.read32()
+    const bytes = new Uint8Array(length)
+    const ptr = this._read(bytes.length)
+    bytes.set(this.buf.subarray(ptr, ptr + length))
+    return bytes
   }
 }
 
 /** Encodes a string to UTF-8 bytes using TextEncoder. */
-export let encodeUTF8: (text: string) => Uint8Array;
+export let encodeUTF8: (text: string) => Uint8Array
 /** Decodes UTF-8 bytes to a string using TextDecoder. */
-export let decodeUTF8: (bytes: Uint8Array) => string;
-let encodeInvariant: string;
+export let decodeUTF8: (bytes: Uint8Array) => string
+let encodeInvariant: string
 
 // Deno always has TextEncoder/TextDecoder
 {
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  encodeUTF8 = (text) => encoder.encode(text);
-  decodeUTF8 = (bytes) => decoder.decode(bytes);
-  encodeInvariant = 'new TextEncoder().encode("")';
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  encodeUTF8 = (text) => encoder.encode(text)
+  decodeUTF8 = (bytes) => decoder.decode(bytes)
+  encodeInvariant = 'new TextEncoder().encode("")'
 }
 
 // Throw an error early if this isn't true. The test framework called "Jest"
 // has some bugs regarding this edge case, and letting esbuild proceed further
 // leads to confusing errors that make it seem like esbuild itself has a bug.
-if (!(encodeUTF8("") instanceof Uint8Array)) {
+if (!(encodeUTF8('') instanceof Uint8Array)) {
   throw new Error(
     `Invariant violation: "${encodeInvariant} instanceof Uint8Array" is incorrectly false
 
@@ -497,7 +497,7 @@ This indicates that your JavaScript environment is broken. You cannot use
 esbuild in this environment because esbuild relies on this invariant. This
 is not a problem with esbuild. You need to fix your environment instead.
 `,
-  );
+  )
 }
 
 /**
@@ -509,11 +509,11 @@ is not a problem with esbuild. You need to fix your environment instead.
  */
 export function readUInt32LE(buffer: Uint8Array, offset: number): number {
   return (
-    buffer[offset++] |
-    (buffer[offset++] << 8) |
-    (buffer[offset++] << 16) |
-    (buffer[offset++] << 24)
-  ) >>> 0;
+    buffer[offset++]! |
+    (buffer[offset++]! << 8) |
+    (buffer[offset++]! << 16) |
+    (buffer[offset++]! << 24)
+  ) >>> 0
 }
 
 function writeUInt32LE(
@@ -521,8 +521,8 @@ function writeUInt32LE(
   value: number,
   offset: number,
 ): void {
-  buffer[offset++] = value;
-  buffer[offset++] = value >> 8;
-  buffer[offset++] = value >> 16;
-  buffer[offset++] = value >> 24;
+  buffer[offset++] = value
+  buffer[offset++] = value >> 8
+  buffer[offset++] = value >> 16
+  buffer[offset++] = value >> 24
 }

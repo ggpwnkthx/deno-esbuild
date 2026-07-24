@@ -1,7 +1,6 @@
 # Conventional Commits
 
-This project follows the
-[Conventional Commits](https://www.conventionalcommits.org/) specification.
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
 ## Format
 

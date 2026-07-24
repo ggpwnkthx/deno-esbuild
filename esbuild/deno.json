@@ -1,6 +1,6 @@
 {
   "name": "@ggpwnkthx/esbuild",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "exports": {
     ".": "./mod.ts",
     "./wasm": "./wasm.ts",
@@ -9,6 +9,12 @@
     "./shared/types": "./shared/types.ts",
     "./shared/uint8array_json_parser": "./shared/uint8array_json_parser.ts",
     "./shared/worker": "./shared/worker.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true
   },
   "tasks": {
     "fmt": "deno fmt .",

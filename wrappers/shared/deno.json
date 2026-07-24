@@ -1,8 +1,14 @@
 {
   "name": "@ggpwnkthx/esbuild-wrapper-shared",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "exports": "./mod.ts",
   "imports": {
     "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true
   }
 }

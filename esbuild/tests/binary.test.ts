@@ -1,23 +1,23 @@
-import { version } from "../mod.ts";
+import { version } from '../mod.ts'
 
-const textDecoder = new TextDecoder();
-const moduleUnderTest = new URL("../mod.ts", import.meta.url).href;
-const wasmModuleUnderTest = new URL("../wasm.ts", import.meta.url).href;
+const textDecoder = new TextDecoder()
+const moduleUnderTest = new URL('../mod.ts', import.meta.url).href
+const wasmModuleUnderTest = new URL('../wasm.ts', import.meta.url).href
 
 interface CommandResult {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
+  readonly code: number
+  readonly stdout: string
+  readonly stderr: string
 }
 
 interface IsolatedRuntime {
-  readonly rootDir: string;
-  readonly env: Record<string, string>;
+  readonly rootDir: string
+  readonly env: Record<string, string>
 }
 
 function assertEquals<T>(actual: T, expected: T, message: string): void {
   if (actual !== expected) {
-    throw new Error(`${message}\nExpected: ${expected}\nActual: ${actual}`);
+    throw new Error(`${message}\nExpected: ${expected}\nActual: ${actual}`)
   }
 }
 
@@ -29,7 +29,7 @@ function assertIncludes(
   if (!actual.includes(expectedSubstring)) {
     throw new Error(
       `${message}\nExpected substring: ${expectedSubstring}\nActual: ${actual}`,
-    );
+    )
   }
 }
 
@@ -37,8 +37,8 @@ async function withIsolatedRuntime<T>(
   fn: (runtime: IsolatedRuntime) => Promise<T>,
 ): Promise<T> {
   const rootDir = await Deno.makeTempDir({
-    prefix: "deno-esbuild-binary-test-",
-  });
+    prefix: 'deno-esbuild-binary-test-',
+  })
 
   const env: Record<string, string> = {
     HOME: `${rootDir}/home`,
@@ -46,13 +46,13 @@ async function withIsolatedRuntime<T>(
     LOCALAPPDATA: `${rootDir}/local-app-data`,
     USERPROFILE: `${rootDir}/user-profile`,
     DENO_DIR: `${rootDir}/deno-dir`,
-    NO_COLOR: "1",
-  };
+    NO_COLOR: '1',
+  }
 
   try {
-    return await fn({ rootDir, env });
+    return await fn({ rootDir, env })
   } finally {
-    await Deno.remove(rootDir, { recursive: true });
+    await Deno.remove(rootDir, { recursive: true })
   }
 }
 
@@ -63,15 +63,15 @@ async function runDeno(
   const output = await new Deno.Command(Deno.execPath(), {
     args,
     env,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
+    stdout: 'piped',
+    stderr: 'piped',
+  }).output()
 
   return {
     code: output.code,
     stdout: textDecoder.decode(output.stdout),
     stderr: textDecoder.decode(output.stderr),
-  };
+  }
 }
 
 async function runExecutable(
@@ -80,15 +80,15 @@ async function runExecutable(
 ): Promise<CommandResult> {
   const output = await new Deno.Command(command, {
     args,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
+    stdout: 'piped',
+    stderr: 'piped',
+  }).output()
 
   return {
     code: output.code,
     stdout: textDecoder.decode(output.stdout),
     stderr: textDecoder.decode(output.stderr),
-  };
+  }
 }
 
 function assertSuccessfulCommand(
@@ -99,11 +99,11 @@ function assertSuccessfulCommand(
     result.code,
     0,
     `${label} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-  );
+  )
 }
 
 async function writeProbeScript(rootDir: string): Promise<string> {
-  const path = `${rootDir}/probe.ts`;
+  const path = `${rootDir}/probe.ts`
 
   await Deno.writeTextFile(
     path,
@@ -160,14 +160,14 @@ try {
   await esbuild.stop();
 }
 `,
-  );
+  )
 
-  return path;
+  return path
 }
 
 async function writeWasmProbeScript(rootDir: string): Promise<string> {
-  const path = `${rootDir}/wasm_probe.ts`;
-  const wasmURL = `https://unpkg.com/esbuild-wasm@${version}/esbuild.wasm`;
+  const path = `${rootDir}/wasm_probe.ts`
+  const wasmURL = `https://unpkg.com/esbuild-wasm@${version}/esbuild.wasm`
 
   await Deno.writeTextFile(
     path,
@@ -240,137 +240,137 @@ try {
   await esbuild.stop();
 }
 `,
-  );
+  )
 
-  return path;
+  return path
 }
 
 async function* walkFiles(rootDir: string): AsyncIterable<string> {
   for await (const entry of Deno.readDir(rootDir)) {
-    const path = `${rootDir}/${entry.name}`;
+    const path = `${rootDir}/${entry.name}`
 
     if (entry.isDirectory) {
-      yield* walkFiles(path);
-      continue;
+      yield* walkFiles(path)
+      continue
     }
 
-    if (entry.isFile) yield path;
+    if (entry.isFile) yield path
   }
 }
 
 async function findDownloadedBinary(rootDir: string): Promise<string> {
   for await (const path of walkFiles(rootDir)) {
-    const filename = path.split(/[\\/]/).at(-1) ?? path;
+    const filename = path.split(/[\\/]/).at(-1) ?? path
 
-    if (filename.startsWith("esbuild-") && filename.includes(`@${version}`)) {
-      return path;
+    if (filename.startsWith('esbuild-') && filename.includes(`@${version}`)) {
+      return path
     }
   }
 
   throw new Error(
     `Could not find cached esbuild binary for version ${version} under ${rootDir}`,
-  );
+  )
 }
 
 function denoRunPermissions(options: { allowNet: boolean }): string[] {
   const permissions = [
-    "--no-prompt",
-    "--allow-env=HOME,XDG_CACHE_HOME,LOCALAPPDATA,USERPROFILE,ESBUILD_BINARY_PATH",
-    "--allow-read",
-    "--allow-write",
-    "--allow-run",
-  ];
+    '--no-prompt',
+    '--allow-env=HOME,XDG_CACHE_HOME,LOCALAPPDATA,USERPROFILE,ESBUILD_BINARY_PATH',
+    '--allow-read',
+    '--allow-write',
+    '--allow-run',
+  ]
 
-  if (options.allowNet) permissions.push("--allow-net");
+  if (options.allowNet) permissions.push('--allow-net')
 
-  return permissions;
+  return permissions
 }
 
-Deno.test("downloads the esbuild binary, starts the service, and runs the executable", async () => {
+Deno.test('downloads the esbuild binary, starts the service, and runs the executable', async () => {
   await withIsolatedRuntime(async ({ rootDir, env }) => {
-    const probePath = await writeProbeScript(rootDir);
+    const probePath = await writeProbeScript(rootDir)
 
     const firstRun = await runDeno([
-      "run",
+      'run',
       ...denoRunPermissions({ allowNet: true }),
       probePath,
-    ], env);
+    ], env)
 
-    assertSuccessfulCommand(firstRun, "fresh-cache esbuild API probe");
+    assertSuccessfulCommand(firstRun, 'fresh-cache esbuild API probe')
 
-    const binaryPath = await findDownloadedBinary(rootDir);
+    const binaryPath = await findDownloadedBinary(rootDir)
 
-    const versionRun = await runExecutable(binaryPath, ["--version"]);
-    assertSuccessfulCommand(versionRun, "direct esbuild binary --version");
+    const versionRun = await runExecutable(binaryPath, ['--version'])
+    assertSuccessfulCommand(versionRun, 'direct esbuild binary --version')
 
     assertEquals(
       versionRun.stdout.trim(),
       version,
-      "downloaded esbuild binary version should match the wrapper version",
-    );
-  });
-});
+      'downloaded esbuild binary version should match the wrapper version',
+    )
+  })
+})
 
-Deno.test("reuses the cached esbuild binary without network access", async () => {
+Deno.test('reuses the cached esbuild binary without network access', async () => {
   await withIsolatedRuntime(async ({ rootDir, env }) => {
-    const probePath = await writeProbeScript(rootDir);
+    const probePath = await writeProbeScript(rootDir)
 
     const warmCacheRun = await runDeno([
-      "run",
+      'run',
       ...denoRunPermissions({ allowNet: true }),
       probePath,
-    ], env);
+    ], env)
 
-    assertSuccessfulCommand(warmCacheRun, "cache-warming esbuild API probe");
+    assertSuccessfulCommand(warmCacheRun, 'cache-warming esbuild API probe')
 
     const cachedRun = await runDeno([
-      "run",
+      'run',
       ...denoRunPermissions({ allowNet: false }),
       probePath,
-    ], env);
+    ], env)
 
-    assertSuccessfulCommand(cachedRun, "cached esbuild API probe");
+    assertSuccessfulCommand(cachedRun, 'cached esbuild API probe')
 
-    await findDownloadedBinary(rootDir);
-  });
-});
+    await findDownloadedBinary(rootDir)
+  })
+})
 
-Deno.test("module CLI forwards to the downloaded esbuild binary", async () => {
+Deno.test('module CLI forwards to the downloaded esbuild binary', async () => {
   await withIsolatedRuntime(async ({ rootDir, env }) => {
     const cliRun = await runDeno([
-      "run",
+      'run',
       ...denoRunPermissions({ allowNet: true }),
       moduleUnderTest,
-      "--version",
-    ], env);
+      '--version',
+    ], env)
 
-    assertSuccessfulCommand(cliRun, "module CLI --version");
+    assertSuccessfulCommand(cliRun, 'module CLI --version')
 
     assertEquals(
       cliRun.stdout.trim(),
       version,
-      "module CLI should print the esbuild binary version",
-    );
+      'module CLI should print the esbuild binary version',
+    )
 
-    const binaryPath = await findDownloadedBinary(rootDir);
+    const binaryPath = await findDownloadedBinary(rootDir)
     assertIncludes(
       binaryPath,
       `@${version}`,
-      "CLI run should cache a version-suffixed esbuild binary",
-    );
-  });
-});
+      'CLI run should cache a version-suffixed esbuild binary',
+    )
+  })
+})
 
-Deno.test("WASM API initializes and runs transform and build", async () => {
+Deno.test('WASM API initializes and runs transform and build', async () => {
   await withIsolatedRuntime(async ({ rootDir, env }) => {
-    const probePath = await writeWasmProbeScript(rootDir);
+    const probePath = await writeWasmProbeScript(rootDir)
 
     const wasmRun = await runDeno([
-      "run",
+      'run',
       ...denoRunPermissions({ allowNet: true }),
       probePath,
-    ], env);
+    ], env)
 
-    assertSuccessfulCommand(wasmRun, "WASM esbuild API probe");
-  });
-});
+    assertSuccessfulCommand(wasmRun, 'WASM esbuild API probe')
+  })
+})

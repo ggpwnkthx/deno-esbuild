@@ -1,6 +1,6 @@
-import type * as esbuild from "esbuild";
-import { MediaType, RequestedModuleType } from "@deno/loader";
-import type { WorkspaceOptions } from "@deno/loader";
+import type * as esbuild from 'esbuild'
+import { MediaType, RequestedModuleType } from '@deno/loader'
+import type { WorkspaceOptions } from '@deno/loader'
 
 /**
  * Converts a media type to an esbuild loader identifier.
@@ -8,34 +8,34 @@ import type { WorkspaceOptions } from "@deno/loader";
 export function mediaToLoader(type: MediaType): esbuild.Loader {
   switch (type) {
     case MediaType.Jsx:
-      return "jsx";
+      return 'jsx'
     case MediaType.JavaScript:
     case MediaType.Mjs:
     case MediaType.Cjs:
-      return "js";
+      return 'js'
     case MediaType.TypeScript:
     case MediaType.Mts:
     case MediaType.Dmts:
     case MediaType.Dcts:
-      return "ts";
+      return 'ts'
     case MediaType.Tsx:
-      return "tsx";
+      return 'tsx'
     case MediaType.Css:
-      return "css";
+      return 'css'
     case MediaType.Json:
-      return "json";
+      return 'json'
     case MediaType.Html:
-      return "default";
+      return 'default'
     case MediaType.Sql:
-      return "default";
+      return 'default'
     case MediaType.Wasm:
-      return "binary";
+      return 'binary'
     case MediaType.SourceMap:
-      return "json";
+      return 'json'
     case MediaType.Unknown:
-      return "default";
+      return 'default'
     default:
-      return "default";
+      return 'default'
   }
 }
 
@@ -44,15 +44,15 @@ export function mediaToLoader(type: MediaType): esbuild.Loader {
  */
 export function getPlatform(
   platform: esbuild.Platform | undefined,
-): WorkspaceOptions["platform"] {
+): WorkspaceOptions['platform'] {
   switch (platform) {
-    case "browser":
-      return "browser";
-    case "node":
-      return "node";
-    case "neutral":
+    case 'browser':
+      return 'browser'
+    case 'node':
+      return 'node'
+    case 'neutral':
     default:
-      return undefined;
+      return undefined
   }
 }
 
@@ -64,17 +64,17 @@ export function getModuleType(
   withArgs: Record<string, string>,
 ): RequestedModuleType {
   switch (withArgs.type) {
-    case "text":
-      return RequestedModuleType.Text;
-    case "bytes":
-      return RequestedModuleType.Bytes;
-    case "json":
-      return RequestedModuleType.Json;
+    case 'text':
+      return RequestedModuleType.Text
+    case 'bytes':
+      return RequestedModuleType.Bytes
+    case 'json':
+      return RequestedModuleType.Json
     default:
-      if (file.endsWith(".json")) {
-        return RequestedModuleType.Json;
+      if (file.endsWith('.json')) {
+        return RequestedModuleType.Json
       }
-      return RequestedModuleType.Default;
+      return RequestedModuleType.Default
   }
 }
 
@@ -87,9 +87,9 @@ export function externalToRegex(external: string): RegExp {
   // Note: * becomes .* which matches across path separators (e.g. "foo/*" matches "foo/bar/baz").
   // This aligns with esbuild's external pattern behaviour where * is a greedy glob.
   return new RegExp(
-    "^" + external.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&").replace(
+    '^' + external.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&').replace(
       /\*/g,
-      ".*",
-    ) + "$",
-  );
+      '.*',
+    ) + '$',
+  )
 }

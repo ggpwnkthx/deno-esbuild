@@ -1,11 +1,11 @@
 # deno-esbuild workspace
 
-Deno-first packages for using [esbuild](https://esbuild.github.io/) in Deno
-projects. This repository contains a native esbuild wrapper, a WASM entrypoint,
-Deno/CSS esbuild plugins, and Hono/Oak development middleware.
+Deno-first packages for using [esbuild](https://esbuild.github.io/) in Deno projects. This
+repository contains a native esbuild wrapper, a WASM entrypoint, Deno/CSS esbuild plugins, and
+Hono/Oak development middleware.
 
-The current workspace package version is `0.2.8`. The bundled esbuild API
-targets the esbuild binary version `0.28.1`.
+The current workspace package version is `0.2.9`. The bundled esbuild API targets the esbuild binary
+version `0.28.1`.
 
 ## Packages
 
@@ -38,89 +38,88 @@ targets the esbuild binary version `0.28.1`.
     └── shared/
 ```
 
-The root `deno.json` defines the workspace and local development import aliases.
-Each package has its own `deno.json`, exports, and package-level tasks.
+The root `deno.json` defines the workspace and local development import aliases. Each package has
+its own `deno.json`, exports, and package-level tasks.
 
 ## Requirements
 
 - Deno 2.x.
-- Network access is needed the first time the native wrapper downloads an
-  esbuild release asset, unless `ESBUILD_BINARY_PATH` points to an existing
-  binary.
-- The native API starts a subprocess. Call `stop()` when finished, especially in
-  tests, so Deno does not keep running because of an open child process.
+- Network access is needed the first time the native wrapper downloads an esbuild release asset,
+  unless `ESBUILD_BINARY_PATH` points to an existing binary.
+- The native API starts a subprocess. Call `stop()` when finished, especially in tests, so Deno does
+  not keep running because of an open child process.
 
 ## `@ggpwnkthx/esbuild`
 
 Import from JSR:
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9'
 ```
 
 ### Basic build
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9'
 
 try {
   const result = await esbuild.build({
-    entryPoints: ["src/index.ts"],
+    entryPoints: ['src/index.ts'],
     bundle: true,
-    outfile: "dist/bundle.js",
+    outfile: 'dist/bundle.js',
     minify: true,
-  });
+  })
 
-  console.log(result.warnings);
+  console.log(result.warnings)
 } finally {
-  await esbuild.stop();
+  await esbuild.stop()
 }
 ```
 
 ### Long-running context
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9'
 
 const ctx = await esbuild.context({
-  entryPoints: ["src/index.ts"],
+  entryPoints: ['src/index.ts'],
   bundle: true,
-  outdir: "dist",
-});
+  outdir: 'dist',
+})
 
-await ctx.watch();
+await ctx.watch()
 
 const server = await ctx.serve({
-  servedir: "dist",
+  servedir: 'dist',
   port: 8000,
-});
+})
 
-console.log(`Serving on port ${server.port}`);
+console.log(`Serving on port ${server.port}`)
 
-await ctx.dispose();
-await esbuild.stop();
+await ctx.dispose()
+await esbuild.stop()
 ```
 
 ### Transform
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9'
 
 try {
-  const result = await esbuild.transform("const value: number = 1;", {
-    loader: "ts",
+  const result = await esbuild.transform('const value: number = 1;', {
+    loader: 'ts',
     minify: true,
-  });
+  })
 
-  console.log(result.code);
+  console.log(result.code)
 } finally {
-  await esbuild.stop();
+  await esbuild.stop()
 }
 ```
 
-For large transform inputs, the implementation may use a temporary file for
-performance instead of sending the whole payload through stdio. Design callers
-so large inputs can be streamed or chunked before calling esbuild when possible.
+For large transform inputs, the implementation may use a temporary file for performance instead of
+sending the whole payload through stdio. Design callers so large inputs can be streamed or chunked
+before calling esbuild when possible.
 
 ### Other async APIs
 
@@ -157,7 +156,7 @@ import type {
   Plugin,
   PluginBuild,
   TransformOptions,
-} from "jsr:@ggpwnkthx/esbuild@0.2.8";
+} from 'jsr:@ggpwnkthx/esbuild@0.2.9'
 ```
 
 Other esbuild type definitions live in the package's shared type module:
@@ -167,7 +166,7 @@ import type {
   BuildResult,
   Message,
   TransformResult,
-} from "jsr:@ggpwnkthx/esbuild@0.2.8/shared/types";
+} from 'jsr:@ggpwnkthx/esbuild@0.2.9/shared/types'
 ```
 
 ### Required Deno permissions
@@ -186,8 +185,7 @@ deno run   --allow-env   --allow-net=github.com   --allow-read   --allow-write  
 | `--allow-write`          | Writes the cached binary and build outputs.                          |
 | `--allow-run`            | Runs the cached esbuild binary.                                      |
 
-After the binary is cached, reduce permissions to match the operation you are
-performing.
+After the binary is cached, reduce permissions to match the operation you are performing.
 
 ### Supported native release assets
 
@@ -210,8 +208,8 @@ Unsupported targets throw an error before starting the service.
 
 ### Binary downloads and cache
 
-Binaries are downloaded from GitHub release assets for this repository and
-verified against the release `SHA256SUMS` file before being cached.
+Binaries are downloaded from GitHub release assets for this repository and verified against the
+release `SHA256SUMS` file before being cached.
 
 Default cache locations:
 
@@ -227,8 +225,7 @@ Cached binaries include the esbuild version in the filename, for example:
 esbuild-linux-x64@0.28.1
 ```
 
-Set `ESBUILD_BINARY_PATH` to bypass download/cache lookup and run a specific
-binary:
+Set `ESBUILD_BINARY_PATH` to bypass download/cache lookup and run a specific binary:
 
 ```bash
 ESBUILD_BINARY_PATH=/usr/local/bin/esbuild deno run --allow-run build.ts
@@ -239,7 +236,7 @@ ESBUILD_BINARY_PATH=/usr/local/bin/esbuild deno run --allow-run build.ts
 The package can be run as a CLI. Arguments are forwarded to the esbuild binary:
 
 ```bash
-deno run   --allow-env   --allow-net=github.com   --allow-read   --allow-write   --allow-run   jsr:@ggpwnkthx/esbuild@0.2.8   --bundle src/index.ts --outfile=dist/bundle.js
+deno run   --allow-env   --allow-net=github.com   --allow-read   --allow-write   --allow-run   jsr:@ggpwnkthx/esbuild@0.2.9   --bundle src/index.ts --outfile=dist/bundle.js
 ```
 
 ## WASM API
@@ -247,48 +244,48 @@ deno run   --allow-env   --allow-net=github.com   --allow-read   --allow-write  
 Use the WASM entrypoint when a subprocess is not available:
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8/wasm";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9/wasm'
 
 await esbuild.initialize({
-  wasmURL: new URL("./esbuild.wasm", import.meta.url),
+  wasmURL: new URL('./esbuild.wasm', import.meta.url),
   worker: true,
-});
+})
 
-const result = await esbuild.transform("let x: number = 1", {
-  loader: "ts",
-});
+const result = await esbuild.transform('let x: number = 1', {
+  loader: 'ts',
+})
 
-console.log(result.code);
+console.log(result.code)
 
-await esbuild.stop();
+await esbuild.stop()
 ```
 
-The WASM entrypoint exports the same async API shape as the native entrypoint.
-Sync APIs throw. Browser-style initialization requires either `wasmURL` or
-`wasmModule`; the default service path falls back to `esbuild.wasm`.
+The WASM entrypoint exports the same async API shape as the native entrypoint. Sync APIs throw.
+Browser-style initialization requires either `wasmURL` or `wasmModule`; the default service path
+falls back to `esbuild.wasm`.
 
 ## `@ggpwnkthx/esbuild-plugin-deno`
 
 This plugin integrates Deno's resolver and loader into esbuild builds.
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8";
-import { denoPlugin } from "jsr:@ggpwnkthx/esbuild-plugin-deno@0.2.8";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9'
+import { denoPlugin } from 'jsr:@ggpwnkthx/esbuild-plugin-deno@0.2.9'
 
 try {
   await esbuild.build({
-    entryPoints: ["./main.ts"],
+    entryPoints: ['./main.ts'],
     bundle: true,
-    outfile: "./dist/main.js",
+    outfile: './dist/main.js',
     plugins: [
       denoPlugin({
-        configPath: "./deno.json",
-        publicEnvVarPrefix: "PUBLIC_",
+        configPath: './deno.json',
+        publicEnvVarPrefix: 'PUBLIC_',
       }),
     ],
-  });
+  })
 } finally {
-  await esbuild.stop();
+  await esbuild.stop()
 }
 ```
 
@@ -302,27 +299,26 @@ Options:
 | `preserveJsx`        | Keeps JSX instead of transpiling it according to compiler options. |
 | `publicEnvVarPrefix` | Inlines matching `Deno.env.get()` values during bundling.          |
 
-Depending on your module graph, this plugin may require file, network, and env
-permissions.
+Depending on your module graph, this plugin may require file, network, and env permissions.
 
 ## `@ggpwnkthx/esbuild-plugin-css`
 
-This plugin resolves local CSS `@import` rules and inlines the imported content.
-External `http:` and `https:` imports are left external.
+This plugin resolves local CSS `@import` rules and inlines the imported content. External `http:`
+and `https:` imports are left external.
 
 ```ts
-import * as esbuild from "jsr:@ggpwnkthx/esbuild@0.2.8";
-import { cssPlugin } from "jsr:@ggpwnkthx/esbuild-plugin-css@0.2.8";
+import * as esbuild from 'jsr:@ggpwnkthx/esbuild@0.2.9'
+import { cssPlugin } from 'jsr:@ggpwnkthx/esbuild-plugin-css@0.2.9'
 
 try {
   await esbuild.build({
-    entryPoints: ["./src/index.ts"],
+    entryPoints: ['./src/index.ts'],
     bundle: true,
-    outdir: "./dist",
+    outdir: './dist',
     plugins: [cssPlugin()],
-  });
+  })
 } finally {
-  await esbuild.stop();
+  await esbuild.stop()
 }
 ```
 
@@ -332,72 +328,70 @@ Options:
 | ---------- | ----------------------------------------------------------------------------------------------------- |
 | `emitFile` | When true, emits the fully-resolved CSS as a separate output file when CSS is used as an entry point. |
 
-The plugin uses file reads for local CSS imports and may use fetch-style loading
-for file URLs before falling back to `Deno.readTextFile`.
+The plugin uses file reads for local CSS imports and may use fetch-style loading for file URLs
+before falling back to `Deno.readTextFile`.
 
 ## Hono middleware
 
 ```ts
-import { Hono } from "jsr:@hono/hono@4.12.16";
-import esbuildMiddleware from "jsr:@ggpwnkthx/esbuild-wrapper-hono@0.2.8";
+import { Hono } from 'jsr:@hono/hono@4.12.16'
+import esbuildMiddleware from 'jsr:@ggpwnkthx/esbuild-wrapper-hono@0.2.9'
 
-const app = new Hono();
+const app = new Hono()
 
 app.use(
-  "*",
+  '*',
   esbuildMiddleware({
-    extensions: [".ts", ".tsx"],
+    extensions: ['.ts', '.tsx'],
     cache: true,
     maxSize: 100,
     ttl: 30_000,
     transformOptions: {
-      target: "es2022",
+      target: 'es2022',
     },
   }),
-);
+)
 
-app.get("/example.ts", (c) => c.text("export const value: number = 1;"));
+app.get('/example.ts', (c) => c.text('export const value: number = 1;'))
 
-export default app;
+export default app
 ```
 
-The Hono wrapper checks the request pathname against the configured extensions,
-reads `c.res.text()` after downstream middleware runs, transforms the body with
-esbuild, and updates the response content type. By default, transformed
-responses use `text/javascript`.
+The Hono wrapper checks the request pathname against the configured extensions, reads `c.res.text()`
+after downstream middleware runs, transforms the body with esbuild, and updates the response content
+type. By default, transformed responses use `text/javascript`.
 
 ## Oak middleware
 
 ```ts
-import { Application } from "jsr:@oak/oak@17";
-import esbuildMiddleware from "jsr:@ggpwnkthx/esbuild-wrapper-oak@0.2.8";
+import { Application } from 'jsr:@oak/oak@17'
+import esbuildMiddleware from 'jsr:@ggpwnkthx/esbuild-wrapper-oak@0.2.9'
 
-const app = new Application();
+const app = new Application()
 
 app.use(
   esbuildMiddleware({
-    extensions: [".ts", ".tsx"],
+    extensions: ['.ts', '.tsx'],
     cache: true,
     transformOptions: {
-      target: "es2022",
+      target: 'es2022',
     },
   }),
-);
+)
 
 export default {
   fetch: app.handle,
-};
+}
 ```
 
-The Oak wrapper checks the request pathname after downstream middleware runs,
-reads `ctx.request.body.text()`, and writes transformed code to
-`ctx.response.body`. This reflects the current implementation; verify that this
-matches your server's request/response flow before using it in production.
+The Oak wrapper checks the request pathname after downstream middleware runs, reads
+`ctx.request.body.text()`, and writes transformed code to `ctx.response.body`. This reflects the
+current implementation; verify that this matches your server's request/response flow before using it
+in production.
 
 ## Shared wrapper options
 
-The Hono and Oak wrappers share the same `Options` shape from
-`@ggpwnkthx/esbuild-wrapper-shared`.
+The Hono and Oak wrappers share the same `Options` shape from `@ggpwnkthx/esbuild-wrapper-shared`.
 
 | Option             | Default               | Description                                                       |
 | ------------------ | --------------------- | ----------------------------------------------------------------- |
@@ -441,8 +435,8 @@ deno task check
 deno task test
 ```
 
-The native binary build script requires read/write access, access to `git` and
-`go`, and environment access:
+The native binary build script requires read/write access, access to `git` and `go`, and environment
+access:
 
 ```bash
 deno task bin:build
@@ -451,12 +445,9 @@ deno task bin:build
 ## Notes and constraints
 
 - The native API is async-only in Deno. Sync compatibility exports throw.
-- Always call `stop()` after native or WASM API usage unless a long-lived server
-  intentionally keeps the service alive.
-- The native wrapper stores downloaded binaries outside the repository in the OS
-  cache directory.
-- The wrapper cache is process-local memory. It is not persisted across
-  restarts.
-- Large esbuild outputs and metafiles can be memory-heavy. Prefer writing output
-  files to disk or processing metafiles deliberately instead of retaining many
-  build results in memory.
+- Always call `stop()` after native or WASM API usage unless a long-lived server intentionally keeps
+  the service alive.
+- The native wrapper stores downloaded binaries outside the repository in the OS cache directory.
+- The wrapper cache is process-local memory. It is not persisted across restarts.
+- Large esbuild outputs and metafiles can be memory-heavy. Prefer writing output files to disk or
+  processing metafiles deliberately instead of retaining many build results in memory.

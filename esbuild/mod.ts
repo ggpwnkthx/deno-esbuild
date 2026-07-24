@@ -32,33 +32,33 @@
  * await stop(); // prevent hang
  * ```
  */
-import type * as types from "./shared/types.ts";
+import type * as types from './shared/types.ts'
 /** @see ../shared/types.ts:BuildOptions */
-export type { BuildOptions } from "./shared/types.ts";
+export type { BuildOptions } from './shared/types.ts'
 /** @see ../shared/types.ts:Loader */
-export type { Loader } from "./shared/types.ts";
+export type { Loader } from './shared/types.ts'
 /** @see ../shared/types.ts:OnLoadArgs */
-export type { OnLoadArgs } from "./shared/types.ts";
+export type { OnLoadArgs } from './shared/types.ts'
 /** @see ../shared/types.ts:OnLoadResult */
-export type { OnLoadResult } from "./shared/types.ts";
+export type { OnLoadResult } from './shared/types.ts'
 /** @see ../shared/types.ts:OnResolveArgs */
-export type { OnResolveArgs } from "./shared/types.ts";
+export type { OnResolveArgs } from './shared/types.ts'
 /** @see ../shared/types.ts:OnResolveResult */
-export type { OnResolveResult } from "./shared/types.ts";
+export type { OnResolveResult } from './shared/types.ts'
 /** @see ../shared/types.ts:Platform */
-export type { Platform } from "./shared/types.ts";
+export type { Platform } from './shared/types.ts'
 /** @see ../shared/types.ts:Plugin */
-export type { Plugin } from "./shared/types.ts";
+export type { Plugin } from './shared/types.ts'
 /** @see ../shared/types.ts:PluginBuild */
-export type { PluginBuild } from "./shared/types.ts";
+export type { PluginBuild } from './shared/types.ts'
 /** @see ../shared/types.ts:TransformOptions */
-export type { TransformOptions } from "./shared/types.ts";
-import * as common from "./shared/common.ts";
-import * as ourselves from "./mod.ts";
+export type { TransformOptions } from './shared/types.ts'
+import * as common from './shared/common.ts'
+import * as ourselves from './mod.ts'
 
 /** The esbuild binary version string (e.g. "0.28.1").
  * @see https://github.com/evanw/esbuild/releases */
-export const version = common.ESBUILD_VERSION;
+export const version = common.ESBUILD_VERSION
 
 /** @see ../shared/types.ts:build
  * @param options - Configuration options for the build.
@@ -72,7 +72,7 @@ export const version = common.ESBUILD_VERSION;
  * ```
  */
 export const build: typeof types.build = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.build(options));
+  ensureServiceIsRunning().then((service) => service.build(options))
 
 /** @see ../shared/types.ts:context
  * @param options - Configuration options for the build context.
@@ -89,7 +89,7 @@ export const build: typeof types.build = (options: types.BuildOptions) =>
  * ```
  */
 export const context: typeof types.context = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.context(options));
+  ensureServiceIsRunning().then((service) => service.context(options))
 
 /** @see ../shared/types.ts:transform
  * @param input - The source code (string) or raw bytes to transform.
@@ -106,8 +106,7 @@ export const context: typeof types.context = (options: types.BuildOptions) =>
 export const transform: typeof types.transform = (
   input: string | Uint8Array,
   options?: types.TransformOptions,
-) =>
-  ensureServiceIsRunning().then((service) => service.transform(input, options));
+) => ensureServiceIsRunning().then((service) => service.transform(input, options))
 
 /** @see ../shared/types.ts:formatMessages
  * @param messages - An array of diagnostic messages to format.
@@ -122,10 +121,7 @@ export const transform: typeof types.transform = (
 export const formatMessages: typeof types.formatMessages = (
   messages,
   options,
-) =>
-  ensureServiceIsRunning().then((service) =>
-    service.formatMessages(messages, options)
-  );
+) => ensureServiceIsRunning().then((service) => service.formatMessages(messages, options))
 
 /** @see ../shared/types.ts:analyzeMetafile
  * @param metafile - The metafile JSON string or object to analyze.
@@ -140,10 +136,7 @@ export const formatMessages: typeof types.formatMessages = (
 export const analyzeMetafile: typeof types.analyzeMetafile = (
   metafile,
   options,
-) =>
-  ensureServiceIsRunning().then((service) =>
-    service.analyzeMetafile(metafile, options)
-  );
+) => ensureServiceIsRunning().then((service) => service.analyzeMetafile(metafile, options))
 
 /** @see ../shared/types.ts:buildSync
  * @example
@@ -153,8 +146,8 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
  * ```
  */
 export const buildSync: typeof types.buildSync = () => {
-  throw new Error(`The "buildSync" API does not work in Deno`);
-};
+  throw new Error(`The "buildSync" API does not work in Deno`)
+}
 
 /** @see ../shared/types.ts:transformSync
  * @example
@@ -164,8 +157,8 @@ export const buildSync: typeof types.buildSync = () => {
  * ```
  */
 export const transformSync: typeof types.transformSync = () => {
-  throw new Error(`The "transformSync" API does not work in Deno`);
-};
+  throw new Error(`The "transformSync" API does not work in Deno`)
+}
 
 /** @see ../shared/types.ts:formatMessagesSync
  * @example
@@ -175,8 +168,8 @@ export const transformSync: typeof types.transformSync = () => {
  * ```
  */
 export const formatMessagesSync: typeof types.formatMessagesSync = () => {
-  throw new Error(`The "formatMessagesSync" API does not work in Deno`);
-};
+  throw new Error(`The "formatMessagesSync" API does not work in Deno`)
+}
 
 /** @see ../shared/types.ts:analyzeMetafileSync
  * @example
@@ -186,8 +179,8 @@ export const formatMessagesSync: typeof types.formatMessagesSync = () => {
  * ```
  */
 export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
-  throw new Error(`The "analyzeMetafileSync" API does not work in Deno`);
-};
+  throw new Error(`The "analyzeMetafileSync" API does not work in Deno`)
+}
 
 /** @see ../shared/types.ts:stop
  * @example
@@ -197,10 +190,10 @@ export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
  * ```
  */
 export const stop = async (): Promise<void> => {
-  if (stopService) await stopService();
-};
+  if (stopService) await stopService()
+}
 
-let initializeWasCalled = false;
+let initializeWasCalled = false
 
 /** @see ../shared/types.ts:initialize
  * @example
@@ -210,226 +203,225 @@ let initializeWasCalled = false;
  * ```
  */
 export const initialize: typeof types.initialize = async (options) => {
-  options = common.validateInitializeOptions(options || {});
+  options = common.validateInitializeOptions(options || {})
   if (options.wasmURL) {
-    throw new Error(`The "wasmURL" option only works in the browser`);
+    throw new Error(`The "wasmURL" option only works in the browser`)
   }
   if (options.wasmModule) {
-    throw new Error(`The "wasmModule" option only works in the browser`);
+    throw new Error(`The "wasmModule" option only works in the browser`)
   }
   if (options.worker) {
-    throw new Error(`The "worker" option only works in the browser`);
+    throw new Error(`The "worker" option only works in the browser`)
   }
   if (initializeWasCalled) {
-    throw new Error('Cannot call "initialize" more than once');
+    throw new Error('Cannot call "initialize" more than once')
   }
-  await ensureServiceIsRunning();
-  initializeWasCalled = true;
-};
+  await ensureServiceIsRunning()
+  initializeWasCalled = true
+}
 
-const RELEASE_BASE_URL =
-  `https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${version}`;
+const RELEASE_BASE_URL = `https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${version}`
 
 interface ReleaseBinary {
-  assetName: string;
+  assetName: string
 }
 
 async function installFromRelease(assetName: string): Promise<string> {
-  const { finalPath, finalDir } = getCachePath(assetName);
+  const { finalPath, finalDir } = getCachePath(assetName)
 
   try {
-    await Deno.stat(finalPath);
-    return finalPath;
+    await Deno.stat(finalPath)
+    return finalPath
   } catch {
     // Cache miss, download below
   }
 
-  const assetURL = `${RELEASE_BASE_URL}/${assetName}`;
-  const sumsURL = `${RELEASE_BASE_URL}/SHA256SUMS`;
+  const assetURL = `${RELEASE_BASE_URL}/${assetName}`
+  const sumsURL = `${RELEASE_BASE_URL}/SHA256SUMS`
 
   const [executable, checksumText] = await Promise.all([
     fetchBytes(assetURL, assetName),
-    fetchText(sumsURL, "SHA256SUMS"),
-  ]);
+    fetchText(sumsURL, 'SHA256SUMS'),
+  ])
 
-  const expectedHash = findExpectedSHA256(checksumText, assetName);
-  const actualHash = await sha256Hex(executable);
+  const expectedHash = findExpectedSHA256(checksumText, assetName)
+  const actualHash = await sha256Hex(executable)
 
   if (actualHash !== expectedHash) {
     throw new Error(
       `Checksum mismatch for ${assetName}: expected ${expectedHash}, got ${actualHash}`,
-    );
+    )
   }
 
   await Deno.mkdir(finalDir, {
     recursive: true,
     mode: 0o700,
-  });
+  })
 
-  const tempPath = `${finalPath}.${crypto.randomUUID()}.tmp`;
+  const tempPath = `${finalPath}.${crypto.randomUUID()}.tmp`
 
   try {
-    await Deno.writeFile(tempPath, executable, { mode: 0o755 });
-    if (Deno.build.os !== "windows") await Deno.chmod(tempPath, 0o755);
-    await Deno.rename(tempPath, finalPath);
+    await Deno.writeFile(tempPath, executable, { mode: 0o755 })
+    if (Deno.build.os !== 'windows') await Deno.chmod(tempPath, 0o755)
+    await Deno.rename(tempPath, finalPath)
   } catch (err) {
     try {
-      await Deno.remove(tempPath);
+      await Deno.remove(tempPath)
     } catch {
       // Ignore cleanup errors
     }
-    throw err;
+    throw err
   }
 
-  return finalPath;
+  return finalPath
 }
 
 async function fetchBytes(url: string, name: string): Promise<Uint8Array> {
-  const response = await fetch(url);
+  const response = await fetch(url)
   if (!response.ok) {
     throw new Error(
       `Failed to download ${name}: HTTP ${response.status} ${response.statusText}`,
-    );
+    )
   }
-  return new Uint8Array(await response.arrayBuffer());
+  return new Uint8Array(await response.arrayBuffer())
 }
 
 async function fetchText(url: string, name: string): Promise<string> {
-  const response = await fetch(url);
+  const response = await fetch(url)
   if (!response.ok) {
     throw new Error(
       `Failed to download ${name}: HTTP ${response.status} ${response.statusText}`,
-    );
+    )
   }
-  return await response.text();
+  return await response.text()
 }
 
 function findExpectedSHA256(checksumText: string, assetName: string): string {
   for (const line of checksumText.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
 
     // Standard sha256sum format:
     // <64-hex-digest><spaces><filename>
-    const match = /^([a-fA-F0-9]{64})\s+\*?(.+)$/.exec(trimmed);
+    const match = /^([a-fA-F0-9]{64})\s+\*?(.+)$/.exec(trimmed)
     if (match && match[2] === assetName) {
-      return match[1].toLowerCase();
+      return match[1]!.toLowerCase()
     }
 
     // Also tolerate:
     // sha256:<64-hex-digest> <filename>
-    const alternate = /^sha256:([a-fA-F0-9]{64})\s+(.+)$/.exec(trimmed);
+    const alternate = /^sha256:([a-fA-F0-9]{64})\s+(.+)$/.exec(trimmed)
     if (alternate && alternate[2] === assetName) {
-      return alternate[1].toLowerCase();
+      return alternate[1]!.toLowerCase()
     }
   }
 
-  throw new Error(`Could not find SHA-256 checksum for ${assetName}`);
+  throw new Error(`Could not find SHA-256 checksum for ${assetName}`)
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const copy = new Uint8Array(bytes);
-  const digest = await crypto.subtle.digest("SHA-256", copy.buffer);
+  const copy = new Uint8Array(bytes)
+  const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
 
   return Array.from(
     new Uint8Array(digest),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
+    (byte) => byte.toString(16).padStart(2, '0'),
+  ).join('')
 }
 
 function getCachePath(assetName: string): {
-  finalPath: string;
-  finalDir: string;
+  finalPath: string
+  finalDir: string
 } {
-  let baseDir: string | undefined;
+  let baseDir: string | undefined
 
   switch (Deno.build.os) {
-    case "darwin":
-      baseDir = Deno.env.get("HOME");
-      if (baseDir) baseDir += "/Library/Caches";
-      break;
+    case 'darwin':
+      baseDir = Deno.env.get('HOME')
+      if (baseDir) baseDir += '/Library/Caches'
+      break
 
-    case "windows":
-      baseDir = Deno.env.get("LOCALAPPDATA");
+    case 'windows':
+      baseDir = Deno.env.get('LOCALAPPDATA')
       if (!baseDir) {
-        baseDir = Deno.env.get("USERPROFILE");
-        if (baseDir) baseDir += "/AppData/Local";
+        baseDir = Deno.env.get('USERPROFILE')
+        if (baseDir) baseDir += '/AppData/Local'
       }
-      if (baseDir) baseDir += "/Cache";
-      break;
+      if (baseDir) baseDir += '/Cache'
+      break
 
-    case "linux": {
-      const xdg = Deno.env.get("XDG_CACHE_HOME");
-      if (xdg && xdg[0] === "/") baseDir = xdg;
-      break;
+    case 'linux': {
+      const xdg = Deno.env.get('XDG_CACHE_HOME')
+      if (xdg && xdg[0] === '/') baseDir = xdg
+      break
     }
   }
 
   if (!baseDir) {
-    baseDir = Deno.env.get("HOME");
-    if (baseDir) baseDir += "/.cache";
+    baseDir = Deno.env.get('HOME')
+    if (baseDir) baseDir += '/.cache'
   }
 
-  if (!baseDir) throw new Error("Failed to find cache directory");
+  if (!baseDir) throw new Error('Failed to find cache directory')
 
-  const finalDir = `${baseDir}/esbuild/bin`;
-  const finalPath = `${finalDir}/${assetName}@${version}`;
-  return { finalPath, finalDir };
+  const finalDir = `${baseDir}/esbuild/bin`
+  const finalPath = `${finalDir}/${assetName}@${version}`
+  return { finalPath, finalDir }
 }
 
 async function install(): Promise<string> {
-  const overridePath = Deno.env.get("ESBUILD_BINARY_PATH");
-  if (overridePath) return overridePath;
+  const overridePath = Deno.env.get('ESBUILD_BINARY_PATH')
+  if (overridePath) return overridePath
 
-  const platformKey = Deno.build.target;
+  const platformKey = Deno.build.target
   const knownReleaseAssets: Record<string, ReleaseBinary> = {
     // Deno-supported platforms
-    "aarch64-apple-darwin": { assetName: "esbuild-darwin-arm64" },
-    "x86_64-apple-darwin": { assetName: "esbuild-darwin-x64" },
-    "aarch64-unknown-linux-gnu": { assetName: "esbuild-linux-arm64" },
-    "x86_64-unknown-linux-gnu": { assetName: "esbuild-linux-x64" },
-    "x86_64-pc-windows-msvc": { assetName: "esbuild-win32-x64.exe" },
+    'aarch64-apple-darwin': { assetName: 'esbuild-darwin-arm64' },
+    'x86_64-apple-darwin': { assetName: 'esbuild-darwin-x64' },
+    'aarch64-unknown-linux-gnu': { assetName: 'esbuild-linux-arm64' },
+    'x86_64-unknown-linux-gnu': { assetName: 'esbuild-linux-x64' },
+    'x86_64-pc-windows-msvc': { assetName: 'esbuild-win32-x64.exe' },
 
     // Extra release assets, kept for compatibility if Deno exposes these targets
-    "aarch64-pc-windows-msvc": { assetName: "esbuild-win32-arm64.exe" },
-    "aarch64-linux-android": { assetName: "esbuild-android-arm64" },
-    "x86_64-unknown-freebsd": { assetName: "esbuild-freebsd-x64" },
-    "aarch64-unknown-freebsd": { assetName: "esbuild-freebsd-arm64" },
-    "x86_64-alpine-linux-musl": { assetName: "esbuild-linux-x64" },
-  };
-
-  const releaseBinary = knownReleaseAssets[platformKey];
-  if (!releaseBinary) {
-    throw new Error(`Unsupported platform: ${platformKey}`);
+    'aarch64-pc-windows-msvc': { assetName: 'esbuild-win32-arm64.exe' },
+    'aarch64-linux-android': { assetName: 'esbuild-android-arm64' },
+    'x86_64-unknown-freebsd': { assetName: 'esbuild-freebsd-x64' },
+    'aarch64-unknown-freebsd': { assetName: 'esbuild-freebsd-arm64' },
+    'x86_64-alpine-linux-musl': { assetName: 'esbuild-linux-x64' },
   }
 
-  return await installFromRelease(releaseBinary.assetName);
+  const releaseBinary = knownReleaseAssets[platformKey]
+  if (!releaseBinary) {
+    throw new Error(`Unsupported platform: ${platformKey}`)
+  }
+
+  return await installFromRelease(releaseBinary.assetName)
 }
 
 interface Service {
-  build: typeof types.build;
-  context: typeof types.context;
-  transform: typeof types.transform;
-  formatMessages: typeof types.formatMessages;
-  analyzeMetafile: typeof types.analyzeMetafile;
+  build: typeof types.build
+  context: typeof types.context
+  transform: typeof types.transform
+  formatMessages: typeof types.formatMessages
+  analyzeMetafile: typeof types.analyzeMetafile
 }
 
-const defaultWD = Deno.cwd();
-let longLivedService: Promise<Service> | undefined;
-let stopService: (() => Promise<void>) | undefined;
+const defaultWD = Deno.cwd()
+let longLivedService: Promise<Service> | undefined
+let stopService: (() => Promise<void>) | undefined
 
 // Declare a common subprocess API for the two implementations below
 type SpawnFn = (cmd: string, options: {
-  args: string[];
-  stdin: "piped" | "inherit";
-  stdout: "piped" | "inherit";
-  stderr: "inherit";
+  args: string[]
+  stdin: 'piped' | 'inherit'
+  stdout: 'piped' | 'inherit'
+  stderr: 'inherit'
 }) => {
-  write(bytes: Uint8Array): void;
-  read(): Promise<Uint8Array | null>;
-  close(): Promise<void> | void;
-  status(): Promise<{ code: number }>;
-};
+  write(bytes: Uint8Array): void
+  read(): Promise<Uint8Array | null>
+  close(): Promise<void> | void
+  status(): Promise<{ code: number }>
+}
 
 // Deno ≥1.40
 const spawnNew: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
@@ -439,15 +431,13 @@ const spawnNew: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
     stdin,
     stdout,
     stderr,
-  }).spawn();
+  }).spawn()
   // Note: Need to check for "piped" in Deno ≥1.31.0 to avoid a crash
-  const writer = stdin === "piped" ? child.stdin.getWriter() : null;
-  const reader = stdout === "piped" ? child.stdout.getReader() : null;
+  const writer = stdin === 'piped' ? child.stdin.getWriter() : null
+  const reader = stdout === 'piped' ? child.stdout.getReader() : null
   return {
     write: writer ? (bytes) => writer.write(bytes) : () => Promise.resolve(),
-    read: reader
-      ? () => reader.read().then((x) => x.value || null)
-      : () => Promise.resolve(null),
+    read: reader ? () => reader.read().then((x) => x.value || null) : () => Promise.resolve(null),
     close: async () => {
       // We can't call "kill()" because it doesn't seem to work. Tests will
       // still fail with "A child process was opened during the test, but not
@@ -463,59 +453,59 @@ const spawnNew: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
       // we can do.
       //
       // See this for more info: https://github.com/evanw/esbuild/pull/3611
-      if (writer) await writer.close();
-      if (reader) await reader.cancel();
+      if (writer) await writer.close()
+      if (reader) await reader.cancel()
 
       // Wait for the process to exit. The new "kill()" API doesn't flag the
       // process as having exited because processes can technically ignore the
       // kill signal. Without this, Deno will fail tests that use esbuild with
       // an error because the test spawned a process but didn't wait for it.
-      await child.status;
+      await child.status
     },
     status: () => child.status,
-  };
-};
+  }
+}
 
 // Rely on spawnNew (Deno.Command) for all supported Deno versions
-const spawn: SpawnFn = spawnNew;
+const spawn: SpawnFn = spawnNew
 
 const ensureServiceIsRunning = (): Promise<Service> => {
   if (!longLivedService) {
     longLivedService = (async (): Promise<Service> => {
-      const binPath = await install();
-      const isTTY = Deno.stderr.isTerminal ? Deno.stderr.isTerminal() : false;
+      const binPath = await install()
+      const isTTY = Deno.stderr.isTerminal ? Deno.stderr.isTerminal() : false
 
       const child = spawn(binPath, {
         args: [`--service=${version}`],
-        stdin: "piped",
-        stdout: "piped",
-        stderr: "inherit",
-      });
+        stdin: 'piped',
+        stdout: 'piped',
+        stderr: 'inherit',
+      })
 
       stopService = async () => {
         // Close all resources related to the subprocess.
-        await child.close();
-        initializeWasCalled = false;
-        longLivedService = undefined;
-        stopService = undefined;
-      };
+        await child.close()
+        initializeWasCalled = false
+        longLivedService = undefined
+        stopService = undefined
+      }
 
       const { readFromStdout, afterClose, service } = common.createChannel({
         writeToStdin(bytes) {
-          child.write(bytes);
+          child.write(bytes)
         },
         isSync: false,
         hasFS: true,
         esbuild: ourselves,
-      });
+      })
 
       const readMoreStdout = () =>
         child.read().then((buffer) => {
           if (buffer === null) {
-            afterClose(null);
+            afterClose(null)
           } else {
-            readFromStdout(buffer);
-            readMoreStdout();
+            readFromStdout(buffer)
+            readMoreStdout()
           }
         }).catch((e) => {
           if (
@@ -523,37 +513,35 @@ const ensureServiceIsRunning = (): Promise<Service> => {
             e instanceof Deno.errors.BadResource
           ) {
             // ignore the error if read was interrupted (stdout was closed)
-            afterClose(e);
+            afterClose(e)
           } else {
-            throw e;
+            throw e
           }
-        });
-      readMoreStdout();
+        })
+      readMoreStdout()
 
       return {
         build: (options: types.BuildOptions) =>
           new Promise<types.BuildResult>((resolve, reject) => {
             service.buildOrContext({
-              callName: "build",
+              callName: 'build',
               refs: null,
               options,
               isTTY,
               defaultWD,
-              callback: (err, res) =>
-                err ? reject(err) : resolve(res as types.BuildResult),
-            });
+              callback: (err, res) => err ? reject(err) : resolve(res as types.BuildResult),
+            })
           }),
 
         context: (options: types.BuildOptions) =>
           new Promise<types.BuildContext>((resolve, reject) =>
             service.buildOrContext({
-              callName: "context",
+              callName: 'context',
               refs: null,
               options,
               isTTY,
               defaultWD,
-              callback: (err, res) =>
-                err ? reject(err) : resolve(res as types.BuildContext),
+              callback: (err, res) => err ? reject(err) : resolve(res as types.BuildContext),
             })
           ),
 
@@ -563,7 +551,7 @@ const ensureServiceIsRunning = (): Promise<Service> => {
         ) =>
           new Promise<types.TransformResult>((resolve, reject) =>
             service.transform({
-              callName: "transform",
+              callName: 'transform',
               refs: null,
               input,
               options: options || {},
@@ -572,23 +560,23 @@ const ensureServiceIsRunning = (): Promise<Service> => {
                 readFile(tempFile, callback) {
                   Deno.readFile(tempFile).then(
                     (bytes) => {
-                      const text = new TextDecoder().decode(bytes);
+                      const text = new TextDecoder().decode(bytes)
                       try {
-                        Deno.remove(tempFile);
+                        Deno.remove(tempFile)
                       } catch (_e) {
                         // Ignore error
                       }
-                      callback(null, text);
+                      callback(null, text)
                     },
                     (err) => callback(err, null),
-                  );
+                  )
                 },
                 writeFile(contents, callback) {
                   Deno.makeTempFile().then(
                     (tempFile) =>
                       Deno.writeFile(
                         tempFile,
-                        typeof contents === "string"
+                        typeof contents === 'string'
                           ? new TextEncoder().encode(contents)
                           : contents,
                       ).then(
@@ -596,7 +584,7 @@ const ensureServiceIsRunning = (): Promise<Service> => {
                         () => callback(null),
                       ),
                     () => callback(null),
-                  );
+                  )
                 },
               },
               callback: (err, res) => err ? reject(err) : resolve(res!),
@@ -606,7 +594,7 @@ const ensureServiceIsRunning = (): Promise<Service> => {
         formatMessages: (messages, options) =>
           new Promise((resolve, reject) =>
             service.formatMessages({
-              callName: "formatMessages",
+              callName: 'formatMessages',
               refs: null,
               messages,
               options,
@@ -617,29 +605,27 @@ const ensureServiceIsRunning = (): Promise<Service> => {
         analyzeMetafile: (metafile, options) =>
           new Promise((resolve, reject) =>
             service.analyzeMetafile({
-              callName: "analyzeMetafile",
+              callName: 'analyzeMetafile',
               refs: null,
-              metafile: typeof metafile === "string"
-                ? metafile
-                : JSON.stringify(metafile),
+              metafile: typeof metafile === 'string' ? metafile : JSON.stringify(metafile),
               options,
               callback: (err, res) => err ? reject(err) : resolve(res!),
             })
           ),
-      };
-    })();
+      }
+    })()
   }
-  return longLivedService;
-};
+  return longLivedService
+}
 
 // If we're called as the main script, forward the CLI to the underlying executable
 if (import.meta.main) {
   spawn(await install(), {
     args: Deno.args,
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
+    stdin: 'inherit',
+    stdout: 'inherit',
+    stderr: 'inherit',
   }).status().then(({ code }) => {
-    Deno.exit(code);
-  });
+    Deno.exit(code)
+  })
 }

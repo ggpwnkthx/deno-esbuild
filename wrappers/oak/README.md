@@ -1,39 +1,36 @@
 # @ggpwnkthx/esbuild-wrapper-oak
 
-An Oak middleware that on-the-fly transpiles TypeScript and TSX responses using
-esbuild.
+An Oak middleware that on-the-fly transpiles TypeScript and TSX responses using esbuild.
 
 ## Overview
 
-This middleware intercepts responses and transforms `.ts` and `.tsx` response
-bodies into JavaScript using esbuild's `tsx` loader. It is designed for
-development scenarios where you want to serve Deno TypeScript files directly
-without a separate build step.
+This middleware intercepts responses and transforms `.ts` and `.tsx` response bodies into JavaScript
+using esbuild's `tsx` loader. It is designed for development scenarios where you want to serve Deno
+TypeScript files directly without a separate build step.
 
 ## Quick Start
 
 ```ts
-import { Application } from "@oak/oak";
-import esbuildMiddleware from "@ggpwnkthx/esbuild-wrapper-oak";
+import { Application } from '@oak/oak'
+import esbuildMiddleware from '@ggpwnkthx/esbuild-wrapper-oak'
 
-const app = new Application();
+const app = new Application()
 
 // Apply the middleware to all routes
-app.use(esbuildMiddleware());
+app.use(esbuildMiddleware())
 
 // Your routes returning TypeScript
 app.use(async (ctx) => {
-  ctx.response.body = `export const value: number = 1;`;
-  ctx.response.headers.set("content-type", "application/typescript");
-});
+  ctx.response.body = `export const value: number = 1;`
+  ctx.response.headers.set('content-type', 'application/typescript')
+})
 
-export default { fetch: app.handle };
+export default { fetch: app.handle }
 ```
 
 ## Options
 
-The middleware accepts an optional `Options` object with the following
-properties:
+The middleware accepts an optional `Options` object with the following properties:
 
 | Property           | Type                       | Default             | Description                                                                              |
 | ------------------ | -------------------------- | ------------------- | ---------------------------------------------------------------------------------------- |
@@ -50,42 +47,40 @@ properties:
 ```ts
 app.use(
   esbuildMiddleware({
-    extensions: [".ts"],
+    extensions: ['.ts'],
     cache: true,
     maxSize: 100,
     ttl: 60_000, // 1 minute
-    contentType: "application/javascript",
+    contentType: 'application/javascript',
     transformOptions: {
-      target: "deno1.36",
+      target: 'deno1.36',
     },
   }),
-);
+)
 ```
 
 ## WASM Variant
 
-For environments where the native esbuild binary is unavailable, use the WASM
-variant:
+For environments where the native esbuild binary is unavailable, use the WASM variant:
 
 ```ts
-import { Application } from "@oak/oak";
-import esbuildMiddleware from "@ggpwnkthx/esbuild-wrapper-oak/wasm";
+import { Application } from '@oak/oak'
+import esbuildMiddleware from '@ggpwnkthx/esbuild-wrapper-oak/wasm'
 
-const app = new Application();
-app.use(esbuildMiddleware());
+const app = new Application()
+app.use(esbuildMiddleware())
 ```
 
-The `/wasm` export wraps the default middleware and initialises esbuild's WASM
-backend automatically via `esbuild.initialize({})`. It accepts all the same
-`Options` as the default export, plus an optional `wasmModule` or `wasmURL` if
-you need to provide a custom WebAssembly module.
+The `/wasm` export wraps the default middleware and initialises esbuild's WASM backend automatically
+via `esbuild.initialize({})`. It accepts all the same `Options` as the default export, plus an
+optional `wasmModule` or `wasmURL` if you need to provide a custom WebAssembly module.
 
 ```ts
 app.use(
   esbuildMiddleware({
-    wasmURL: new URL("./esbuild.wasm", import.meta.url),
+    wasmURL: new URL('./esbuild.wasm', import.meta.url),
   }),
-);
+)
 ```
 
 ## Exports
@@ -99,11 +94,9 @@ app.use(
 ## How It Works
 
 1. The middleware is mounted in the Oak application.
-2. After `next()` is called, it checks whether the request pathname ends with
-   one of the configured `extensions`.
-3. If so, it reads the response body, runs it through `esbuild.transform()` with
-   the `tsx` loader, and replaces the response body with the transpiled
-   JavaScript.
-4. When `cache: true` is set, results are stored in an in-memory LRU cache keyed
-   by pathname. Repeated requests to the same path skip the esbuild call and
-   return the cached result directly.
+2. After `next()` is called, it checks whether the request pathname ends with one of the configured
+   `extensions`.
+3. If so, it reads the response body, runs it through `esbuild.transform()` with the `tsx` loader,
+   and replaces the response body with the transpiled JavaScript.
+4. When `cache: true` is set, results are stored in an in-memory LRU cache keyed by pathname.
+   Repeated requests to the same path skip the esbuild call and return the cached result directly.

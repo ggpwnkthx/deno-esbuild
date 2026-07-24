@@ -19,18 +19,18 @@
  * export default { fetch: app.fetch };
  * ```
  */
-import type { MiddlewareHandler } from "hono";
-import { createMiddleware } from "hono/factory";
-import type { Options } from "@ggpwnkthx/esbuild-wrapper-shared";
+import type { MiddlewareHandler } from 'hono'
+import { createMiddleware } from 'hono/factory'
+import type { Options } from '@ggpwnkthx/esbuild-wrapper-shared'
 import {
   DEFAULT_CONTENT_TYPE,
   getCachedOrTranspile,
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,
-} from "@ggpwnkthx/esbuild-wrapper-shared";
+} from '@ggpwnkthx/esbuild-wrapper-shared'
 
-export type { Options };
+export type { Options }
 
 /**
  * Hono middleware that transforms TypeScript/TSX responses using esbuild.
@@ -58,19 +58,19 @@ export type { Options };
  */
 export default (options?: Options): MiddlewareHandler => {
   return createMiddleware(async (c, next) => {
-    await next();
-    const url = new URL(c.req.url);
+    await next()
+    const url = new URL(c.req.url)
 
     if (!shouldTranspile(url.pathname, options?.extensions)) {
-      return;
+      return
     }
 
-    const body = await c.res.text();
-    const contentType = options?.contentType ?? DEFAULT_CONTENT_TYPE;
+    const body = await c.res.text()
+    const contentType = options?.contentType ?? DEFAULT_CONTENT_TYPE
 
-    let code: string;
+    let code: string
     try {
-      ({ code } = await getCachedOrTranspile({
+      ;({ code } = await getCachedOrTranspile({
         pathname: url.pathname,
         body,
         esbuild: options?.esbuild,
@@ -79,12 +79,12 @@ export default (options?: Options): MiddlewareHandler => {
         shouldStop: !options?.esbuild,
         maxSize: options?.maxSize,
         ttl: options?.ttl,
-      }));
+      }))
     } catch (ex) {
-      setErrorResponse("hono", c, body, contentType, ex, url.pathname);
-      return;
+      setErrorResponse('hono', c, body, contentType, ex, url.pathname)
+      return
     }
 
-    setSuccessResponse("hono", c, code, contentType);
-  });
-};
+    setSuccessResponse('hono', c, code, contentType)
+  })
+}

@@ -62,23 +62,23 @@ const enum Char {
   LowerU = 0x75,
 }
 
-const fromCharCode = String.fromCharCode;
+const fromCharCode = String.fromCharCode
 
 function throwSyntaxError(
   bytes: Uint8Array,
   index: number,
   message?: string,
 ): void {
-  const c = bytes[index];
-  let line = 1;
-  let column = 0;
+  const c = bytes[index]!
+  let line = 1
+  let column = 0
 
   for (let i = 0; i < index; i++) {
     if (bytes[i] === Char.Newline) {
-      line++;
-      column = 0;
+      line++
+      column = 0
     } else {
-      column++;
+      column++
     }
   }
 
@@ -86,7 +86,7 @@ function throwSyntaxError(
     message
       ? message
       : index === bytes.length
-      ? "Unexpected end of input while parsing JSON"
+      ? 'Unexpected end of input while parsing JSON'
       : c >= 0x20 && c <= 0x7E
       ? `Unexpected character ${
         fromCharCode(c)
@@ -94,7 +94,7 @@ function throwSyntaxError(
       : `Unexpected byte 0x${
         c.toString(16)
       } in JSON at position ${index} (line ${line}, column ${column})`,
-  );
+  )
 }
 
 /**
@@ -107,37 +107,37 @@ function throwSyntaxError(
 // deno-lint-ignore no-explicit-any
 export function JSON_parse(bytes: Uint8Array): any {
   if (!(bytes instanceof Uint8Array)) {
-    throw new Error(`JSON input must be a Uint8Array`);
+    throw new Error(`JSON input must be a Uint8Array`)
   }
 
-  const propertyStack: (string | null)[] = [];
+  const propertyStack: (string | null)[] = []
   // deno-lint-ignore no-explicit-any
-  const objectStack: any[] = [];
-  const stateStack: State[] = [];
-  const length = bytes.length;
-  let property: string | null = null;
-  let state = State.TopLevel;
+  const objectStack: any[] = []
+  const stateStack: State[] = []
+  const length = bytes.length
+  let property: string | null = null
+  let state = State.TopLevel
   // deno-lint-ignore no-explicit-any
-  let object: any;
-  let i = 0;
+  let object: any
+  let i = 0
 
   while (i < length) {
-    let c = bytes[i++];
+    let c = bytes[i++]!
 
     // Skip whitespace
     if (c <= Char.Space) {
-      continue;
+      continue
     }
 
     // deno-lint-ignore no-explicit-any
-    let value: any;
+    let value: any
 
     // Validate state inside objects
     if (
       state === State.Object && property === null && c !== Char.Quote &&
       c !== Char.CloseBrace
     ) {
-      throwSyntaxError(bytes, --i);
+      throwSyntaxError(bytes, --i)
     }
 
     switch (c) {
@@ -147,11 +147,11 @@ export function JSON_parse(bytes: Uint8Array): any {
           bytes[i++] !== Char.LowerR || bytes[i++] !== Char.LowerU ||
           bytes[i++] !== Char.LowerE
         ) {
-          throwSyntaxError(bytes, --i);
+          throwSyntaxError(bytes, --i)
         }
 
-        value = true;
-        break;
+        value = true
+        break
       }
 
       // False
@@ -160,11 +160,11 @@ export function JSON_parse(bytes: Uint8Array): any {
           bytes[i++] !== Char.LowerA || bytes[i++] !== Char.LowerL ||
           bytes[i++] !== Char.LowerS || bytes[i++] !== Char.LowerE
         ) {
-          throwSyntaxError(bytes, --i);
+          throwSyntaxError(bytes, --i)
         }
 
-        value = false;
-        break;
+        value = false
+        break
       }
 
       // Null
@@ -173,11 +173,11 @@ export function JSON_parse(bytes: Uint8Array): any {
           bytes[i++] !== Char.LowerU || bytes[i++] !== Char.LowerL ||
           bytes[i++] !== Char.LowerL
         ) {
-          throwSyntaxError(bytes, --i);
+          throwSyntaxError(bytes, --i)
         }
 
-        value = null;
-        break;
+        value = null
+        break
       }
 
       // Number begin
@@ -193,9 +193,9 @@ export function JSON_parse(bytes: Uint8Array): any {
       case Char.Digit7:
       case Char.Digit8:
       case Char.Digit9: {
-        let index = i;
-        value = fromCharCode(c);
-        c = bytes[i];
+        let index = i
+        value = fromCharCode(c)
+        c = bytes[i]!
 
         // Scan over the rest of the number
         while (true) {
@@ -215,260 +215,260 @@ export function JSON_parse(bytes: Uint8Array): any {
             case Char.Digit9:
             case Char.LowerE:
             case Char.UpperE: {
-              value += fromCharCode(c);
-              c = bytes[++i];
-              continue;
+              value += fromCharCode(c)
+              c = bytes[++i]!
+              continue
             }
           }
 
           // Number end
-          break;
+          break
         }
 
         // Convert the string to a number
-        value = +value;
+        value = +value
 
         // Validate the number
         if (isNaN(value)) {
-          throwSyntaxError(bytes, --index, "Invalid number");
+          throwSyntaxError(bytes, --index, 'Invalid number')
         }
 
-        break;
+        break
       }
 
       // String begin
       case Char.Quote: {
-        value = "";
+        value = ''
 
         while (true) {
           if (i >= length) {
-            throwSyntaxError(bytes, length);
+            throwSyntaxError(bytes, length)
           }
 
-          c = bytes[i++];
+          c = bytes[i++]!
 
           // String end
           if (c === Char.Quote) {
-            break;
+            break
           } // Escape sequence
           else if (c === Char.Backslash) {
             switch (bytes[i++]) {
               // Normal escape sequence
               case Char.Quote:
-                value += '"';
-                break;
+                value += '"'
+                break
               case Char.Slash:
-                value += "\/";
-                break;
+                value += '\/'
+                break
               case Char.Backslash:
-                value += "\\";
-                break;
+                value += '\\'
+                break
               case Char.LowerB:
-                value += "\b";
-                break;
+                value += '\b'
+                break
               case Char.LowerF:
-                value += "\f";
-                break;
+                value += '\f'
+                break
               case Char.LowerN:
-                value += "\n";
-                break;
+                value += '\n'
+                break
               case Char.LowerR:
-                value += "\r";
-                break;
+                value += '\r'
+                break
               case Char.LowerT:
-                value += "\t";
-                break;
+                value += '\t'
+                break
 
               // Unicode escape sequence
               case Char.LowerU: {
-                let code = 0;
+                let code = 0
                 for (let j = 0; j < 4; j++) {
-                  c = bytes[i++];
-                  code <<= 4;
+                  c = bytes[i++]!
+                  code <<= 4
                   if (c >= Char.Digit0 && c <= Char.Digit9) {
-                    code |= c - Char.Digit0;
+                    code |= c - Char.Digit0
                   } else if (c >= Char.LowerA && c <= Char.LowerF) {
-                    code |= c + (10 - Char.LowerA);
+                    code |= c + (10 - Char.LowerA)
                   } else if (c >= Char.UpperA && c <= Char.UpperF) {
-                    code |= c + (10 - Char.UpperA);
-                  } else throwSyntaxError(bytes, --i);
+                    code |= c + (10 - Char.UpperA)
+                  } else throwSyntaxError(bytes, --i)
                 }
-                value += fromCharCode(code);
-                break;
+                value += fromCharCode(code)
+                break
               }
 
               // Invalid escape sequence
               default:
-                throwSyntaxError(bytes, --i);
-                break;
+                throwSyntaxError(bytes, --i)
+                break
             }
           } // ASCII text
           else if (c <= 0x7F) {
-            value += fromCharCode(c);
+            value += fromCharCode(c)
           } // 2-byte UTF-8 sequence
           else if ((c & 0xE0) === 0xC0) {
-            value += fromCharCode(((c & 0x1F) << 6) | (bytes[i++] & 0x3F));
+            value += fromCharCode(((c & 0x1F) << 6) | (bytes[i++]! & 0x3F))
           } // 3-byte UTF-8 sequence
           else if ((c & 0xF0) === 0xE0) {
             value += fromCharCode(
-              ((c & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) |
-                (bytes[i++] & 0x3F),
-            );
+              ((c & 0x0F) << 12) | ((bytes[i++]! & 0x3F) << 6) |
+                (bytes[i++]! & 0x3F),
+            )
           } // 4-byte UTF-8 sequence
           else if ((c & 0xF8) == 0xF0) {
-            let codePoint = ((c & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) |
-              ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
+            let codePoint = ((c & 0x07) << 18) | ((bytes[i++]! & 0x3F) << 12) |
+              ((bytes[i++]! & 0x3F) << 6) | (bytes[i++]! & 0x3F)
             if (codePoint > 0xFFFF) {
-              codePoint -= 0x10000;
-              value += fromCharCode(((codePoint >> 10) & 0x3FF) | 0xD800);
-              codePoint = 0xDC00 | (codePoint & 0x3FF);
+              codePoint -= 0x10000
+              value += fromCharCode(((codePoint >> 10) & 0x3FF) | 0xD800)
+              codePoint = 0xDC00 | (codePoint & 0x3FF)
             }
-            value += fromCharCode(codePoint);
+            value += fromCharCode(codePoint)
           }
         }
 
         // Force V8's rope representation to be flattened to compact the string and avoid running out of memory
-        value[0];
-        break;
+        value[0]
+        break
       }
 
       // Array begin
       case Char.OpenBracket: {
-        value = [];
+        value = []
 
         // Push the stack
-        propertyStack.push(property);
-        objectStack.push(object);
-        stateStack.push(state);
+        propertyStack.push(property)
+        objectStack.push(object)
+        stateStack.push(state)
 
         // Enter the array
-        property = null;
-        object = value;
-        state = State.Array;
-        continue;
+        property = null
+        object = value
+        state = State.Array
+        continue
       }
 
       // Object begin
       case Char.OpenBrace: {
-        value = {};
+        value = {}
 
         // Push the stack
-        propertyStack.push(property);
-        objectStack.push(object);
-        stateStack.push(state);
+        propertyStack.push(property)
+        objectStack.push(object)
+        stateStack.push(state)
 
         // Enter the object
-        property = null;
-        object = value;
-        state = State.Object;
-        continue;
+        property = null
+        object = value
+        state = State.Object
+        continue
       }
 
       // Array end
       case Char.CloseBracket: {
         if (state !== State.Array) {
-          throwSyntaxError(bytes, --i);
+          throwSyntaxError(bytes, --i)
         }
 
         // Leave the array
-        value = object;
+        value = object
 
         // Pop the stack
-        property = propertyStack.pop() as string | null;
-        object = objectStack.pop();
-        state = stateStack.pop() as State;
-        break;
+        property = propertyStack.pop() as string | null
+        object = objectStack.pop()
+        state = stateStack.pop() as State
+        break
       }
 
       // Object end
       case Char.CloseBrace: {
         if (state !== State.Object) {
-          throwSyntaxError(bytes, --i);
+          throwSyntaxError(bytes, --i)
         }
 
         // Leave the object
-        value = object;
+        value = object
 
         // Pop the stack
-        property = propertyStack.pop() as string | null;
-        object = objectStack.pop();
-        state = stateStack.pop() as State;
-        break;
+        property = propertyStack.pop() as string | null
+        object = objectStack.pop()
+        state = stateStack.pop() as State
+        break
       }
 
       default: {
-        throwSyntaxError(bytes, --i);
+        throwSyntaxError(bytes, --i)
       }
     }
 
-    c = bytes[i];
+    c = bytes[i]!
 
     // Skip whitespace
     while (c <= Char.Space) {
-      c = bytes[++i];
+      c = bytes[++i]!
     }
 
     switch (state) {
       case State.TopLevel: {
         // Expect the end of the input
         if (i === length) {
-          return value;
+          return value
         }
 
-        break;
+        break
       }
 
       case State.Array: {
-        object.push(value);
+        object.push(value)
 
         // Check for more values
         if (c === Char.Comma) {
-          i++;
-          continue;
+          i++
+          continue
         }
 
         // Expect the end of the array
         if (c === Char.CloseBracket) {
-          continue;
+          continue
         }
 
-        break;
+        break
       }
 
       case State.Object: {
         // Property
         if (property === null) {
-          property = value;
+          property = value
 
           // Expect a colon
           if (c === Char.Colon) {
-            i++;
-            continue;
+            i++
+            continue
           }
         } // Value
         else {
-          object[property] = value;
-          property = null;
+          object[property] = value
+          property = null
 
           // Check for more values
           if (c === Char.Comma) {
-            i++;
-            continue;
+            i++
+            continue
           }
 
           // Expect the end of the object
           if (c === Char.CloseBrace) {
-            continue;
+            continue
           }
         }
 
-        break;
+        break
       }
     }
 
     // It's an error if we get here
-    break;
+    break
   }
 
-  throwSyntaxError(bytes, i);
+  throwSyntaxError(bytes, i)
 }

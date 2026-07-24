@@ -21,17 +21,17 @@
  * export default { fetch: app.handle };
  * ```
  */
-import type { Middleware } from "@oak/oak";
-import type { Options } from "@ggpwnkthx/esbuild-wrapper-shared";
+import type { Middleware } from '@oak/oak'
+import type { Options } from '@ggpwnkthx/esbuild-wrapper-shared'
 import {
   DEFAULT_CONTENT_TYPE,
   getCachedOrTranspile,
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,
-} from "@ggpwnkthx/esbuild-wrapper-shared";
+} from '@ggpwnkthx/esbuild-wrapper-shared'
 
-export type { Options };
+export type { Options }
 
 /**
  * Oak middleware that transforms TypeScript/TSX responses using esbuild.
@@ -62,19 +62,19 @@ export type { Options };
  */
 export default function (options?: Options): Middleware {
   return async (ctx, next) => {
-    await next();
-    const url = new URL(ctx.request.url);
+    await next()
+    const url = new URL(ctx.request.url)
 
     if (!shouldTranspile(url.pathname, options?.extensions)) {
-      return;
+      return
     }
 
-    const body = await ctx.request.body.text();
-    const contentType = options?.contentType ?? DEFAULT_CONTENT_TYPE;
+    const body = await ctx.request.body.text()
+    const contentType = options?.contentType ?? DEFAULT_CONTENT_TYPE
 
-    let code: string;
+    let code: string
     try {
-      ({ code } = await getCachedOrTranspile({
+      ;({ code } = await getCachedOrTranspile({
         pathname: url.pathname,
         body,
         esbuild: options?.esbuild,
@@ -83,12 +83,12 @@ export default function (options?: Options): Middleware {
         shouldStop: !options?.esbuild,
         maxSize: options?.maxSize,
         ttl: options?.ttl,
-      }));
+      }))
     } catch (ex) {
-      setErrorResponse("oak", ctx, body, contentType, ex, url.pathname);
-      return;
+      setErrorResponse('oak', ctx, body, contentType, ex, url.pathname)
+      return
     }
 
-    setSuccessResponse("oak", ctx, code, contentType);
-  };
+    setSuccessResponse('oak', ctx, code, contentType)
+  }
 }
