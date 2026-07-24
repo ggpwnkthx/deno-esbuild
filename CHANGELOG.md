@@ -9,6 +9,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### chore(wrappers): allow net to github.com and jsr.io for hono/oak tests
+
+- `packages/wrappers/hono/deno.json` and `packages/wrappers/oak/deno.json`: appended
+  `--allow-net=github.com,jsr.io` to the `test` and `ci` tasks so the wrapper test suites can fetch
+  transitive dependencies from `github.com` and `jsr.io`.
+- `.github/workflows/ci.yml`: mirrored the same scoped `--allow-net=github.com,jsr.io` permission on
+  the `packages/wrappers/hono` and `packages/wrappers/oak` matrix entries so local and CI runs stay
+  aligned.
+
+## 8eb9a51 - 2026-07-24
+
 ### chore(ci): publish via workflow_run and split by dependency order
 
 - `.github/workflows/publish.yml` now triggers on `workflow_run` (CI success) instead of

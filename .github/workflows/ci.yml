@@ -144,9 +144,9 @@ jobs:
           - package: packages/wrappers/shared
             permissions: --allow-read --allow-write
           - package: packages/wrappers/hono
-            permissions: --allow-read --allow-write --allow-env --allow-run
+            permissions: --allow-read --allow-write --allow-env --allow-run --allow-net=github.com,jsr.io
           - package: packages/wrappers/oak
-            permissions: --allow-read --allow-write --allow-env --allow-run
+            permissions: --allow-read --allow-write --allow-env --allow-run --allow-net=github.com,jsr.io
     steps:
       - uses: actions/checkout@v6
       - uses: denoland/setup-deno@v2
