@@ -31,9 +31,10 @@
  */
 import type * as types from './shared/types.ts'
 import type { GoWasmRuntimeHandle, WorkerInputMessage } from './shared/worker.ts'
-import * as common from './shared/common.ts'
+import * as common from './shared/mod.ts'
 import * as ourselves from './wasm.ts'
 import { version } from './mod.ts'
+import { createEsbuildApi } from './shared/create_esbuild_api.ts'
 
 interface WorkerMessageEvent {
   readonly data: unknown
@@ -49,149 +50,23 @@ interface WorkerLike {
 /** The esbuild binary version string (e.g. "0.28.1"). @see ../mod.ts */
 export { version }
 
-/**
- * @param options - Configuration options for the build.
- * @returns A promise that resolves with the build result or rejects with a `BuildFailure`.
- * @see ../shared/types.ts:build
- */
-export const build: typeof types.build = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.build(options))
-
-/**
- * @param options - Configuration options for the build context.
- * @returns A promise that resolves with a `BuildContext` for long-running operations.
- * @see ../shared/types.ts:context
- */
-export const context: typeof types.context = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.context(options))
-
-/**
- * @param input - The source code (string) or raw bytes to transform.
- * @param options - Optional transform configuration.
- * @returns A promise that resolves with the transform result or rejects with a `TransformFailure`.
- * @see ../shared/types.ts:transform
- */
-export const transform: typeof types.transform = (
-  input: string | Uint8Array,
-  options?: types.TransformOptions,
-) => ensureServiceIsRunning().then((service) => service.transform(input, options))
-
-/**
- * @param messages - An array of diagnostic messages to format.
- * @param options - Configuration for the formatter, including `kind` ("error" or "warning").
- * @returns A promise that resolves with an array of formatted message strings.
- * @see ../shared/types.ts:formatMessages
- */
-export const formatMessages: typeof types.formatMessages = (
-  messages,
-  options,
-) => ensureServiceIsRunning().then((service) => service.formatMessages(messages, options))
-
-/**
- * @param metafile - The metafile JSON string or object to analyze.
- * @param options - Optional analysis configuration.
- * @returns A promise that resolves with a human-readable analysis string.
- * @see ../shared/types.ts:analyzeMetafile
- */
-export const analyzeMetafile: typeof types.analyzeMetafile = (
-  metafile,
-  options,
-) => ensureServiceIsRunning().then((service) => service.analyzeMetafile(metafile, options))
-
-const syncStubs = common.createSyncStubs()
-
-/**
- * Synchronous builds are not supported in the WASM API and throw unconditionally.
- * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:buildSync
- */
-export const buildSync = syncStubs.buildSync
-
-/**
- * Synchronous transforms are not supported in the WASM API and throw unconditionally.
- * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:transformSync
- */
-export const transformSync = syncStubs.transformSync
-
-/**
- * Synchronous message formatting is not supported in the WASM API and throws unconditionally.
- * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:formatMessagesSync
- */
-export const formatMessagesSync = syncStubs.formatMessagesSync
-
-/**
- * Synchronous metafile analysis is not supported in the WASM API and throws unconditionally.
- * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:analyzeMetafileSync
- */
-export const analyzeMetafileSync = syncStubs.analyzeMetafileSync
-
-/**
- * Terminates the esbuild WASM service and releases associated resources.
- *
- * In Deno, you must call this function when done using esbuild to prevent the
- * process from hanging indefinitely. The WASM worker is terminated and all
- * associated state is reset.
- *
- * @returns A promise that resolves when cleanup is complete.
- * @see ../shared/types.ts:stop
- */
-export const stop = (): Promise<void> => {
-  if (stopService) stopService()
-  return Promise.resolve()
-}
-
-type Service = common.Service
-
-let initializePromise: Promise<Service> | undefined
+let initializePromise: Promise<common.Service> | undefined
 let stopService: (() => void) | undefined
-
-const ensureServiceIsRunning = (): Promise<Service> => {
-  return initializePromise ||
-    startRunningService('esbuild.wasm', undefined, true)
-}
+let hasInitialized = false
 
 /**
- * Initializes the esbuild WASM service with the provided configuration.
- *
- * This function must be called before any other API calls in browser environments.
- * It loads the WebAssembly module and (by default) starts a web worker to run
- * esbuild off the main thread.
- *
- * @param options - Configuration for the WASM service, including `wasmURL` (required
- *   in browsers), `wasmModule` (optional pre-loaded module), and `worker` (whether
- *   to run in a worker, default true).
- * @returns A promise that resolves when initialization is complete.
- * @see ../shared/types.ts:initialize
+ * The most recent validated `initialize` options. The factory's `initialize`
+ * validates options and then calls `ensureService`, which kicks off the
+ * WASM-specific startup using these captured values.
  */
-export const initialize: typeof types.initialize = async (options) => {
-  options = common.validateInitializeOptions(options || {})
-  const wasmURL = options.wasmURL
-  const wasmModule = options.wasmModule
-  const useWorker = options.worker !== false
-  if (initializePromise) {
-    throw new Error('Cannot call "initialize" more than once')
-  }
-  initializePromise = startRunningService(
-    wasmURL || 'esbuild.wasm',
-    wasmModule,
-    useWorker,
-  )
-  initializePromise.catch(() => {
-    // Let the caller try again if this fails
-    initializePromise = void 0
-  })
-  await initializePromise
-}
+let currentWasmOptions: types.InitializeOptions = {}
 
 const startRunningService = async (
-  wasmURL: string | URL,
-  wasmModule: WebAssembly.Module | undefined,
-  useWorker: boolean,
-): Promise<Service> => {
-  let worker: WorkerLike
+  options: types.InitializeOptions,
+): Promise<common.Service> => {
+  const { wasmURL, wasmModule, worker = true } = options
+  const useWorker = worker !== false
+  let workerInstance: WorkerLike
 
   if (useWorker) {
     // Run esbuild off the main thread.
@@ -221,16 +96,16 @@ const startRunningService = async (
       workerAdapter.onerror?.(event)
     }
 
-    worker = workerAdapter
+    workerInstance = workerAdapter
   } else {
     // Run esbuild on the current thread.
     const { createWorkerMessageHandler } = await import('./shared/worker.ts')
     let go: GoWasmRuntimeHandle | undefined
     const onmessage = createWorkerMessageHandler((data) => {
-      worker.onmessage?.({ data })
+      workerInstance.onmessage?.({ data })
     })
 
-    worker = {
+    workerInstance = {
       onmessage: null,
       postMessage: (data) => {
         setTimeout(() => {
@@ -254,8 +129,8 @@ const startRunningService = async (
     firstMessageReject = reject
   })
 
-  worker.onmessage = ({ data: error }) => {
-    worker.onmessage = ({ data }) => {
+  workerInstance.onmessage = ({ data: error }) => {
+    workerInstance.onmessage = ({ data }) => {
       if (data instanceof Uint8Array) {
         readFromStdout(data)
       } else if (data instanceof ArrayBuffer) {
@@ -269,13 +144,13 @@ const startRunningService = async (
     else firstMessageResolve()
   }
 
-  worker.postMessage(
-    wasmModule || new URL(wasmURL, import.meta.url).toString(),
+  workerInstance.postMessage(
+    wasmModule || new URL(wasmURL || 'esbuild.wasm', import.meta.url).toString(),
   )
 
   const { readFromStdout, service } = common.createChannel({
     writeToStdin(bytes) {
-      worker.postMessage(bytes)
+      workerInstance.postMessage(bytes)
     },
     isSync: false,
     hasFS: false,
@@ -286,9 +161,10 @@ const startRunningService = async (
   await firstMessagePromise
 
   stopService = () => {
-    worker.terminate()
+    workerInstance.terminate()
     initializePromise = undefined
     stopService = undefined
+    hasInitialized = false
   }
 
   return common.createService(service, {
@@ -300,3 +176,103 @@ const startRunningService = async (
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error))
 }
+
+const ensureServiceIsRunning = (): Promise<common.Service> => {
+  if (!initializePromise) {
+    initializePromise = startRunningService(currentWasmOptions).catch((err) => {
+      initializePromise = undefined
+      throw err
+    })
+  }
+  return initializePromise
+}
+
+const api = createEsbuildApi({
+  ensureService: ensureServiceIsRunning,
+  syncStubs: common.createSyncStubs(),
+  runtime: 'wasm',
+  stop: () => {
+    if (stopService) stopService()
+    return Promise.resolve()
+  },
+  onValidate: (options) => {
+    if (hasInitialized) {
+      throw new Error('Cannot call "initialize" more than once')
+    }
+    hasInitialized = true
+    currentWasmOptions = options
+  },
+})
+
+/**
+ * @param options - Configuration options for the build.
+ * @returns A promise that resolves with the build result or rejects with a `BuildFailure`.
+ * @see ../shared/types.ts:build
+ */
+export const build = api.build
+/**
+ * @param options - Configuration options for the build context.
+ * @returns A promise that resolves with a `BuildContext` for long-running operations.
+ * @see ../shared/types.ts:context
+ */
+export const context = api.context
+/**
+ * @param input - The source code (string) or raw bytes to transform.
+ * @param options - Optional transform configuration.
+ * @returns A promise that resolves with the transform result or rejects with a `TransformFailure`.
+ * @see ../shared/types.ts:transform
+ */
+export const transform = api.transform
+/**
+ * @param messages - An array of diagnostic messages to format.
+ * @param options - Configuration for the formatter, including `kind` ("error" or "warning").
+ * @returns A promise that resolves with an array of formatted message strings.
+ * @see ../shared/types.ts:formatMessages
+ */
+export const formatMessages = api.formatMessages
+/**
+ * @param metafile - The metafile JSON string or object to analyze.
+ * @param options - Optional analysis configuration.
+ * @returns A promise that resolves with a human-readable analysis string.
+ * @see ../shared/types.ts:analyzeMetafile
+ */
+export const analyzeMetafile = api.analyzeMetafile
+/**
+ * Synchronous builds are not supported in the WASM API and throw unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:buildSync
+ */
+export const buildSync = api.buildSync
+/**
+ * Synchronous transforms are not supported in the WASM API and throw unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:transformSync
+ */
+export const transformSync = api.transformSync
+/**
+ * Synchronous message formatting is not supported in the WASM API and throw unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:formatMessagesSync
+ */
+export const formatMessagesSync = api.formatMessagesSync
+/**
+ * Synchronous metafile analysis is not supported in the WASM API and throw unconditionally.
+ * @throws Always throws an error indicating this API is unavailable in Deno.
+ * @see ../shared/types.ts:analyzeMetafileSync
+ */
+export const analyzeMetafileSync = api.analyzeMetafileSync
+/**
+ * @returns A promise that resolves when cleanup is complete.
+ * @see ../shared/types.ts:stop
+ */
+export const stop = api.stop
+/**
+ * Initializes the esbuild WASM service with the provided configuration.
+ *
+ * @param options - Configuration for the WASM service, including `wasmURL` (required
+ *   in browsers), `wasmModule` (optional pre-loaded module), and `worker` (whether
+ *   to run in a worker, default true).
+ * @returns A promise that resolves when initialization is complete.
+ * @see ../shared/types.ts:initialize
+ */
+export const initialize = api.initialize

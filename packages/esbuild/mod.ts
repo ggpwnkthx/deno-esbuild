@@ -33,7 +33,6 @@
  * await stop(); // prevent hang
  * ```
  */
-import type * as types from './shared/types.ts'
 /** @see ../shared/types.ts:BuildOptions */
 export type { BuildOptions } from './shared/types.ts'
 /** @see ../shared/types.ts:Loader */
@@ -54,169 +53,15 @@ export type { Plugin } from './shared/types.ts'
 export type { PluginBuild } from './shared/types.ts'
 /** @see ../shared/types.ts:TransformOptions */
 export type { TransformOptions } from './shared/types.ts'
-import * as common from './shared/common.ts'
+import * as common from './shared/mod.ts'
 import * as ourselves from './mod.ts'
 import { install } from './binary_installer.ts'
+import { spawnWithDenoCommand } from './shared/spawn.ts'
+import { createEsbuildApi } from './shared/create_esbuild_api.ts'
 
 /** The esbuild binary version string (e.g. "0.28.1").
  * @see https://github.com/evanw/esbuild/releases */
 export const version = common.ESBUILD_VERSION
-
-/** @see ../shared/types.ts:build
- * @param options - Configuration options for the build.
- * @example
- * ```ts
- * const result = await build({
- *   entryPoints: ["src/index.ts"],
- *   bundle: true,
- *   outfile: "dist/bundle.js",
- * });
- * ```
- */
-export const build: typeof types.build = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.build(options))
-
-/** @see ../shared/types.ts:context
- * @param options - Configuration options for the build context.
- * @example
- * ```ts
- * const ctx = await context({
- *   entryPoints: ["src/index.ts"],
- *   bundle: true,
- *   outdir: "dist",
- * });
- * await ctx.watch();
- * await ctx.serve({ servedir: "dist", port: 8000 });
- * await ctx.dispose();
- * ```
- */
-export const context: typeof types.context = (options: types.BuildOptions) =>
-  ensureServiceIsRunning().then((service) => service.context(options))
-
-/** @see ../shared/types.ts:transform
- * @param input - The source code (string) or raw bytes to transform.
- * @param options - Optional transform configuration.
- * @example
- * ```ts
- * const result = await transform("const x: number = 1;", {
- *   loader: "ts",
- *   minify: true,
- * });
- * console.log(result.code);
- * ```
- */
-export const transform: typeof types.transform = (
-  input: string | Uint8Array,
-  options?: types.TransformOptions,
-) => ensureServiceIsRunning().then((service) => service.transform(input, options))
-
-/** @see ../shared/types.ts:formatMessages
- * @param messages - An array of diagnostic messages to format.
- * @param options - Configuration for the formatter, including `kind` ("error" or "warning").
- * @example
- * ```ts
- * const messages = [{ text: "Something went wrong", location: { file: "src/index.ts", line: 1, column: 0, lineText: "", length: 0 } }];
- * const formatted = await formatMessages(messages, { kind: "error" });
- * console.log(formatted.join("\n"));
- * ```
- */
-export const formatMessages: typeof types.formatMessages = (
-  messages,
-  options,
-) => ensureServiceIsRunning().then((service) => service.formatMessages(messages, options))
-
-/** @see ../shared/types.ts:analyzeMetafile
- * @param metafile - The metafile JSON string or object to analyze.
- * @param options - Optional analysis configuration.
- * @example
- * ```ts
- * const result = await build({ entryPoints: ["src/index.ts"], metafile: true });
- * const analysis = await analyzeMetafile(result.metafile);
- * console.log(analysis);
- * ```
- */
-export const analyzeMetafile: typeof types.analyzeMetafile = (
-  metafile,
-  options,
-) => ensureServiceIsRunning().then((service) => service.analyzeMetafile(metafile, options))
-
-const syncStubs = common.createSyncStubs()
-
-/** @see ../shared/types.ts:buildSync
- * @example
- * ```ts
- * // Throws: The "buildSync" API does not work in Deno
- * buildSync({ entryPoints: ["src/index.ts"] });
- * ```
- */
-export const buildSync = syncStubs.buildSync
-
-/** @see ../shared/types.ts:transformSync
- * @example
- * ```ts
- * // Throws: The "transformSync" API does not work in Deno
- * transformSync("const x: number = 1;", { loader: "ts" });
- * ```
- */
-export const transformSync = syncStubs.transformSync
-
-/** @see ../shared/types.ts:formatMessagesSync
- * @example
- * ```ts
- * // Throws: The "formatMessagesSync" API does not work in Deno
- * formatMessagesSync([{ text: "error" }], { kind: "error" });
- * ```
- */
-export const formatMessagesSync = syncStubs.formatMessagesSync
-
-/** @see ../shared/types.ts:analyzeMetafileSync
- * @example
- * ```ts
- * // Throws: The "analyzeMetafileSync" API does not work in Deno
- * analyzeMetafileSync("{ inputs: {} }", {});
- * ```
- */
-export const analyzeMetafileSync = syncStubs.analyzeMetafileSync
-
-/** @see ../shared/types.ts:stop
- * @example
- * ```ts
- * // ... use esbuild ...
- * await stop(); // prevents hang
- * ```
- */
-export const stop = async (): Promise<void> => {
-  if (stopService) await stopService()
-}
-
-let initializeWasCalled = false
-
-/** @see ../shared/types.ts:initialize
- * @example
- * ```ts
- * // Pre-initialize the esbuild service before first use
- * await initialize({});
- * ```
- */
-export const initialize: typeof types.initialize = async (options) => {
-  options = common.validateInitializeOptions(options || {})
-  if (options.wasmURL) {
-    throw new Error(`The "wasmURL" option only works in the browser`)
-  }
-  if (options.wasmModule) {
-    throw new Error(`The "wasmModule" option only works in the browser`)
-  }
-  if (options.worker) {
-    throw new Error(`The "worker" option only works in the browser`)
-  }
-  if (initializeWasCalled) {
-    throw new Error('Cannot call "initialize" more than once')
-  }
-  await ensureServiceIsRunning()
-  initializeWasCalled = true
-}
-
-type Service = common.Service
 
 const defaultWD = Deno.cwd()
 
@@ -249,84 +94,18 @@ const nativeTransformFs: common.StreamFS = {
     )
   },
 }
-let longLivedService: Promise<Service> | undefined
+
+let longLivedService: Promise<common.Service> | undefined
 let stopService: (() => Promise<void>) | undefined
+let initializeWasCalled = false
 
-// Minimal subprocess handle used by the native-binary transport. The shape is
-// deliberately narrow (only what the esbuild service needs) so the underlying
-// implementation can be swapped for a test double in a future change.
-interface SpawnHandle {
-  write(bytes: Uint8Array): void
-  read(): Promise<Uint8Array | null>
-  close(): Promise<void> | void
-  status(): Promise<{ code: number }>
-}
-
-/** Options for {@link spawn}. */
-interface SpawnOptions {
-  args: string[]
-  stdin: 'piped' | 'inherit'
-  stdout: 'piped' | 'inherit'
-  stderr: 'inherit'
-}
-
-/** Spawns the esbuild binary and returns a {@link SpawnHandle} for it. */
-type SpawnFn = (cmd: string, options: SpawnOptions) => SpawnHandle
-
-/**
- * Spawns the esbuild binary using `Deno.Command` (Deno ≥1.40). The
- * `SpawnFn` indirection lets future tests inject a fake subprocess without
- * touching call sites.
- */
-const spawn: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
-  const child = new Deno.Command(cmd, {
-    args,
-    cwd: defaultWD,
-    stdin,
-    stdout,
-    stderr,
-  }).spawn()
-  // Note: Need to check for "piped" in Deno ≥1.31.0 to avoid a crash
-  const writer = stdin === 'piped' ? child.stdin.getWriter() : null
-  const reader = stdout === 'piped' ? child.stdout.getReader() : null
-  return {
-    write: writer ? (bytes) => writer.write(bytes) : () => Promise.resolve(),
-    read: reader ? () => reader.read().then((x) => x.value || null) : () => Promise.resolve(null),
-    close: async () => {
-      // We can't call "kill()" because it doesn't seem to work. Tests will
-      // still fail with "A child process was opened during the test, but not
-      // closed during the test" even though we kill the child process.
-      //
-      // And we can't call both "writer.close()" and "kill()" because then
-      // there's a race as the child process exits when stdin is closed, and
-      // "kill()" fails when the child process has already been killed.
-      //
-      // So instead we just call "writer.close()" and then hope that this
-      // causes the child process to exit. It won't work if the stdin consumer
-      // thread in the child process is hung or busy, but that may be the best
-      // we can do.
-      //
-      // See this for more info: https://github.com/evanw/esbuild/pull/3611
-      if (writer) await writer.close()
-      if (reader) await reader.cancel()
-
-      // Wait for the process to exit. The new "kill()" API doesn't flag the
-      // process as having exited because processes can technically ignore the
-      // kill signal. Without this, Deno will fail tests that use esbuild with
-      // an error because the test spawned a process but didn't wait for it.
-      await child.status
-    },
-    status: () => child.status,
-  }
-}
-
-const ensureServiceIsRunning = (): Promise<Service> => {
+const ensureServiceIsRunning = (): Promise<common.Service> => {
   if (!longLivedService) {
-    longLivedService = (async (): Promise<Service> => {
+    longLivedService = (async (): Promise<common.Service> => {
       const binPath = await install()
       const isTTY = Deno.stderr.isTerminal ? Deno.stderr.isTerminal() : false
 
-      const child = spawn(binPath, {
+      const child = spawnWithDenoCommand(binPath, {
         args: [`--service=${version}`],
         stdin: 'piped',
         stdout: 'piped',
@@ -381,14 +160,62 @@ const ensureServiceIsRunning = (): Promise<Service> => {
   return longLivedService
 }
 
+const api = createEsbuildApi({
+  ensureService: ensureServiceIsRunning,
+  syncStubs: common.createSyncStubs(),
+  runtime: 'native',
+  stop: async () => {
+    if (stopService) await stopService()
+  },
+  onValidate: () => {
+    if (initializeWasCalled) {
+      throw new Error('Cannot call "initialize" more than once')
+    }
+    initializeWasCalled = true
+  },
+})
+
+/** @see ../shared/types.ts:build
+ * @param options - Configuration options for the build.
+ * @example
+ * ```ts
+ * const result = await build({
+ *   entryPoints: ["src/index.ts"],
+ *   bundle: true,
+ *   outfile: "dist/bundle.js",
+ * });
+ * ```
+ */
+export const build = api.build
+/** @see ../shared/types.ts:context */
+export const context = api.context
+/** @see ../shared/types.ts:transform */
+export const transform = api.transform
+/** @see ../shared/types.ts:formatMessages */
+export const formatMessages = api.formatMessages
+/** @see ../shared/types.ts:analyzeMetafile */
+export const analyzeMetafile = api.analyzeMetafile
+/** @see ../shared/types.ts:buildSync */
+export const buildSync = api.buildSync
+/** @see ../shared/types.ts:transformSync */
+export const transformSync = api.transformSync
+/** @see ../shared/types.ts:formatMessagesSync */
+export const formatMessagesSync = api.formatMessagesSync
+/** @see ../shared/types.ts:analyzeMetafileSync */
+export const analyzeMetafileSync = api.analyzeMetafileSync
+/** @see ../shared/types.ts:stop */
+export const stop = api.stop
+/** @see ../shared/types.ts:initialize */
+export const initialize = api.initialize
+
 // If we're called as the main script, forward the CLI to the underlying executable
 if (import.meta.main) {
-  spawn(await install(), {
+  spawnWithDenoCommand(await install(), {
     args: Deno.args,
     stdin: 'inherit',
     stdout: 'inherit',
     stderr: 'inherit',
-  }).status().then(({ code }) => {
+  }).status().then(({ code }: { code: number }) => {
     Deno.exit(code)
   })
 }

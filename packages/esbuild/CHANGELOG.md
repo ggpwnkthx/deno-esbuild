@@ -5,22 +5,6 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-
-- JSDoc documentation on the remaining previously undocumented exports:
-  - `shared/types.ts`: type aliases `Platform`, `Format`, `Loader`, `LogLevel`, `Charset`, `Drop`,
-    `AbsPaths`, and `ImportKind`.
-  - `shared/types.ts`: interfaces `TsconfigRaw`, `BuildOptions`, `StdinOptions`, `Message`, `Note`,
-    `Location`, `OutputFile`, `BuildResult`, `BuildFailure`, `ServeOnRequestArgs`,
-    `TransformOptions`, `TransformResult`, `TransformFailure`, `Plugin`, `PluginBuild`,
-    `OnStartResult`, `OnEndResult`, `PartialMessage`, `PartialNote`, `BuildContext`, and
-    `InitializeOptions`.
-  - `shared/types.ts`: one-line summary on the `version` declaration, and the 16-line `//` comment
-    above `stop()` converted verbatim into a `/** */` block.
-  - `shared/worker.ts`: `WorkerInputMessage` and `GoWasmRuntimeHandle`.
-
 ## [0.2.11] - 2026-07-24
 
 ### Added
@@ -34,9 +18,56 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are produced by a single `createSyncStubs()` factory.
 - Unit tests in `tests/binary.test.ts` that assert each sync stub throws the expected
   unsupported-API error message for both the native and WASM transports.
+- JSDoc documentation on the remaining previously undocumented exports:
+  - `shared/types.ts`: type aliases `Platform`, `Format`, `Loader`, `LogLevel`, `Charset`, `Drop`,
+    `AbsPaths`, and `ImportKind`.
+  - `shared/types.ts`: interfaces `TsconfigRaw`, `BuildOptions`, `StdinOptions`, `Message`, `Note`,
+    `Location`, `OutputFile`, `BuildResult`, `BuildFailure`, `ServeOnRequestArgs`,
+    `TransformOptions`, `TransformResult`, `TransformFailure`, `Plugin`, `PluginBuild`,
+    `OnStartResult`, `OnEndResult`, `PartialMessage`, `PartialNote`, `BuildContext`, and
+    `InitializeOptions`.
+  - `shared/types.ts`: one-line summary on the `version` declaration, and the 16-line `//` comment
+    above `stop()` converted verbatim into a `/** */` block.
+  - `shared/worker.ts`: `WorkerInputMessage` and `GoWasmRuntimeHandle`.
+- `shared/validation.ts`, `shared/flags.ts`, `shared/v8_stack.ts`, `shared/message_sanitize.ts`,
+  `shared/plugin_runner.ts`, `shared/transport.ts`, `shared/spawn.ts`, and
+  `shared/create_esbuild_api.ts` extracted from the former `shared/common.ts`. The `shared/common`
+  subpath export is replaced by the barrel `shared/index.ts`; the new sibling subpaths
+  (`shared/validation`, `shared/flags`, etc.) are additive.
+- `shared/spawn.ts` exports `SpawnHandle`, `SpawnOptions`, `SpawnFn`, `validateSpawnOptions`, and
+  `spawnWithDenoCommand`. The native transport (`mod.ts`) now imports them instead of defining its
+  own copies.
+- `shared/create_esbuild_api.ts` exports `createEsbuildApi`, the factory used by `mod.ts` and
+  `wasm.ts` to wire the lazy-init service, sync stubs, and stop function into the public API
+  surface.
+- `binary_installer.ts`: `registerPlatform(name, assetName)` and `unregisterPlatform(name)` allow
+  embedders to add custom platform-to-asset mappings. `knownPlatforms()` returns the list of
+  currently registered keys.
 
 ### Changed
 
+- `shared/common.ts` was split into seven focused files (see Added). The public surface is
+  unchanged; existing consumers that imported `shared/common` should switch to `shared` (the new
+  barrel).
+- `validateInitializeOptions` now accepts a runtime discriminator (`'native' | 'wasm'`). The native
+  transport rejects `wasmURL`, `wasmModule`, and `worker`; the WASM transport requires either
+  `wasmURL` or `wasmModule`. Both transports previously had the rules inline; the centralization
+  removes the duplication.
+- `handlePlugins` now goes through `collectPluginMessages` and `exceptionToMessage` helpers for the
+  four `sanitizeMessages` / `extractErrorMessageV8` call sites (`onStart`, `onEnd`, `onResolve`,
+  `onLoad`). Behavior is identical; the change makes the contract easier to reason about and keeps
+  the warning/error shapes consistent.
+- `mod.ts` now spawns the binary through `spawnWithDenoCommand` from `shared/spawn.ts` instead of
+  declaring its own `spawn` helper.
+- `mod.ts` and `wasm.ts` now expose the public API through `createEsbuildApi` instead of each
+  re-defining the five async exports and four sync stubs.
+- `binary_installer.ts`: the platform-asset map is now a `Map<string, string>` (see
+  `registerPlatform` / `unregisterPlatform`) instead of a frozen
+  `Record<string, { assetName: string }>`.
+- `createChannel` `readFromStdout` now caps the protocol buffer at 64 MiB (`MAX_PACKET_BYTES`)
+  instead of allowing unbounded growth. A peer that declares an oversized packet length will fail
+  with a descriptive error rather than OOMing the host. The first-packet version check is now
+  documented with a JSDoc block.
 - `mod.ts` was split. Binary download, cache-path resolution, the platform-asset map, SHA-256
   verification, and the `fetchChecked` HTTP helper now live in `binary_installer.ts`. The `SpawnFn`
   abstraction was retained and `spawnNew` was renamed to `spawn` (the redundant
@@ -50,6 +81,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it locally.
 - `deno.json` `publish.include` now lists `binary_installer.ts` so the new module ships with the
   package.
+
+### Fixed
+
+- `plugin_runner.ts` `collectPluginMessages` no longer calls `checkForInvalidFlags` on the plugin
+  callback result. The inline callers (`onResolve`, `onLoad`, `onStart`, `onEnd`) already validate
+  the full set of allowed properties before extracting `errors` and `warnings`. The helper's
+  redundant validation was rejecting standard plugin return values like `path`, `namespace`,
+  `contents`, `loader`, and `resolveDir`, breaking every plugin (including the in-repo `css` and
+  `deno` plugins).
+
+### Security
+
+- `MAX_PACKET_BYTES` cap on the stdio protocol buffer prevents a malicious or misbehaving peer from
+  triggering unbounded memory allocation.
 
 ## [0.2.10] - 2026-07-24
 

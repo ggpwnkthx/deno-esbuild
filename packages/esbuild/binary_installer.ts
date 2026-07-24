@@ -15,14 +15,10 @@
  *
  * @see ../mod.ts
  */
-import { ESBUILD_VERSION } from './shared/common.ts'
+import { ESBUILD_VERSION } from './shared/mod.ts'
 
 const RELEASE_BASE_URL =
   `https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${ESBUILD_VERSION}`
-
-interface ReleaseBinary {
-  assetName: string
-}
 
 type FetchKind = 'bytes' | 'text'
 
@@ -184,20 +180,52 @@ async function installFromRelease(assetName: string): Promise<string> {
   return finalPath
 }
 
-const knownReleaseAssets: Record<string, ReleaseBinary> = {
+const platformAssetRegistry = new Map<string, string>([
   // Deno-supported platforms
-  'aarch64-apple-darwin': { assetName: 'esbuild-darwin-arm64' },
-  'x86_64-apple-darwin': { assetName: 'esbuild-darwin-x64' },
-  'aarch64-unknown-linux-gnu': { assetName: 'esbuild-linux-arm64' },
-  'x86_64-unknown-linux-gnu': { assetName: 'esbuild-linux-x64' },
-  'x86_64-pc-windows-msvc': { assetName: 'esbuild-win32-x64.exe' },
+  ['aarch64-apple-darwin', 'esbuild-darwin-arm64'],
+  ['x86_64-apple-darwin', 'esbuild-darwin-x64'],
+  ['aarch64-unknown-linux-gnu', 'esbuild-linux-arm64'],
+  ['x86_64-unknown-linux-gnu', 'esbuild-linux-x64'],
+  ['x86_64-pc-windows-msvc', 'esbuild-win32-x64.exe'],
 
   // Extra release assets, kept for compatibility if Deno exposes these targets
-  'aarch64-pc-windows-msvc': { assetName: 'esbuild-win32-arm64.exe' },
-  'aarch64-linux-android': { assetName: 'esbuild-android-arm64' },
-  'x86_64-unknown-freebsd': { assetName: 'esbuild-freebsd-x64' },
-  'aarch64-unknown-freebsd': { assetName: 'esbuild-freebsd-arm64' },
-  'x86_64-alpine-linux-musl': { assetName: 'esbuild-linux-x64' },
+  ['aarch64-pc-windows-msvc', 'esbuild-win32-arm64.exe'],
+  ['aarch64-linux-android', 'esbuild-android-arm64'],
+  ['x86_64-unknown-freebsd', 'esbuild-freebsd-x64'],
+  ['aarch64-unknown-freebsd', 'esbuild-freebsd-arm64'],
+  ['x86_64-alpine-linux-musl', 'esbuild-linux-x64'],
+])
+
+/**
+ * Registers a custom platform-to-asset mapping. Embedders (wasmer, deno
+ * deploy, custom CI distros) can call this at startup to point esbuild at
+ * a custom release asset without forking the package.
+ *
+ * Re-registering the same `name` silently overrides the previous mapping.
+ * Calling this after `install()` has already resolved the current platform
+ * does not affect the already-resolved path; the new mapping is used on
+ * the next call to `install()`.
+ */
+export function registerPlatform(name: string, assetName: string): void {
+  platformAssetRegistry.set(name, assetName)
+}
+
+/**
+ * Removes a custom platform registration. Primarily useful for tests that
+ * need to reset module-level state between cases.
+ *
+ * Returns `true` if the mapping was present, `false` otherwise.
+ */
+export function unregisterPlatform(name: string): boolean {
+  return platformAssetRegistry.delete(name)
+}
+
+/**
+ * Returns the list of currently registered platform keys. Useful for
+ * diagnostics and tests; the order is implementation-defined.
+ */
+export function knownPlatforms(): string[] {
+  return [...platformAssetRegistry.keys()]
 }
 
 /**
@@ -215,10 +243,10 @@ export async function install(): Promise<string> {
   if (overridePath) return overridePath
 
   const platformKey = Deno.build.target
-  const releaseBinary = knownReleaseAssets[platformKey]
-  if (!releaseBinary) {
+  const assetName = platformAssetRegistry.get(platformKey)
+  if (!assetName) {
     throw new Error(`Unsupported platform: ${platformKey}`)
   }
 
-  return await installFromRelease(releaseBinary.assetName)
+  return await installFromRelease(assetName)
 }

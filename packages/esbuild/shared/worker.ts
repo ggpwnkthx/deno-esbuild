@@ -10,7 +10,7 @@
  * @see ../wasm.ts
  */
 import './go_wasm.ts'
-import { ESBUILD_VERSION } from './common.ts'
+import { ESBUILD_VERSION } from './transport.ts'
 
 /**
  * Messages accepted by the esbuild WASM worker.
