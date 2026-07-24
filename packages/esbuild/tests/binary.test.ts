@@ -1,4 +1,6 @@
 import { version } from '../mod.ts'
+import * as esbuild from '../mod.ts'
+import * as esbuildWasm from '../wasm.ts'
 
 const textDecoder = new TextDecoder()
 const moduleUnderTest = new URL('../mod.ts', import.meta.url).href
@@ -374,3 +376,56 @@ Deno.test('WASM API initializes and runs transform and build', async () => {
     assertSuccessfulCommand(wasmRun, 'WASM esbuild API probe')
   })
 })
+
+function assertSyncStubThrows(
+  fn: () => unknown,
+  expectedName: string,
+  label: string,
+): void {
+  let thrown: unknown
+  try {
+    fn()
+  } catch (err) {
+    thrown = err
+  }
+  if (!(thrown instanceof Error)) {
+    throw new Error(`${label} did not throw an Error (got ${typeof thrown})`)
+  }
+  assertEquals(
+    thrown.message,
+    `The "${expectedName}" API does not work in Deno`,
+    `${label} should throw the expected unsupported-API message`,
+  )
+}
+
+const syncStubNames: Array<{
+  name: string
+  native: () => unknown
+  wasm: () => unknown
+}> = [
+  { name: 'buildSync', native: () => esbuild.buildSync({}), wasm: () => esbuildWasm.buildSync({}) },
+  {
+    name: 'transformSync',
+    native: () => esbuild.transformSync('x'),
+    wasm: () => esbuildWasm.transformSync('x'),
+  },
+  {
+    name: 'formatMessagesSync',
+    native: () => esbuild.formatMessagesSync([], { kind: 'error' }),
+    wasm: () => esbuildWasm.formatMessagesSync([], { kind: 'error' }),
+  },
+  {
+    name: 'analyzeMetafileSync',
+    native: () => esbuild.analyzeMetafileSync('{}'),
+    wasm: () => esbuildWasm.analyzeMetafileSync('{}'),
+  },
+]
+
+for (const { name, native, wasm } of syncStubNames) {
+  Deno.test(`native ${name} throws an unsupported-API error`, () => {
+    assertSyncStubThrows(native, name, `native ${name}`)
+  })
+  Deno.test(`WASM ${name} throws an unsupported-API error`, () => {
+    assertSyncStubThrows(wasm, name, `WASM ${name}`)
+  })
+}

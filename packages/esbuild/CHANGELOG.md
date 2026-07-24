@@ -21,6 +21,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     above `stop()` converted verbatim into a `/** */` block.
   - `shared/worker.ts`: `WorkerInputMessage` and `GoWasmRuntimeHandle`.
 
+## [0.2.11] - 2026-07-24
+
+### Added
+
+- New `binary_installer.ts` module that isolates the native-binary download, SHA-256 verification,
+  and platform-specific cache-path resolution. Its only public export is `install()`, which `mod.ts`
+  consumes once for the long-lived service and once for the CLI passthrough.
+- New `Service`, `ServiceEnv`, `createService`, `SyncStubs`, and `createSyncStubs` exports in
+  `shared/common.ts`. Both transports now build the public API surface through `createService`, and
+  the four sync stubs (`buildSync`, `transformSync`, `formatMessagesSync`, `analyzeMetafileSync`)
+  are produced by a single `createSyncStubs()` factory.
+- Unit tests in `tests/binary.test.ts` that assert each sync stub throws the expected
+  unsupported-API error message for both the native and WASM transports.
+
+### Changed
+
+- `mod.ts` was split. Binary download, cache-path resolution, the platform-asset map, SHA-256
+  verification, and the `fetchChecked` HTTP helper now live in `binary_installer.ts`. The `SpawnFn`
+  abstraction was retained and `spawnNew` was renamed to `spawn` (the redundant
+  `const spawn = spawnNew` alias was removed) so the process handle can be swapped for a test double
+  in the future.
+- `mod.ts` and `wasm.ts` now obtain their public API via `common.createService(...)` instead of
+  reimplementing the `build` / `context` / `transform` / `formatMessages` / `analyzeMetafile`
+  Promise wrappers in each entry. The `nativeTransformFs` callbacks stay in `mod.ts`; the WASM
+  transport uses the new shared `defaultTransformFs` in-place stub.
+- `mod.ts` and `wasm.ts` import the `Service` interface from `shared/common.ts` instead of declaring
+  it locally.
+- `deno.json` `publish.include` now lists `binary_installer.ts` so the new module ships with the
+  package.
+
 ## [0.2.10] - 2026-07-24
 
 ### Changed

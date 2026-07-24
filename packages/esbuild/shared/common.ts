@@ -763,6 +763,139 @@ export interface StreamService {
   }): void
 }
 
+/**
+ * The public, transport-agnostic esbuild service surface.
+ *
+ * Implemented by the native-binary transport ({@link ../mod.ts}) and the WASM
+ * transport ({@link ../wasm.ts}) using a {@link StreamService} as the
+ * underlying RPC layer.
+ *
+ * @see createService
+ */
+export interface Service {
+  build: typeof types.build
+  context: typeof types.context
+  transform: typeof types.transform
+  formatMessages: typeof types.formatMessages
+  analyzeMetafile: typeof types.analyzeMetafile
+}
+
+/** Per-transport knobs for {@link createService}. */
+export interface ServiceEnv {
+  isTTY: boolean
+  defaultWD: string
+  /**
+   * File-system shim for the `transform` call. The native-binary transport
+   * uses real temp files; the WASM transport uses the default in-memory
+   * stub (see {@link defaultTransformFs}).
+   */
+  transformFs?: StreamFS
+}
+
+/**
+ * Default in-memory {@link StreamFS} used by transports that cannot read or
+ * write real temp files (i.e. the WASM transport). The esbuild WASM service
+ * surfaces transform input/output as in-process strings, so neither `readFile`
+ * nor `writeFile` is ever invoked.
+ */
+export const defaultTransformFs: StreamFS = {
+  readFile(_path, callback) {
+    callback(new Error('Internal error'), null)
+  },
+  writeFile(_contents, callback) {
+    callback(null)
+  },
+}
+
+/**
+ * Builds the public {@link Service} surface from a {@link StreamService}
+ * returned by {@link createChannel}. This is the single, shared place where
+ * the `build` / `context` / `transform` / `formatMessages` / `analyzeMetafile`
+ * Promise wrappers are defined; both transports consume it.
+ */
+export function createService(service: StreamService, env: ServiceEnv): Service {
+  const buildOrContext =
+    (callName: 'build' | 'context') =>
+    (options: types.BuildOptions): Promise<types.BuildResult | types.BuildContext> =>
+      new Promise<types.BuildResult | types.BuildContext>((resolve, reject) =>
+        service.buildOrContext({
+          callName,
+          refs: null,
+          options,
+          isTTY: env.isTTY,
+          defaultWD: env.defaultWD,
+          callback: (err, res) => err ? reject(err) : resolve(res!),
+        })
+      )
+
+  return {
+    build: buildOrContext('build') as typeof types.build,
+    context: buildOrContext('context') as typeof types.context,
+    transform: (input, options) =>
+      new Promise<types.TransformResult>((resolve, reject) =>
+        service.transform({
+          callName: 'transform',
+          refs: null,
+          input,
+          options: options || {},
+          isTTY: env.isTTY,
+          fs: env.transformFs ?? defaultTransformFs,
+          callback: (err, res) => err ? reject(err) : resolve(res!),
+        })
+      ),
+    formatMessages: (messages, options) =>
+      new Promise<string[]>((resolve, reject) =>
+        service.formatMessages({
+          callName: 'formatMessages',
+          refs: null,
+          messages,
+          options,
+          callback: (err, res) => err ? reject(err) : resolve(res!),
+        })
+      ),
+    analyzeMetafile: (metafile, options) =>
+      new Promise<string>((resolve, reject) =>
+        service.analyzeMetafile({
+          callName: 'analyzeMetafile',
+          refs: null,
+          metafile: typeof metafile === 'string' ? metafile : JSON.stringify(metafile),
+          options,
+          callback: (err, res) => err ? reject(err) : resolve(res!),
+        })
+      ),
+  }
+}
+
+/**
+ * The set of synchronous esbuild APIs that are not supported in Deno (because
+ * Deno lacks the synchronous stdin/stdout access they require). Both transports
+ * re-export these from {@link createSyncStubs}.
+ */
+export interface SyncStubs {
+  buildSync: typeof types.buildSync
+  transformSync: typeof types.transformSync
+  formatMessagesSync: typeof types.formatMessagesSync
+  analyzeMetafileSync: typeof types.analyzeMetafileSync
+}
+
+/**
+ * Builds the four synchronous esbuild stubs that throw on call. They share the
+ * exact same error message format as the upstream esbuild API.
+ */
+export function createSyncStubs(): SyncStubs {
+  const throwing = (name: string): () => never => {
+    return () => {
+      throw new Error(`The "${name}" API does not work in Deno`)
+    }
+  }
+  return {
+    buildSync: throwing('buildSync'),
+    transformSync: throwing('transformSync'),
+    formatMessagesSync: throwing('formatMessagesSync'),
+    analyzeMetafileSync: throwing('analyzeMetafileSync'),
+  }
+}
+
 type CloseData = { didClose: boolean; reason: string }
 // deno-lint-ignore no-explicit-any
 type RequestCallback = (id: number, request: any) => Promise<void> | void

@@ -98,41 +98,35 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
   options,
 ) => ensureServiceIsRunning().then((service) => service.analyzeMetafile(metafile, options))
 
+const syncStubs = common.createSyncStubs()
+
 /**
  * Synchronous builds are not supported in the WASM API and throw unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
  * @see ../shared/types.ts:buildSync
  */
-export const buildSync: typeof types.buildSync = () => {
-  throw new Error(`The "buildSync" API does not work in Deno`)
-}
+export const buildSync = syncStubs.buildSync
 
 /**
  * Synchronous transforms are not supported in the WASM API and throw unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
  * @see ../shared/types.ts:transformSync
  */
-export const transformSync: typeof types.transformSync = () => {
-  throw new Error(`The "transformSync" API does not work in Deno`)
-}
+export const transformSync = syncStubs.transformSync
 
 /**
  * Synchronous message formatting is not supported in the WASM API and throws unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
  * @see ../shared/types.ts:formatMessagesSync
  */
-export const formatMessagesSync: typeof types.formatMessagesSync = () => {
-  throw new Error(`The "formatMessagesSync" API does not work in Deno`)
-}
+export const formatMessagesSync = syncStubs.formatMessagesSync
 
 /**
  * Synchronous metafile analysis is not supported in the WASM API and throws unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
  * @see ../shared/types.ts:analyzeMetafileSync
  */
-export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
-  throw new Error(`The "analyzeMetafileSync" API does not work in Deno`)
-}
+export const analyzeMetafileSync = syncStubs.analyzeMetafileSync
 
 /**
  * Terminates the esbuild WASM service and releases associated resources.
@@ -149,13 +143,7 @@ export const stop = (): Promise<void> => {
   return Promise.resolve()
 }
 
-interface Service {
-  build: typeof types.build
-  context: typeof types.context
-  transform: typeof types.transform
-  formatMessages: typeof types.formatMessages
-  analyzeMetafile: typeof types.analyzeMetafile
-}
+type Service = common.Service
 
 let initializePromise: Promise<Service> | undefined
 let stopService: (() => void) | undefined
@@ -303,73 +291,10 @@ const startRunningService = async (
     stopService = undefined
   }
 
-  return {
-    build: (options: types.BuildOptions) =>
-      new Promise<types.BuildResult>((resolve, reject) =>
-        service.buildOrContext({
-          callName: 'build',
-          refs: null,
-          options,
-          isTTY: false,
-          defaultWD: '/',
-          callback: (err, res) => err ? reject(err) : resolve(res as types.BuildResult),
-        })
-      ),
-
-    context: (options: types.BuildOptions) =>
-      new Promise<types.BuildContext>((resolve, reject) =>
-        service.buildOrContext({
-          callName: 'context',
-          refs: null,
-          options,
-          isTTY: false,
-          defaultWD: '/',
-          callback: (err, res) => err ? reject(err) : resolve(res as types.BuildContext),
-        })
-      ),
-
-    transform: (input: string | Uint8Array, options?: types.TransformOptions) =>
-      new Promise<types.TransformResult>((resolve, reject) =>
-        service.transform({
-          callName: 'transform',
-          refs: null,
-          input,
-          options: options || {},
-          isTTY: false,
-          fs: {
-            readFile(_, callback) {
-              callback(new Error('Internal error'), null)
-            },
-            writeFile(_, callback) {
-              callback(null)
-            },
-          },
-          callback: (err, res) => err ? reject(err) : resolve(res!),
-        })
-      ),
-
-    formatMessages: (messages, options) =>
-      new Promise((resolve, reject) =>
-        service.formatMessages({
-          callName: 'formatMessages',
-          refs: null,
-          messages,
-          options,
-          callback: (err, res) => err ? reject(err) : resolve(res!),
-        })
-      ),
-
-    analyzeMetafile: (metafile, options) =>
-      new Promise((resolve, reject) =>
-        service.analyzeMetafile({
-          callName: 'analyzeMetafile',
-          refs: null,
-          metafile: typeof metafile === 'string' ? metafile : JSON.stringify(metafile),
-          options,
-          callback: (err, res) => err ? reject(err) : resolve(res!),
-        })
-      ),
-  }
+  return common.createService(service, {
+    isTTY: false,
+    defaultWD: '/',
+  })
 }
 
 function toError(error: unknown): Error {

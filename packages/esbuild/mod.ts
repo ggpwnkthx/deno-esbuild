@@ -19,6 +19,7 @@
  * (usually not needed — the service starts lazily on first API call).
  *
  * @see ./wasm
+ * @see ./binary_installer
  * @example
  * ```ts
  * import { build } from "@ggpwnkthx/esbuild";
@@ -55,6 +56,7 @@ export type { PluginBuild } from './shared/types.ts'
 export type { TransformOptions } from './shared/types.ts'
 import * as common from './shared/common.ts'
 import * as ourselves from './mod.ts'
+import { install } from './binary_installer.ts'
 
 /** The esbuild binary version string (e.g. "0.28.1").
  * @see https://github.com/evanw/esbuild/releases */
@@ -138,6 +140,8 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
   options,
 ) => ensureServiceIsRunning().then((service) => service.analyzeMetafile(metafile, options))
 
+const syncStubs = common.createSyncStubs()
+
 /** @see ../shared/types.ts:buildSync
  * @example
  * ```ts
@@ -145,9 +149,7 @@ export const analyzeMetafile: typeof types.analyzeMetafile = (
  * buildSync({ entryPoints: ["src/index.ts"] });
  * ```
  */
-export const buildSync: typeof types.buildSync = () => {
-  throw new Error(`The "buildSync" API does not work in Deno`)
-}
+export const buildSync = syncStubs.buildSync
 
 /** @see ../shared/types.ts:transformSync
  * @example
@@ -156,9 +158,7 @@ export const buildSync: typeof types.buildSync = () => {
  * transformSync("const x: number = 1;", { loader: "ts" });
  * ```
  */
-export const transformSync: typeof types.transformSync = () => {
-  throw new Error(`The "transformSync" API does not work in Deno`)
-}
+export const transformSync = syncStubs.transformSync
 
 /** @see ../shared/types.ts:formatMessagesSync
  * @example
@@ -167,9 +167,7 @@ export const transformSync: typeof types.transformSync = () => {
  * formatMessagesSync([{ text: "error" }], { kind: "error" });
  * ```
  */
-export const formatMessagesSync: typeof types.formatMessagesSync = () => {
-  throw new Error(`The "formatMessagesSync" API does not work in Deno`)
-}
+export const formatMessagesSync = syncStubs.formatMessagesSync
 
 /** @see ../shared/types.ts:analyzeMetafileSync
  * @example
@@ -178,9 +176,7 @@ export const formatMessagesSync: typeof types.formatMessagesSync = () => {
  * analyzeMetafileSync("{ inputs: {} }", {});
  * ```
  */
-export const analyzeMetafileSync: typeof types.analyzeMetafileSync = () => {
-  throw new Error(`The "analyzeMetafileSync" API does not work in Deno`)
-}
+export const analyzeMetafileSync = syncStubs.analyzeMetafileSync
 
 /** @see ../shared/types.ts:stop
  * @example
@@ -220,211 +216,69 @@ export const initialize: typeof types.initialize = async (options) => {
   initializeWasCalled = true
 }
 
-const RELEASE_BASE_URL = `https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${version}`
-
-interface ReleaseBinary {
-  assetName: string
-}
-
-async function installFromRelease(assetName: string): Promise<string> {
-  const { finalPath, finalDir } = getCachePath(assetName)
-
-  try {
-    await Deno.stat(finalPath)
-    return finalPath
-  } catch {
-    // Cache miss, download below
-  }
-
-  const assetURL = `${RELEASE_BASE_URL}/${assetName}`
-  const sumsURL = `${RELEASE_BASE_URL}/SHA256SUMS`
-
-  const [executable, checksumText] = await Promise.all([
-    fetchBytes(assetURL, assetName),
-    fetchText(sumsURL, 'SHA256SUMS'),
-  ])
-
-  const expectedHash = findExpectedSHA256(checksumText, assetName)
-  const actualHash = await sha256Hex(executable)
-
-  if (actualHash !== expectedHash) {
-    throw new Error(
-      `Checksum mismatch for ${assetName}: expected ${expectedHash}, got ${actualHash}`,
-    )
-  }
-
-  await Deno.mkdir(finalDir, {
-    recursive: true,
-    mode: 0o700,
-  })
-
-  const tempPath = `${finalPath}.${crypto.randomUUID()}.tmp`
-
-  try {
-    await Deno.writeFile(tempPath, executable, { mode: 0o755 })
-    if (Deno.build.os !== 'windows') await Deno.chmod(tempPath, 0o755)
-    await Deno.rename(tempPath, finalPath)
-  } catch (err) {
-    try {
-      await Deno.remove(tempPath)
-    } catch {
-      // Ignore cleanup errors
-    }
-    throw err
-  }
-
-  return finalPath
-}
-
-async function fetchBytes(url: string, name: string): Promise<Uint8Array> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download ${name}: HTTP ${response.status} ${response.statusText}`,
-    )
-  }
-  return new Uint8Array(await response.arrayBuffer())
-}
-
-async function fetchText(url: string, name: string): Promise<string> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download ${name}: HTTP ${response.status} ${response.statusText}`,
-    )
-  }
-  return await response.text()
-}
-
-function findExpectedSHA256(checksumText: string, assetName: string): string {
-  for (const line of checksumText.split(/\r?\n/)) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-
-    // Standard sha256sum format:
-    // <64-hex-digest><spaces><filename>
-    const match = /^([a-fA-F0-9]{64})\s+\*?(.+)$/.exec(trimmed)
-    if (match && match[2] === assetName) {
-      return match[1]!.toLowerCase()
-    }
-
-    // Also tolerate:
-    // sha256:<64-hex-digest> <filename>
-    const alternate = /^sha256:([a-fA-F0-9]{64})\s+(.+)$/.exec(trimmed)
-    if (alternate && alternate[2] === assetName) {
-      return alternate[1]!.toLowerCase()
-    }
-  }
-
-  throw new Error(`Could not find SHA-256 checksum for ${assetName}`)
-}
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const copy = new Uint8Array(bytes)
-  const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
-
-  return Array.from(
-    new Uint8Array(digest),
-    (byte) => byte.toString(16).padStart(2, '0'),
-  ).join('')
-}
-
-function getCachePath(assetName: string): {
-  finalPath: string
-  finalDir: string
-} {
-  let baseDir: string | undefined
-
-  switch (Deno.build.os) {
-    case 'darwin':
-      baseDir = Deno.env.get('HOME')
-      if (baseDir) baseDir += '/Library/Caches'
-      break
-
-    case 'windows':
-      baseDir = Deno.env.get('LOCALAPPDATA')
-      if (!baseDir) {
-        baseDir = Deno.env.get('USERPROFILE')
-        if (baseDir) baseDir += '/AppData/Local'
-      }
-      if (baseDir) baseDir += '/Cache'
-      break
-
-    case 'linux': {
-      const xdg = Deno.env.get('XDG_CACHE_HOME')
-      if (xdg && xdg[0] === '/') baseDir = xdg
-      break
-    }
-  }
-
-  if (!baseDir) {
-    baseDir = Deno.env.get('HOME')
-    if (baseDir) baseDir += '/.cache'
-  }
-
-  if (!baseDir) throw new Error('Failed to find cache directory')
-
-  const finalDir = `${baseDir}/esbuild/bin`
-  const finalPath = `${finalDir}/${assetName}@${version}`
-  return { finalPath, finalDir }
-}
-
-async function install(): Promise<string> {
-  const overridePath = Deno.env.get('ESBUILD_BINARY_PATH')
-  if (overridePath) return overridePath
-
-  const platformKey = Deno.build.target
-  const knownReleaseAssets: Record<string, ReleaseBinary> = {
-    // Deno-supported platforms
-    'aarch64-apple-darwin': { assetName: 'esbuild-darwin-arm64' },
-    'x86_64-apple-darwin': { assetName: 'esbuild-darwin-x64' },
-    'aarch64-unknown-linux-gnu': { assetName: 'esbuild-linux-arm64' },
-    'x86_64-unknown-linux-gnu': { assetName: 'esbuild-linux-x64' },
-    'x86_64-pc-windows-msvc': { assetName: 'esbuild-win32-x64.exe' },
-
-    // Extra release assets, kept for compatibility if Deno exposes these targets
-    'aarch64-pc-windows-msvc': { assetName: 'esbuild-win32-arm64.exe' },
-    'aarch64-linux-android': { assetName: 'esbuild-android-arm64' },
-    'x86_64-unknown-freebsd': { assetName: 'esbuild-freebsd-x64' },
-    'aarch64-unknown-freebsd': { assetName: 'esbuild-freebsd-arm64' },
-    'x86_64-alpine-linux-musl': { assetName: 'esbuild-linux-x64' },
-  }
-
-  const releaseBinary = knownReleaseAssets[platformKey]
-  if (!releaseBinary) {
-    throw new Error(`Unsupported platform: ${platformKey}`)
-  }
-
-  return await installFromRelease(releaseBinary.assetName)
-}
-
-interface Service {
-  build: typeof types.build
-  context: typeof types.context
-  transform: typeof types.transform
-  formatMessages: typeof types.formatMessages
-  analyzeMetafile: typeof types.analyzeMetafile
-}
+type Service = common.Service
 
 const defaultWD = Deno.cwd()
+
+const nativeTransformFs: common.StreamFS = {
+  readFile(tempFile, callback) {
+    Deno.readFile(tempFile).then(
+      (bytes) => {
+        const text = new TextDecoder().decode(bytes)
+        try {
+          Deno.remove(tempFile)
+        } catch (_e) {
+          // Ignore error
+        }
+        callback(null, text)
+      },
+      (err) => callback(err, null),
+    )
+  },
+  writeFile(contents, callback) {
+    Deno.makeTempFile().then(
+      (tempFile) =>
+        Deno.writeFile(
+          tempFile,
+          typeof contents === 'string' ? new TextEncoder().encode(contents) : contents,
+        ).then(
+          () => callback(tempFile),
+          () => callback(null),
+        ),
+      () => callback(null),
+    )
+  },
+}
 let longLivedService: Promise<Service> | undefined
 let stopService: (() => Promise<void>) | undefined
 
-// Declare a common subprocess API for the two implementations below
-type SpawnFn = (cmd: string, options: {
-  args: string[]
-  stdin: 'piped' | 'inherit'
-  stdout: 'piped' | 'inherit'
-  stderr: 'inherit'
-}) => {
+// Minimal subprocess handle used by the native-binary transport. The shape is
+// deliberately narrow (only what the esbuild service needs) so the underlying
+// implementation can be swapped for a test double in a future change.
+interface SpawnHandle {
   write(bytes: Uint8Array): void
   read(): Promise<Uint8Array | null>
   close(): Promise<void> | void
   status(): Promise<{ code: number }>
 }
 
-// Deno ≥1.40
-const spawnNew: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
+/** Options for {@link spawn}. */
+interface SpawnOptions {
+  args: string[]
+  stdin: 'piped' | 'inherit'
+  stdout: 'piped' | 'inherit'
+  stderr: 'inherit'
+}
+
+/** Spawns the esbuild binary and returns a {@link SpawnHandle} for it. */
+type SpawnFn = (cmd: string, options: SpawnOptions) => SpawnHandle
+
+/**
+ * Spawns the esbuild binary using `Deno.Command` (Deno ≥1.40). The
+ * `SpawnFn` indirection lets future tests inject a fake subprocess without
+ * touching call sites.
+ */
+const spawn: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
   const child = new Deno.Command(cmd, {
     args,
     cwd: defaultWD,
@@ -465,9 +319,6 @@ const spawnNew: SpawnFn = (cmd, { args, stdin, stdout, stderr }) => {
     status: () => child.status,
   }
 }
-
-// Rely on spawnNew (Deno.Command) for all supported Deno versions
-const spawn: SpawnFn = spawnNew
 
 const ensureServiceIsRunning = (): Promise<Service> => {
   if (!longLivedService) {
@@ -520,99 +371,11 @@ const ensureServiceIsRunning = (): Promise<Service> => {
         })
       readMoreStdout()
 
-      return {
-        build: (options: types.BuildOptions) =>
-          new Promise<types.BuildResult>((resolve, reject) => {
-            service.buildOrContext({
-              callName: 'build',
-              refs: null,
-              options,
-              isTTY,
-              defaultWD,
-              callback: (err, res) => err ? reject(err) : resolve(res as types.BuildResult),
-            })
-          }),
-
-        context: (options: types.BuildOptions) =>
-          new Promise<types.BuildContext>((resolve, reject) =>
-            service.buildOrContext({
-              callName: 'context',
-              refs: null,
-              options,
-              isTTY,
-              defaultWD,
-              callback: (err, res) => err ? reject(err) : resolve(res as types.BuildContext),
-            })
-          ),
-
-        transform: (
-          input: string | Uint8Array,
-          options?: types.TransformOptions,
-        ) =>
-          new Promise<types.TransformResult>((resolve, reject) =>
-            service.transform({
-              callName: 'transform',
-              refs: null,
-              input,
-              options: options || {},
-              isTTY,
-              fs: {
-                readFile(tempFile, callback) {
-                  Deno.readFile(tempFile).then(
-                    (bytes) => {
-                      const text = new TextDecoder().decode(bytes)
-                      try {
-                        Deno.remove(tempFile)
-                      } catch (_e) {
-                        // Ignore error
-                      }
-                      callback(null, text)
-                    },
-                    (err) => callback(err, null),
-                  )
-                },
-                writeFile(contents, callback) {
-                  Deno.makeTempFile().then(
-                    (tempFile) =>
-                      Deno.writeFile(
-                        tempFile,
-                        typeof contents === 'string'
-                          ? new TextEncoder().encode(contents)
-                          : contents,
-                      ).then(
-                        () => callback(tempFile),
-                        () => callback(null),
-                      ),
-                    () => callback(null),
-                  )
-                },
-              },
-              callback: (err, res) => err ? reject(err) : resolve(res!),
-            })
-          ),
-
-        formatMessages: (messages, options) =>
-          new Promise((resolve, reject) =>
-            service.formatMessages({
-              callName: 'formatMessages',
-              refs: null,
-              messages,
-              options,
-              callback: (err, res) => err ? reject(err) : resolve(res!),
-            })
-          ),
-
-        analyzeMetafile: (metafile, options) =>
-          new Promise((resolve, reject) =>
-            service.analyzeMetafile({
-              callName: 'analyzeMetafile',
-              refs: null,
-              metafile: typeof metafile === 'string' ? metafile : JSON.stringify(metafile),
-              options,
-              callback: (err, res) => err ? reject(err) : resolve(res!),
-            })
-          ),
-      }
+      return common.createService(service, {
+        isTTY,
+        defaultWD,
+        transformFs: nativeTransformFs,
+      })
     })()
   }
   return longLivedService
