@@ -8,6 +8,7 @@
     "./packages/wrappers/oak"
   ],
   "nodeModulesDir": "none",
+  "minimumDependencyAge": 0,
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
