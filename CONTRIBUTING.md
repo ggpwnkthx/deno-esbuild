@@ -142,6 +142,22 @@ Tests live under each package's `tests/` directory and use `@std/assert`. When a
 6. Open a pull request with a clear description of: what changed, why it changed, and any
    compatibility or safety considerations.
 
+## Releasing
+
+Each package in this workspace is published independently to JSR. The root `deno.json` `scopes`
+block redirects sibling imports to local paths during development, while each member's own
+`deno.json` keeps `jsr:@ggpwnkthx/...` references for the published tarball. Run `versions:sync`
+before publishing so the published pins match the local versions:
+
+1. Bump `version` in the relevant `packages/*/deno.json` files.
+2. Run `deno task versions:sync` to refresh sibling pins across the workspace.
+3. From each affected member, run `deno publish` in dependency order (start with `packages/esbuild`
+   and `packages/wrappers/shared`, then the dependents).
+4. Commit the version bumps and any pin updates, then tag.
+
+CI can guard against drift by running `deno task versions:check` (exits non-zero when any sibling
+pin is out of sync).
+
 ## AI / LLM-Assisted Contributions
 
 AI/LLM-generated code is allowed, but contributors are fully responsible for anything they submit.

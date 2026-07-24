@@ -20,6 +20,26 @@
     "@std/path": "jsr:@std/path@^1.1.6",
     "@std/semver": "jsr:@std/semver@^1.0.8"
   },
+  "scopes": {
+    "./packages/plugins/deno/": {
+      "esbuild": "../esbuild/mod.ts",
+      "@ggpwnkthx/esbuild-wrapper-shared": "../wrappers/shared/mod.ts"
+    },
+    "./packages/plugins/css/": {
+      "esbuild": "../esbuild/mod.ts"
+    },
+    "./packages/wrappers/shared/": {
+      "esbuild": "../esbuild/mod.ts"
+    },
+    "./packages/wrappers/hono/": {
+      "esbuild": "../esbuild/mod.ts",
+      "@ggpwnkthx/esbuild-wrapper-shared": "../wrappers/shared/mod.ts"
+    },
+    "./packages/wrappers/oak/": {
+      "esbuild": "../esbuild/mod.ts",
+      "@ggpwnkthx/esbuild-wrapper-shared": "../wrappers/shared/mod.ts"
+    }
+  },
   "fmt": {
     "lineWidth": 100,
     "semiColons": false,
@@ -39,6 +59,8 @@
     "ci": "deno fmt --check && deno lint && deno check && deno task doc:check",
     "doc:check": "deno run --allow-read --allow-write --allow-run scripts/check_exports_documented.ts",
     "bin:build": "deno run --allow-read --allow-write --allow-run=git,go --allow-env scripts/main.ts",
-    "bin:list": "deno run --allow-read scripts/main.ts --list"
+    "bin:list": "deno run --allow-read scripts/main.ts --list",
+    "versions:sync": "deno run --allow-read --allow-write scripts/sync_versions.ts",
+    "versions:check": "deno run --allow-read --allow-write scripts/sync_versions.ts --check"
   }
 }

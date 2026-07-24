@@ -9,6 +9,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### feat(workspace): local sibling imports via scope overrides + version sync script
+
+- `deno.json` (root): added a `scopes` block that redirects each member's `jsr:@ggpwnkthx/...`
+  imports to the local sibling directory during development (`./packages/plugins/deno/` →
+  `../esbuild/mod.ts`, etc.). The root `scopes` block is not part of any published package, so each
+  member's `deno.json` continues to ship `jsr:@ggpwnkthx/<name>@^<version>` references for JSR
+  consumers, and `deno info` confirms that during development `esbuild` (and
+  `@ggpwnkthx/esbuild-wrapper-shared` for the wrapper packages) resolves to a
+  `file:///workspace/deno-esbuild/packages/...` path instead of a JSR URL.
+- `scripts/sync_versions.ts`: new std-only script that walks every workspace member's `deno.json`,
+  builds a `name → version` map, and rewrites each member's sibling `jsr:@ggpwnkthx/<name>@<old>`
+  pin to `jsr:@ggpwnkthx/<name>@^<local>`. Idempotent; supports `--check` for CI. Wired up as
+  `deno task versions:sync` and `deno task versions:check`.
+- `packages/plugins/{deno,css}/deno.json` and `packages/wrappers/{shared,hono,oak}/deno.json`:
+  sibling `esbuild` pins updated from `jsr:@ggpwnkthx/esbuild@^0.2.9` to
+  `jsr:@ggpwnkthx/esbuild@^0.2.11` to match the local `@ggpwnkthx/esbuild` package version. Applied
+  by `deno task versions:sync`; future version bumps will be reflected in sibling pins by the same
+  script before publishing.
+- `CONTRIBUTING.md`: added a "Releasing" section describing the workflow (bump version →
+  `deno task versions:sync` → `deno publish` per member in dependency order) and noting that
+  `deno task versions:check` can guard the repo against drift.
+
+## 6b4f86b - 2026-07-24
+
 ### fix(ci): quote composite action `run` value to avoid YAML mapping parse error
 
 - `.github/actions/publish-package/action.yml`: wrapped the `Select package` step's `run` value in

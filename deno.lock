@@ -2,7 +2,6 @@
   "version": "5",
   "specifiers": {
     "jsr:@deno/loader@0.5": "0.5.0",
-    "jsr:@ggpwnkthx/esbuild@~0.2.9": "0.2.9",
     "jsr:@hono/hono@^4.12.32": "4.12.32",
     "jsr:@oak/commons@1": "1.0.1",
     "jsr:@oak/oak@^17.2.0": "17.2.0",
@@ -26,9 +25,6 @@
   "jsr": {
     "@deno/loader@0.5.0": {
       "integrity": "a6d94408de5e6bacac404f8f6963c8b8cc278cfd1a878aa2f06b34a083d6bfee"
-    },
-    "@ggpwnkthx/esbuild@0.2.9": {
-      "integrity": "8fa8d5afc1f98bf92dc964b88861779024763bb99a84b297f3936e5331bc4468"
     },
     "@hono/hono@4.12.32": {
       "integrity": "e1274e968ee724176d7e35946c184d3cb8508f05e3f8ae6cee157c4f29ef148d"
@@ -118,7 +114,7 @@
     "members": {
       "packages/plugins/css": {
         "dependencies": [
-          "jsr:@ggpwnkthx/esbuild@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild@~0.2.11",
           "jsr:@std/assert@^1.0.19",
           "jsr:@std/path@^1.1.6"
         ]
@@ -126,7 +122,7 @@
       "packages/plugins/deno": {
         "dependencies": [
           "jsr:@deno/loader@0.5",
-          "jsr:@ggpwnkthx/esbuild@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild@~0.2.11",
           "jsr:@std/assert@^1.0.19",
           "jsr:@std/path@^1.1.6"
         ]
@@ -134,7 +130,7 @@
       "packages/wrappers/hono": {
         "dependencies": [
           "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.10",
-          "jsr:@ggpwnkthx/esbuild@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild@~0.2.11",
           "jsr:@hono/hono@^4.12.32",
           "jsr:@std/assert@^1.0.19"
         ]
@@ -142,14 +138,14 @@
       "packages/wrappers/oak": {
         "dependencies": [
           "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.10",
-          "jsr:@ggpwnkthx/esbuild@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild@~0.2.11",
           "jsr:@oak/oak@^17.2.0",
           "jsr:@std/assert@^1.0.19"
         ]
       },
       "packages/wrappers/shared": {
         "dependencies": [
-          "jsr:@ggpwnkthx/esbuild@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild@~0.2.11",
           "jsr:@std/assert@^1.0.19"
         ]
       }

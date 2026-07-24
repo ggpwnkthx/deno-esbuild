@@ -3,11 +3,16 @@
   "version": "0.2.10",
   "exports": "./mod.ts",
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.9",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.11",
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },
   "publish": {
-    "include": ["mod.ts", "README.md", "LICENSE.md", "deno.json"]
+    "include": [
+      "mod.ts",
+      "README.md",
+      "LICENSE.md",
+      "deno.json"
+    ]
   },
   "tasks": {
     "fmt": "deno fmt .",
