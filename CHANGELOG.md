@@ -9,6 +9,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### docs(changelog): record 0.2.9 notes across all packages
+
+- Added a `0.2.9` entry to every package CHANGELOG covering the synchronized version bump, the
+  repo-wide `deno fmt` style sweep (singleQuote, no semiColons, lineWidth 100), and the adoption of
+  strict `compilerOptions` (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
+  `noImplicitOverride`).
+- Packages without a prior `0.2.9` entry also gained backfill entries for `0.2.0`–`0.2.8` so each
+  per-package changelog has a complete history. The `@ggpwnkthx/esbuild-wrapper-shared` entry on the
+  upcoming `0.2.10` cycle documents the breaking move from a module-level `responseCache` +
+  `getCachedOrTranspile` export to a `createTranspiler()` factory.
+- `packages/plugins/deno/CHANGELOG.md` also gained `0.2.9` entries under `### Fixed` describing
+  `onLoad`'s `resolveDir` correction and the `onResolve` synthetic-referrer fix for npm cache paths.
+  `packages/plugins/css/CHANGELOG.md` describes the `onLoad` namespace-predicate refactor and the
+  `noUncheckedIndexedAccess` test update.
+
+## c0afa99 - 2026-07-24
+
 ### chore(ci): run per-package `deno task ci` from a single job
 
 - `.github/workflows/ci.yml`: collapsed the four-stage fmt/lint/check/test pipeline into a single

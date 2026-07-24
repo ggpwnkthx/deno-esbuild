@@ -28,6 +28,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Last synchronized version bump across all `@ggpwnkthx/*` packages in this workspace. Future
   versions of this package will be released independently.
 
+## [0.2.9] - 2026-07-24
+
+### Changed
+
+- Synchronized version bump across all `@ggpwnkthx/*` packages in this workspace.
+- Repo-wide `deno fmt` style sweep (`singleQuote`, no `semiColons`, `lineWidth` 100) applied across
+  `mod.ts`, `wasm.ts`, and all `shared/*.ts` files.
+- Strict `compilerOptions` (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
+  `noImplicitOverride`) adopted in this package's `deno.json`.
+
 ## [0.2.8] - 2026-06-13
 
 ### Added
@@ -122,6 +132,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `shared/stdio_protocol.ts`.
 - JSDoc documentation on `JSON_parse` in `shared/uint8array_json_parser.ts`.
 - Named type re-exports with `/** @see ... */` JSDoc cross-links in `mod.ts` and `wasm.ts`.
+
+## [0.2.3] - 2026-05-05
+
+### Changed
+
+- Synchronized version bump across all `@ggpwnkthx/*` packages in this workspace.
 
 ## [0.2.2] - 2026-05-05
 
