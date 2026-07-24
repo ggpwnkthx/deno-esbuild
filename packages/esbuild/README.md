@@ -26,7 +26,7 @@ A first run usually needs these permissions:
 ```bash
 deno run \
   --allow-env \
-  --allow-net=github.com \
+  --allow-net=github.com,release-assets.githubusercontent.com \
   --allow-read \
   --allow-write \
   --allow-run \
@@ -35,13 +35,13 @@ deno run \
 
 Why:
 
-| Permission               | Used for                                                                            |
-| ------------------------ | ----------------------------------------------------------------------------------- |
-| `--allow-env`            | Read `ESBUILD_BINARY_PATH`, cache-location variables, and home-directory variables. |
-| `--allow-net=github.com` | Download the binary and `SHA256SUMS` from GitHub releases on a cache miss.          |
-| `--allow-read`           | Check the binary cache and read temporary transform outputs.                        |
-| `--allow-write`          | Create/update the binary cache and temporary transform files.                       |
-| `--allow-run`            | Start the downloaded or configured esbuild executable.                              |
+| Permission                                                    | Used for                                                                                                                                                                         |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--allow-env`                                                 | Read `ESBUILD_BINARY_PATH`, cache-location variables, and home-directory variables.                                                                                              |
+| `--allow-net=github.com,release-assets.githubusercontent.com` | Download the binary and `SHA256SUMS` from GitHub releases on a cache miss. GitHub redirects asset URLs to `release-assets.githubusercontent.com`, so both hosts must be allowed. |
+| `--allow-read`                                                | Check the binary cache and read temporary transform outputs.                                                                                                                     |
+| `--allow-write`                                               | Create/update the binary cache and temporary transform files.                                                                                                                    |
+| `--allow-run`                                                 | Start the downloaded or configured esbuild executable.                                                                                                                           |
 
 After the binary is cached, you can reduce permissions for your own workflow. For example, using
 `ESBUILD_BINARY_PATH` with a preinstalled binary can avoid network and cache writes, but the binary
@@ -364,7 +364,7 @@ Run the native entry point directly to forward CLI arguments to the esbuild bina
 ```bash
 deno run \
   --allow-env \
-  --allow-net=github.com \
+  --allow-net=github.com,release-assets.githubusercontent.com \
   --allow-read \
   --allow-write \
   --allow-run \

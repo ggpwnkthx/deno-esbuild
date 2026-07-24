@@ -9,6 +9,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### chore(net): allow release-assets.githubusercontent.com
+
+- `packages/esbuild/README.md`: replaced `--allow-net=github.com` with
+  `--allow-net=github.com,release-assets.githubusercontent.com` in both the initial-cache and
+  native-binary examples, and called out in the permission table that GitHub redirects asset
+  downloads to `release-assets.githubusercontent.com`.
+- `packages/wrappers/hono/deno.json` and `packages/wrappers/oak/deno.json`: appended
+  `release-assets.githubusercontent.com` to the `--allow-net` list on the `test` and `ci` tasks so
+  the wrapper test suites can follow the same redirect when downloading esbuild binaries.
+
+## dcd67c2 - 2026-07-24
+
 ### docs: document every exported symbol and enforce with CI guard
 
 - Added `/** ... */` blocks to all 35 previously undocumented exports across the workspace:
