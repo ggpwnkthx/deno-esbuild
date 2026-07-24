@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from '@std/assert'
 import { Hono } from 'hono'
-import type * as esbuild from 'esbuild'
+import type { EsbuildLike } from '@ggpwnkthx/esbuild-wrapper-shared'
 import esbuildMiddleware from '../mod.ts'
 
 const source = 'export const value: number = 1;\n'
@@ -35,14 +35,13 @@ Deno.test('default transpiler transforms TypeScript responses', async () => {
 
 Deno.test('cache: true skips esbuild.transform on repeat requests', async () => {
   let transformCallCount = 0
-  const mockEsbuild = {
-    transform: (input: string, _opts?: esbuild.TransformOptions) => {
+  const mockEsbuild: EsbuildLike = {
+    transform: (input: string | Uint8Array) => {
       transformCallCount++
-      return { code: input.replace(': number', '') }
+      const text = typeof input === 'string' ? input : new TextDecoder().decode(input)
+      return Promise.resolve({ code: text.replace(': number', '') })
     },
-    stop: () => {
-      // no-op for mock
-    },
+    stop: () => Promise.resolve(),
   }
 
   const app = new Hono()
@@ -50,7 +49,7 @@ Deno.test('cache: true skips esbuild.transform on repeat requests', async () => 
     '*',
     esbuildMiddleware({
       cache: true,
-      esbuild: mockEsbuild as unknown as typeof esbuild,
+      esbuild: mockEsbuild,
     }),
   )
   app.use('*', async (c) =>

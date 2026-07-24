@@ -385,10 +385,9 @@ export default {
 }
 ```
 
-The Oak wrapper checks the request pathname after downstream middleware runs, reads
-`ctx.request.body.text()`, and writes transformed code to `ctx.response.body`. This reflects the
-current implementation; verify that this matches your server's request/response flow before using it
-in production.
+The Oak wrapper checks the request pathname after downstream middleware runs, reads the response
+body, and writes the transformed code to `ctx.response.body`. This mirrors the Hono wrapper's
+contract.
 
 ## Shared wrapper options
 

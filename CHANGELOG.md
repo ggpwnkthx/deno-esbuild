@@ -1,327 +1,373 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+This changelog documents changes to the workspace itself: root configuration, CI/CD, GitHub
+workflows, dev environment, repo-wide tooling, scripts, and release coordination. Changes to
+individual packages live in each package's own `CHANGELOG.md`.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.9]
+## latest - 2026-07-24
 
-### Changed
+### refactor(wrappers): isolate transpiler state per middleware instance
 
-- All packages bumped to `0.2.9`.
+- Added `.github/workflows/ci.yml`: a package-matrix CI workflow that runs `fmt`, `lint`, `check`,
+  and `test` per workspace member on every push and pull request against `main`.
+- Simplified `.github/workflows/publish.yml` (114 → 25 lines): publishing no longer re-runs the full
+  CI matrix now that `.github/workflows/ci.yml` owns those checks.
+- Root `deno.json`: added `nodeModulesDir: "none"`, a workspace `compilerOptions` block carrying
+  `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, and `noImplicitOverride`, and
+  a top-level `ci` task that runs `deno fmt --check && deno lint && deno check`.
+- Root `deno.json` exclude pattern now matches dot-prefixed paths correctly (`./*` → `./.*`); the
+  previous pattern did not actually exclude hidden files from `fmt`/`lint`/`check` discovery.
+- Per-package `deno.json` files: each member now declares its own `publish.include` list (instead of
+  relying on the workspace defaults) and a `ci` task; `compilerOptions` moved to the root so the
+  strict settings stay in one place.
+- Reframed this root `CHANGELOG.md` to track only workspace-level changes (CI, workflows, root
+  config, tooling, scripts, release coordination). Every package now keeps its own `CHANGELOG.md`
+  for package-level changes (`packages/esbuild/CHANGELOG.md`, `packages/plugins/css/CHANGELOG.md`,
+  `packages/plugins/deno/CHANGELOG.md`, `packages/wrappers/hono/CHANGELOG.md`,
+  `packages/wrappers/oak/CHANGELOG.md`, `packages/wrappers/shared/CHANGELOG.md`).
+- Bumped `@ggpwnkthx/esbuild` to `0.2.10` (release coordination; per-package delta in
+  `packages/esbuild/CHANGELOG.md`).
+- The shared transpiler library no longer exposes a module-level response cache or a standalone
+  `getCachedOrTranspile` export; wrappers now build a per-instance `Transpiler` via
+  `createTranspiler()`. Per-package API changes in `packages/wrappers/shared/CHANGELOG.md`; Hono and
+  Oak wrapper call sites updated in `packages/wrappers/hono/CHANGELOG.md` and
+  `packages/wrappers/oak/CHANGELOG.md`.
+- The Oak wrapper now reads `ctx.response.body` after `next()` (string, `Uint8Array`, or
+  `ReadableStream`) instead of `ctx.request.body`, matching the Hono wrapper's downstream-handler
+  contract. Per-package change in `packages/wrappers/oak/CHANGELOG.md`.
+- Hardened `scripts/makefile.ts` parser for `noUncheckedIndexedAccess` (non-null assertions on regex
+  captures, defensive `?? ''` fallbacks).
+- Extended `.gitignore` with `.deno`, `coverage`, `dist`, `node_modules`, `*.tmp`, and `*.partial`
+  so generated build, test, and dependency directories stay out of source control.
 
-### Fixed
+## bc6dff5 - 2026-07-24
 
-- `plugins/deno` `onLoad` now returns `resolveDir` set to the loaded file's directory, so esbuild
-  can resolve relative-path imports emitted by its CJS-to-ESM conversion pass when the plugin's
-  `onResolve` declines to handle an importer outside the plugin workspace root. Previously, CJS
-  entry files that `require()` sibling CJS files (such as `tmpDir/util.cjs`) failed to bundle
-  because esbuild had no fallback `resolveDir` once the plugin returned null.
-- `plugins/deno` `onResolve` no longer swaps in a workspace-anchored synthetic referrer for
-  importers that live under a managed package path (any segment equal to `node_modules` or `deno`,
-  matching Deno's npm cache, JSR cache, and `node_modules` trees). The substitution meant relative
-  imports inside CJS source loaded from those paths resolved against the workspace directory instead
-  of the importer's own, so esbuild's CJS-to-ESM conversion emitted imports for files that didn't
-  exist where the synthetic referrer pointed. Pass-through for managed paths lets `loader.resolve`
-  compute relative imports against the importer's real directory.
+### chore: restructure into packages/ workspace and fix setup issues
 
-## [0.2.8]
+- Consolidated publishable packages under `packages/` so `esbuild/`, `plugins/`, and `wrappers/`
+  live in a single tree.
+- Updated root `deno.json` workspace entries to point at `packages/...`; regenerated `deno.lock`
+  with members keyed under `packages/...`.
+- Updated `.github/workflows/publish.yml` working-directory and matrix package paths to match the
+  new layout.
+- Updated README layout diagram and packages table paths.
+- Added missing `fmt`/`lint`/`check`/`test` tasks to `packages/wrappers/shared/deno.json`.
+- Fixed root `deno.json` exclude pattern (`"./*"` → `"./.*"`) so dot-prefixed paths are actually
+  excluded from `fmt`/`lint`/`check` discovery.
+- Dropped stale `deno-lock.json` entry from `.gitignore` (the actual lockfile is `deno.lock`).
+- Removed duplicate `*.sh text eol=lf` line from `.gitattributes`.
 
-### Added
+## 8ba14a8 - 2026-07-24
 
-- `esbuild/shared/go_wasm.ts`: typed Go WASM runtime shim adapted for Deno and browser-like
-  runtimes, including minimal `fs`, `process`, and `path` shims.
-- `esbuild/tests/binary.test.ts`: integration coverage for native binary download/cache behavior,
-  direct cached executable execution, CLI forwarding, cache reuse without network access, and WASM
-  transform/build execution.
-- Native binary installation now verifies downloaded release assets against `SHA256SUMS` before
-  caching them.
-- Native binary cache writes now use a temporary file plus rename to avoid leaving partially-written
-  executables behind on failed downloads or writes.
-- Additional release-asset mappings for `aarch64-pc-windows-msvc` and `aarch64-unknown-freebsd`.
+### chore: new dev environment
 
-### Changed
+- Removed `.devcontainer/` configuration.
+- Removed `.opencode/` configuration.
+- Updated all dependencies to latest versions.
 
-- All packages bumped to `0.2.8`.
-- Bundled esbuild binary/API target updated from `0.28.0` to `0.28.1`.
-- Native binary installation now downloads flat release assets from this repository's GitHub
-  releases instead of downloading and extracting platform-specific `@esbuild/*` npm tarballs.
-- Cached native binary filenames now use the release asset name directly, for example
-  `esbuild-linux-x64@0.28.1`.
-- WASM service startup now uses `esbuild/shared/worker.ts` as a module worker instead of generating
-  an inline blob from embedded worker source.
-- `esbuild/shared/worker.ts` now exports `createWorkerMessageHandler()` so the WASM API can share
-  the same worker bridge for both Worker-backed and `worker: false` execution paths.
-- README documentation for the workspace and core package was substantially expanded with package
-  layout, permissions, supported release assets, cache behavior, CLI usage, WASM usage, plugin
-  options, wrapper options, and development notes.
-- Script help and validation examples updated from esbuild `0.28.0` to `0.28.1`.
-- Deno plugin HTTPS fixture updated to reference `deno.land/x/esbuild@v0.28.1`.
+## 5d89f09 - 2026-07-24
 
-### Fixed
+### chore: release 0.2.9
 
-- WASM worker startup now reports initialization errors as `Error` instances and validates
-  stdout/stdin message types before forwarding them to the esbuild service.
-- Main-thread WASM execution now clears scheduled Go runtime timeouts on termination.
-- Native binary downloads now fail fast with clearer HTTP and checksum errors.
+- Bumped all packages to `0.2.9` (release coordination; per-package details in each `CHANGELOG.md`).
+- Adopted a repo-wide `deno fmt` style (`singleQuote`, no `semiColons`, `lineWidth` 100) and ran it
+  across the workspace.
+- Added strict `compilerOptions` (`strict`, `noUncheckedIndexedAccess`,
+  `exactOptionalPropertyTypes`, `noImplicitOverride`) to each package's `deno.json`.
+- Root `deno.json`: dropped stale `file:` workspace aliases; added `fmt` and `lint` blocks.
+- Rewrapped `README.md`, `CONTRIBUTING.md`, `LICENSE.md`, `SECURITY.md`, and
+  `CONVENTIONAL_COMMITS.md` to the new line width.
+- Bumped per-package JSR version references to `0.2.9`.
 
-### Removed
+## 24b7738 - 2026-06-13
 
-- npm tarball extraction helpers from `esbuild/mod.ts`, including the gzip/tar extraction path used
-  by the old `installFromNPM()` flow.
-- `NPM_CONFIG_REGISTRY` support for native binary installation; binaries now come from this
-  repository's GitHub release assets.
+### chore: update change log
 
-## [0.2.7]
+- Refreshed `CHANGELOG.md` with the `0.2.8` release notes.
 
-### Added
+## 81ff15e - 2026-06-12
 
-- `scripts/`: new Go-based build pipeline for esbuild binaries (10 files: `assets.ts`, `build.ts`,
-  `cli.ts`, `constants.ts`, `errors.ts`, `git.ts`, `main.ts`, `makefile.ts`, `process.ts`,
-  `types.ts`). Clones `https://github.com/evanw/esbuild.git`, checks out the requested (or latest)
-  `vX.Y.Z` tag, and runs `go build -trimpath -ldflags="-s -w -buildid="
-  -buildvcs=false` per
-  platform (CGO disabled). It parses the esbuild Makefile to enumerate every `platform-*` target,
-  picking `GOOS`/`GOARCH`/`BINPATH`, always including the browser WASM (`js/wasm` →
-  `esbuild-browser.wasm`) unless `--no-wasm`. Output is written to `./bin`: per-platform executable,
-  `esbuild-browser.wasm`, `manifest.json` (version, source tag/commit, SHA-256, size per artifact),
-  `SHA256SUMS`, `THIRD_PARTY_NOTICES.md`, and `RELEASE_NOTES.md`. SHA-256 computed via
-  `crypto.subtle.digest`. Native binaries get `chmod 0o755`. The script refuses to write into a path
-  that contains the esbuild checkout. Invoked via
-  `deno task bin:build
-  [--version X.Y.Z] [--platforms ...] [--no-wasm] [--clean]`.
-- `.github/workflows/release-binaries.yml`: GitHub Actions workflow for releasing binaries. Runs on
-  `workflow_dispatch` or push of a `vX.Y.Z` tag, resolves the version, runs
-  `deno task bin:build --clean --out-dir ./dist
-  --version <v>`, and uses `gh release create` to
-  attach every `./dist/esbuild-*` plus `manifest.json`/`SHA256SUMS`/`THIRD_PARTY_NOTICES.md` to the
-  release, with release notes drawn from `RELEASE_NOTES.md`.
-- `plugins/css/mod.ts`: new `bundleCss` resolver that walks `@import` chains, deduplicates cycles,
-  and emits a single bundled CSS output via `onResolve`/`onLoad` + `resolve`/`load` helpers.
-- Go toolchain now available in the devcontainer.
+### fix(ci): release task
 
-### Changed
+- Corrected `.github/workflows/release-binaries.yml` task invocation.
 
-- `bin/` is now at the repo root and is gitignored; it is never shipped in the JSR package.
-  `esbuild/deno.json` no longer carries `publish.exclude` negations.
-- `esbuild/mod.ts` simplified back to using `installFromNPM` (downloads the platform-specific
-  `@esbuild/<slug>` tarball from npm on first use; cache respects `XDG_CACHE_HOME` on Linux,
-  `~/Library/Caches` on macOS, and `LOCALAPPDATA`/`USERPROFILE` on Windows). `ESBUILD_BINARY_PATH`
-  override still honoured. `shared/worker.ts` and `esbuild/wasm.ts` simplified accordingly.
-- `shared/common.ts`: `ESBUILD_VERSION = "0.28.0"` (hardcoded constant, not read from manifest).
-- CI restructured: `.github/workflows/ci.yml` removed; `.github/workflows/publish.yml` now runs
-  fmt/lint/check/test per package and publishes in dependency order (esbuild → shared → others).
-- All packages bumped to `0.2.7`; `plugins/css` is published at `0.2.7` for the CSS bundling
-  feature.
+## 25f7a7f - 2026-06-12
 
-### Fixed
+### fix(ci): lock file
 
-- Cross-package `jsr:` import version typo in `wrappers/hono/deno.json` and `wrappers/oak/deno.json`
-  (`^0.2.5` → `^0.2.6`).
-- `publish.exclude` issue on `esbuild` that could have excluded build artifacts.
+- Removed stale entries from `deno.lock`.
+
+## 9feb668 - 2026-06-12
+
+### fix: ci
+
+- Adjusted `.github/workflows/publish.yml` triggers and conditions.
+
+## bc5f0f9 - 2026-06-12
+
+### fix: ci
+
+- Removed a leftover step from `.github/workflows/publish.yml`.
+
+## 8ac2e4d - 2026-06-12
+
+### chore: release 0.2.7
+
+- Bumped all packages to `0.2.7`; `plugins/css` is published at `0.2.7` for the CSS bundling feature
+  (release coordination).
+- Added `.github/workflows/release-binaries.yml`: runs on `workflow_dispatch` or push of a `vX.Y.Z`
+  tag, resolves the version, runs `deno task bin:build --clean --out-dir ./dist
+  --version <v>`,
+  and uses `gh release create` to attach every `./dist/esbuild-*` plus
+  `manifest.json`/`SHA256SUMS`/`THIRD_PARTY_NOTICES.md` to the release.
+- Added the root Go-based build pipeline under `scripts/` (`assets.ts`, `build.ts`, `cli.ts`,
+  `constants.ts`, `errors.ts`, `git.ts`, `main.ts`, `makefile.ts`, `process.ts`, `types.ts`). Clones
+  `https://github.com/evanw/esbuild.git`, checks out the requested (or latest) `vX.Y.Z` tag, and
+  runs `go build -trimpath -ldflags="-s -w -buildid=" -buildvcs=false` per platform (CGO disabled).
+  Parses the esbuild Makefile to enumerate every `platform-*` target, picking
+  `GOOS`/`GOARCH`/`BINPATH`, always including the browser WASM (`js/wasm` → `esbuild-browser.wasm`)
+  unless `--no-wasm`. Output is written to `./bin`: per-platform executable, `esbuild-browser.wasm`,
+  `manifest.json`, `SHA256SUMS`, `THIRD_PARTY_NOTICES.md`, and `RELEASE_NOTES.md`. SHA-256 computed
+  via `crypto.subtle.digest`. Native binaries get `chmod 0o755`. The script refuses to write into a
+  path that contains the esbuild checkout. Invoked via
+  `deno task bin:build [--version X.Y.Z] [--platforms ...] [--no-wasm] [--clean]`.
+- Made Go toolchain available in the devcontainer.
+- `bin/` is now at the repo root and gitignored; it is never shipped in the JSR package.
+- Removed the now-redundant `esbuild/.gitignore`.
+- Restructured CI: `.github/workflows/ci.yml` removed; `.github/workflows/publish.yml` now runs
+  `fmt`/`lint`/`check`/`test` per package and publishes in dependency order (esbuild → shared →
+  others).
 - Publish order: esbuild package now publishes before shared and wrapper packages.
+- Refreshed `README.md` and `CHANGELOG.md` to describe the new release pipeline.
 
-### Removed
+## a7f4b48 - 2026-06-12
 
-- `esbuild/tests/` entirely: the test suite added in this release cycle (manifest, native binary,
-  public API, sync shims, version match, and WASM tests) was removed before release as part of the
-  build-pipeline redesign; coverage of those behaviours is deferred.
-- `esbuild/.gitignore`: no longer needed since `bin/` lives at the repo root.
+### fix(ci): publish order
 
-## [0.2.6]
+- Reordered `.github/workflows/publish.yml` so esbuild publishes before shared and wrappers.
 
-### Fixed
+## 6e48dd1 - 2026-06-12
 
-- Publish workflow now runs `deno task build` before `deno publish` so the gitignored build
-  artifacts (`bin/`, `manifest.json`, `THIRD_PARTY_NOTICES.md`, `wasm_exec.js`) are regenerated and
-  shipped in the published JSR package.
-- Added `publish.exclude` negations in `esbuild/deno.json` to un-ignore the build artifacts for
-  `deno publish`.
+### chore: version bump
 
-### Changed
+- Bumped package versions and trimmed `deno.lock` for the `0.2.6` cycle.
 
-- `plugins/css` is published at `0.2.7`; it had an additional release cycle for the CSS plugin
-  bundling feature added in commit `3cd82c2`. All other packages are published at `0.2.6`.
+## 3bca647 - 2026-06-12
 
-## [0.2.5]
+### fix(ci): merge ci and publish
 
-### Added
+- Removed `.github/workflows/ci.yml`.
+- Folded CI steps into `.github/workflows/publish.yml` so `fmt`/`lint`/`check`/`test` run on every
+  push/PR alongside publishing.
 
-- JSDoc module system and cross-link improvements across `esbuild/mod.ts`, `esbuild/wasm.ts`,
-  `esbuild/shared/common.ts`, `esbuild/shared/stdio_protocol.ts`, `esbuild/shared/types.ts`,
-  `esbuild/shared/uint8array_json_parser.ts`, and `esbuild/shared/worker.ts`:
-  - Added `@module` declarations to all shared modules
-  - Added `@see` cross-links between modules (mod↔wasm, mod↔shared/_, wasm↔shared/_)
-  - Added `@param` and `@returns` annotations to all exported functions in mod.ts and wasm.ts
-  - Added `@throws` annotations to sync-API shims that throw unconditionally
-  - Added module-level documentation explaining protocol encoding, the JSON parser's design, worker
-    bridge behavior, and service lifecycle
+## 66e4fc0 - 2026-06-12
 
-### Changed
+### fix(ci): must build to get manifest
 
-- CI workflow: Removed test step from the `wrappers/shared` CI job (commented out)
-- All packages bumped to version 0.2.5
+- `.github/workflows/ci.yml` now builds binaries before manifest checks so `manifest.json` exists
+  for downstream steps.
 
-## [0.2.4]
+## fdb38a3 - 2026-06-12
 
-### Added
+### chore: fmt
 
-- JSDoc documentation to all exported functions in `esbuild/mod.ts`
-- JSDoc documentation to module-level and all exported functions in `esbuild/wasm.ts`
-- JSDoc documentation to `ESBUILD_VERSION`, `validateInitializeOptions`, `StreamIn`, `StreamOut`,
-  `StreamFS`, `Refs`, `StreamService`, and `createChannel` in `esbuild/shared/common.ts`
-- JSDoc documentation to all protocol interface types and helper functions in
-  `esbuild/shared/stdio_protocol.ts`
-- JSDoc documentation to `JSON_parse` in `esbuild/shared/uint8array_json_parser.ts`
-- Named type re-exports with `/** @see ... */` JSDoc cross-links in `esbuild/mod.ts` and
-  `esbuild/wasm.ts`
+- Ran `deno fmt` across `esbuild/mod.ts` and `scripts/build/main.ts` to match repo style.
 
-### Changed
+## b36ebee - 2026-06-12
 
-- Deno version pinned in CI updated from 2.7.7 to 2.7.14
-- CI workflow restructured from matrix job to three sequential jobs (esbuild → plugins → wrappers)
-  with explicit dependency ordering
+### ci: agent models
 
-## [0.2.3]
+- Wired new `.opencode` agent model configurations.
 
-### Fixed
+## 4351c3c - 2026-06-12
 
-- CI/CD workflow rewired from a single combined job into a per-package matrix, running fmt, lint,
-  check, and test independently in each package directory
-- Removed the `.github/scripts/update-esbuild.ts` auto-updater script as it was causing issues and
-  is not needed
+### fix(ci): rebuild esbuild binaries in publish workflow
 
-### Changed
+- `.github/workflows/publish.yml` (`publish-esbuild` job) now runs `deno task build --clean` before
+  `deno publish`, with `actions/setup-go@v5` pinned to `1.26.4`, so the gitignored build artifacts
+  (`bin/`, `manifest.json`, `THIRD_PARTY_NOTICES.md`, `wasm_exec.js`) are regenerated and shipped in
+  the published JSR package.
+- Documented that `plugins/css` ships at `0.2.7` in the `0.2.6` CHANGELOG entry; it had an extra
+  release cycle for the CSS plugin bundling feature added in commit `3cd82c2`. The other five
+  packages are at `0.2.6`.
 
-- GitHub Actions updated to use `denoland/setup-deno@v2` and `actions/checkout@v4`
+## 3137c46 - 2026-06-12
 
-## [0.2.2]
+### feat: esbuild binary build script
 
-### Added
+- Added the root `scripts/` Go-based build pipeline (initial commit of `scripts/build/` modules:
+  `main.ts`, `cli.ts`, `build.ts`, `makefile.ts`, `packaging.ts`, `git.ts`, `process.ts`,
+  `errors.ts`, `types.ts`, `constants.ts`).
+- Root `deno.json` gained the `bin:build` task and pinned JSR imports for `@std/cli`,
+  `@std/encoding`, `@std/path`, `@std/semver`; `deno.lock` updated accordingly.
+- Added `.gitignore` entries so build artifacts stay out of source control.
 
-- JSDoc module documentation for all package entry points: `esbuild/mod.ts`, `plugins/deno/mod.ts`,
-  `plugins/css/mod.ts`, `wrappers/hono/mod.ts`, `wrappers/oak/mod.ts`, `wrappers/shared/mod.ts`, and
-  all shared internal modules
+## fdd1eb6 - 2026-06-11
 
-### Changed
+### ci: skill update
 
-- README.md rewritten with a monorepo overview table, package-by-package examples, shared exports
-  table, and environment variables section
-- All packages bumped to version 0.2.2; cross-package import versions updated to
-  `jsr:@ggpwnkthx/esbuild@0.2.2`
+- Added and refreshed `.opencode/` skills and agents for the new deno release workflow.
 
-## [0.2.1]
+## 7aa31c8 - 2026-06-11
 
-### Changed
+### ci: add golang
 
-- Project split into six independently versioned JSR packages; the root no longer exports any code
-  directly
-- The core `esbuild` package (`jsr:@ggpwnkthx/esbuild@0.2.1`) exposes the full esbuild API (build,
-  context, transform, formatMessages, analyzeMetafile, initialize, stop) and now also exports
-  `shared/common`, `shared/stdio_protocol`, `shared/types`, `shared/uint8array_json_parser`,
-  `shared/worker`, and `wasm` sub-paths
-- Plugin packages (`esbuild-plugin-deno`, `esbuild-plugin-css`) now import the core package via
-  `jsr:@ggpwnkthx/esbuild@0.2.0`
-- Wrapper packages (`esbuild-wrapper-hono`, `esbuild-wrapper-oak`) now import the shared utilities
-  via `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.2.0` instead of a relative path
+- Made the Go toolchain available in the devcontainer so the `scripts/` pipeline can run locally.
 
-### Removed
+## 8743696 - 2026-05-05
 
-- Root `mod.ts` no longer exists; import from the appropriate package instead
-- `plugins/utils.ts` removed; utilities moved into `plugins/deno/utils.ts`
+### docs: release 0.2.5
 
-## [0.2.0]
+- Bumped all packages to `0.2.5` (release coordination).
+- Commented out the test step in the `wrappers/shared` CI job.
 
-### Changed
+## 133dbcd - 2026-05-05
 
-- Complete rewrite replacing low-level IPC/channel/codec machinery with Deno-native plugins and
-  framework middleware
-- `mod.ts` root now a thin passthrough re-exporting from `plugins/`
+### fix: remove ci test
 
-### Added
+- Removed a flaky CI test step.
 
-- `plugins/deno.ts` (284 lines): Deno plugin handling resolution of `file:`, `https:`, `jsr:`,
-  `npm:`, `node:` specifiers, transpilation, env var inlining, and binary asset exclusion
-- `plugins/css.ts` (154 lines): CSS plugin handling `@import` chains and `url()` syntax, marks
-  remote imports as external
-- `plugins/html.ts` (99 lines): HTML plugin bundling HTML with inline script/style tags
-- `plugins/utils.ts` (95 lines): Shared plugin utilities
-- `wrappers/shared.ts` (225 lines): In-memory LRU response cache with TTL, shared by both Hono and
-  Oak middleware
-- `wrappers/hono/mod.ts` (69 lines): Hono middleware wrapper with WASM transpiler variant
-- `wrappers/hono/transpilers/wasm.ts` (39 lines): WASM transpiler for Hono
-- `wrappers/oak/mod.ts` (71 lines): Oak middleware wrapper with WASM transpiler variant
-- `wrappers/oak/transpilers/wasm.ts` (38 lines): WASM transpiler for Oak
-- `deno.jsonc` updated to use JSR-managed dependencies: `@deno/loader`, `jsr:@hono/hono`,
-  `jsr:@oak/oak`
+## d7a1495 - 2026-05-05
 
-### Removed
+### fix: test permissions
 
-- All `src/` contents (api.ts, install.ts, mod.ts, native.ts, types.ts)
-- All `src/utils/` contents (byte-buffer.ts, channel.ts, codec.ts, flags.ts, misc.ts, validation.ts)
-- All `src/plugins/` and `tests/` contents including api.test.ts, install.test.ts, and the full
-  tests/utils/ tree
+- `.github/workflows/ci.yml`: replaced blanket `--allow-all` test permissions with the minimum each
+  package needs.
 
-## [0.1.6-rc.0]
+## 0faa307 - 2026-05-05
 
-### Fixed
+### chore: release 0.2.4
 
-- `stop()` now properly waits for channel cleanup before returning, preventing resource leaks during
-  tests.
-- Added `waitForClose()` method to channel to ensure all pending callbacks are resolved before
-  shutdown.
-- Added timeout fallback with force kill to prevent `stop()` from hanging indefinitely.
+- Bumped all packages to `0.2.4` (release coordination).
+- Restructured CI from a matrix job into three sequential jobs (esbuild → plugins → wrappers) with
+  explicit dependency ordering in `.github/workflows/ci.yml`.
+- Pinned the Deno version used in CI to `2.7.14` (was `2.7.7`).
+- Added a root `deno.json` `imports` block carrying `@std/semver` for the new release tooling.
 
-## [0.1.5]
+## a6c3853 - 2026-05-05
 
-### Fixed
+### chore: vbump
 
-- `handleRequest` now runs synchronously and catches promise rejections from callbacks instead of
-  awaiting them, preventing potential hangs when context methods' callbacks throw.
-- Fixed 3 context method tests that awaited `ctx.dispose()` without injecting the dispose response
-  packet, causing tests to hang.
+- Bumped per-package versions and refreshed `CHANGELOG.md` for the `0.2.3` cycle.
 
-## [0.1.4]
+## 314d71a - 2026-05-05
 
-### Changed
+### fix: ci/cd
 
-- Broke up large test files into smaller, more maintainable files:
-  - `channel.test.ts` (1392 lines) split into 5 files in `tests/utils/channel/`
-  - `validation.test.ts` (467 lines) split into 4 files in `tests/utils/validation/`
-  - `misc.test.ts` (408 lines) split into 4 files in `tests/utils/misc/`
-  - Removed placeholder `simple.test.ts`
-- Created shared `_helpers.ts` modules to reduce code duplication in channel tests.
+- Removed `.github/scripts/update-esbuild.ts` (auto-updater was causing issues and is no longer
+  needed).
+- Adjusted `.github/workflows/ci.yml` and `.github/workflows/publish.yml` to drop the auto-update
+  step.
+- Switched GitHub Actions to `denoland/setup-deno@v2` and `actions/checkout@v4`.
 
-## [0.1.3]
+## 1d416ad - 2026-05-05
 
-### Added
+### fix: fmt
 
-- New `./native` export exposing esbuild's native JavaScript API for direct access.
+- Reformatted `.opencode/` TypeScript and Markdown files to the repo style.
+- Refreshed `CHANGELOG.md` for the `0.2.2` cycle.
 
-### Changed
+## aca661e - 2026-05-05
 
-- Improved `installFromNPM` with proper fetch error handling.
-- Improved `extractFileFromTarGzip` decompression using Blob streams.
-- Fixed test assertions to use `assertRejects` instead of deprecated patterns.
-- Fixed watch/serve tests with proper async cleanup and null assertions.
+### docs: add JSDoc module docs, rewrite README, bump to 0.2.2
 
-## [0.1.2]
+- Rewrote root `README.md` with a monorepo overview table, package-by-package examples, shared
+  exports table, and environment variables section.
+- Bumped all packages to `0.2.2`; cross-package `jsr:` import versions updated to
+  `jsr:@ggpwnkthx/esbuild@0.2.2` (release coordination).
+- Refreshed `CONTRIBUTING.md` to match the monorepo layout.
 
-### Added
+## 20c272d - 2026-05-05
 
-- Module documentation for all entrypoints (`src/install.ts`, `src/utils/mod.ts`).
-- JSDoc documentation for all exported symbols across the codebase.
+### fix: version
 
-## [0.1.1]
+- Fixed version string drift across the five per-package `deno.json` files.
 
-### Added
+## 8d6c53e - 2026-05-05
 
-- JSR publishing workflow.
+### fix: publishing
 
-## [0.1.0]
+- Adjusted `.github/workflows/publish.yml` so `plugins/css` ships at `0.2.7` (release coordination;
+  per-package changes in `plugins/css/CHANGELOG.md`).
 
-### Added
+## b23ebef - 2026-05-05
 
-- Initial code.
-- Feature parity with esbuild.
+### fix: publishing
+
+- Adjusted `.github/workflows/publish.yml` so `esbuild` ships first in the publish graph (release
+  coordination; per-package changes in `packages/esbuild/CHANGELOG.md`).
+
+## 6c79f91 - 2026-05-04
+
+### fix: version
+
+- Corrected a stale version string across the five per-package `deno.json` files.
+
+## 03700bc - 2026-05-04
+
+### add licenses
+
+- Added `LICENSE.md` to every package: `esbuild`, `plugins/css`, `plugins/deno`, `wrappers/hono`,
+  `wrappers/oak`, `wrappers/shared`.
+
+## ff67051 - 2026-05-04
+
+### feat: convert to monorepo with separate package directories
+
+- Converted the single-package layout into a multi-package structure with individual `deno.json`
+  files per package: `esbuild/`, `plugins/css/`, `plugins/deno/`, `wrappers/hono/`, `wrappers/oak/`,
+  `wrappers/shared/`.
+- Published shared utilities as `@ggpwnkthx/esbuild-wrapper-shared` (release coordination).
+- Applied formatting across all TypeScript files to the new style.
+- Removed the old `deno.jsonc`, `deno.lock`, root `mod.ts`, and `wrappers/shared.ts`.
+- Updated `.github/workflows/publish.yml` to publish the new package set.
+- Refreshed `CONTRIBUTING.md` and `README.md` to describe the monorepo layout.
+
+## aca1cd8 - 2026-05-04
+
+### fix: imports
+
+- Reorganized the plugin and wrapper layout into per-package directories with their own `mod.ts` and
+  `tests/`. `plugins/css.ts` → `plugins/css/mod.ts`, `plugins/deno.ts` → `plugins/deno/mod.ts`,
+  `wrappers/shared.ts` → `wrappers/shared/mod.ts`.
+- Removed the standalone `plugins/html.ts`; HTML plugin was not adopted by any package.
+- Consolidated `wrappers/tests/utils.test.ts` into `plugins/deno/tests/utils.test.ts` ahead of the
+  monorepo split.
+
+## 817353d - 2026-05-02
+
+### refactor: restructure as middleware and plugins
+
+- Restructured the project as middleware + plugins: dropped the old `src/` and `tests/` layout
+  (`api.ts`, `install.ts`, `mod.ts`, `native.ts`, `types.ts`, `src/utils/`, `src/plugins/`,
+  `tests/`, `tests/utils/`).
+- Added `plugins/deno.ts`, `plugins/css.ts`, `plugins/html.ts`, `plugins/utils.ts`, with
+  corresponding tests.
+- Added `wrappers/shared.ts` (in-memory LRU response cache with TTL) plus per-framework
+  `wrappers/hono/`, `wrappers/oak/` modules and WASM transpiler variants.
+- Switched `deno.jsonc` to JSR-managed dependencies: `@deno/loader`, `jsr:@hono/hono`,
+  `jsr:@oak/oak`.
+- Updated root `mod.ts` to a thin passthrough re-exporting from `plugins/`.
+- Removed `.vscode/` overrides, `.opencode/` agent config, and `examples/`; aligned root
+  documentation files.
+
+## 9f97b5d - 2026-03-26
+
+### v bump
+
+- Bumped the workspace version file for the `0.1.2` cycle (release coordination).
+
+## 0e04830 - 2026-03-26
+
+### publish release
+
+- Bumped the workspace version file to publish the first JSR release.
+
+## 1c9b73f - 2026-03-25
+
+### Add GitHub Actions workflow for publishing
+
+- Added `.github/workflows/publish.yml` for JSR publishing on tag push.

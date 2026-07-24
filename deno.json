@@ -7,6 +7,13 @@
     "./packages/wrappers/hono",
     "./packages/wrappers/oak"
   ],
+  "nodeModulesDir": "none",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true
+  },
   "imports": {
     "@std/cli": "jsr:@std/cli@^1.0.32",
     "@std/encoding": "jsr:@std/encoding@^1.0.11",
@@ -29,6 +36,7 @@
     "./.*"
   ],
   "tasks": {
+    "ci": "deno fmt --check && deno lint && deno check",
     "bin:build": "deno run --allow-read --allow-write --allow-run=git,go --allow-env scripts/main.ts",
     "bin:list": "deno run --allow-read scripts/main.ts --list"
   }

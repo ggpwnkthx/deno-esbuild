@@ -1,6 +1,6 @@
 {
   "name": "@ggpwnkthx/esbuild-plugin-css",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "exports": {
     ".": "./mod.ts"
   },
@@ -9,10 +9,14 @@
     "@std/path": "jsr:@std/path@^1.1.6",
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },
+  "publish": {
+    "include": ["mod.ts", "README.md", "LICENSE.md", "deno.json"]
+  },
   "tasks": {
     "fmt": "deno fmt .",
     "lint": "deno lint .",
     "check": "deno check .",
-    "test": "deno test -A"
+    "test": "deno test --allow-read --allow-write --allow-env --allow-net --allow-run",
+    "ci": "deno fmt --check && deno lint && deno check && deno test --allow-read --allow-write --allow-env --allow-net --allow-run"
   }
 }

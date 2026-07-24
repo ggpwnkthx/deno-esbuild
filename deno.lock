@@ -2,7 +2,6 @@
   "version": "5",
   "specifiers": {
     "jsr:@deno/loader@0.5": "0.5.0",
-    "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.9": "0.2.9",
     "jsr:@ggpwnkthx/esbuild@~0.2.9": "0.2.9",
     "jsr:@hono/hono@^4.12.32": "4.12.32",
     "jsr:@oak/commons@1": "1.0.1",
@@ -30,9 +29,6 @@
     },
     "@ggpwnkthx/esbuild@0.2.9": {
       "integrity": "8fa8d5afc1f98bf92dc964b88861779024763bb99a84b297f3936e5331bc4468"
-    },
-    "@ggpwnkthx/esbuild-wrapper-shared@0.2.9": {
-      "integrity": "43cb30cbb104c4ed977f4225d8cc06f88fb0cf467f3c1d04e744cee60c0a3a14"
     },
     "@hono/hono@4.12.32": {
       "integrity": "e1274e968ee724176d7e35946c184d3cb8508f05e3f8ae6cee157c4f29ef148d"
@@ -137,7 +133,7 @@
       },
       "packages/wrappers/hono": {
         "dependencies": [
-          "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild-wrapper-shared@1",
           "jsr:@ggpwnkthx/esbuild@~0.2.9",
           "jsr:@hono/hono@^4.12.32",
           "jsr:@std/assert@^1.0.19"
@@ -145,7 +141,7 @@
       },
       "packages/wrappers/oak": {
         "dependencies": [
-          "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.9",
+          "jsr:@ggpwnkthx/esbuild-wrapper-shared@1",
           "jsr:@ggpwnkthx/esbuild@~0.2.9",
           "jsr:@oak/oak@^17.2.0",
           "jsr:@std/assert@^1.0.19"

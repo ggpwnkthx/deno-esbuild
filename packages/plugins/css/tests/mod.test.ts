@@ -22,13 +22,14 @@ Deno.test({
         write: false,
       })
 
-      const output = result.outputFiles[0].text
+      const output = result.outputFiles[0]?.text ?? ''
       assertStringIncludes(output, '.base')
       assertStringIncludes(output, '.imported')
       assertStringIncludes(output, 'color: blue')
       assertStringIncludes(output, 'color: red')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -54,11 +55,12 @@ Deno.test({
         external: ['https://example.com/*'],
       })
 
-      const output = result.outputFiles[0].text
+      const output = result.outputFiles[0]?.text ?? ''
       // Remote import should be marked external and not inlined
       assertStringIncludes(output, 'https://example.com/theme.css')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -91,7 +93,7 @@ Deno.test({
         write: false,
       })
 
-      const output = result.outputFiles[0].text
+      const output = result.outputFiles[0]?.text ?? ''
       assertStringIncludes(output, '.level1')
       assertStringIncludes(output, '.level2')
       assertStringIncludes(output, '.level3')
@@ -100,6 +102,7 @@ Deno.test({
       assertStringIncludes(output, 'color: green')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -128,12 +131,13 @@ Deno.test({
         loader: { '.css': 'css', '.png': 'dataurl' },
       })
 
-      const output = result.outputFiles[0].text
+      const output = result.outputFiles[0]?.text ?? ''
       // url() should be passed through to esbuild's CSS loader
       assertStringIncludes(output, '.entry')
       assertStringIncludes(output, 'background')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -160,11 +164,12 @@ Deno.test({
         write: false,
       })
 
-      const output = result.outputFiles[0].text
+      const output = result.outputFiles[0]?.text ?? ''
       assertStringIncludes(output, '.base')
       assertStringIncludes(output, '.imported')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -203,7 +208,7 @@ Deno.test({
         write: false,
       })
 
-      const output = result.outputFiles[0].text
+      const output = result.outputFiles[0]?.text ?? ''
       // shared.css content should appear TWICE (once from b.css, once from c.css)
       // NOT replaced with a circular comment
       const sharedCount = (output.match(/\.shared\s*\{/g) || []).length
@@ -216,6 +221,7 @@ Deno.test({
       assertStringIncludes(output, '.c')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -246,13 +252,14 @@ Deno.test({
       // the bundled CSS. esbuild may output to stdout (path "<stdout>") when
       // write: false, so we just check the content exists.
       assertEquals(result.outputFiles.length, 1)
-      const cssOutput = result.outputFiles[0].text
+      const cssOutput = result.outputFiles[0]?.text ?? ''
       assertStringIncludes(cssOutput, '.entry')
       assertStringIncludes(cssOutput, '.imported')
       assertStringIncludes(cssOutput, 'color: blue')
       assertStringIncludes(cssOutput, 'color: red')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -300,11 +307,12 @@ Deno.test({
       // even though the CSS is imported from a non-entry point in a subdirectory
       const cssFiles = result.outputFiles.filter((f) => f.path.includes('__virtual_css'))
       assertEquals(cssFiles.length, 1)
-      const cssOutput = cssFiles[0].text
+      const cssOutput = cssFiles[0]?.text ?? ''
       assertStringIncludes(cssOutput, '.main')
       assertStringIncludes(cssOutput, 'color: blue')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -344,13 +352,14 @@ Deno.test({
       // The CSS should have the nested @import resolved
       const cssFiles = result.outputFiles.filter((f) => f.path.includes('__virtual_css'))
       assertEquals(cssFiles.length, 1)
-      const cssOutput = cssFiles[0].text
+      const cssOutput = cssFiles[0]?.text ?? ''
       assertStringIncludes(cssOutput, '.button')
       assertStringIncludes(cssOutput, 'color: var(--primary)')
       assertStringIncludes(cssOutput, ':root')
       assertStringIncludes(cssOutput, '--primary: blue')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,

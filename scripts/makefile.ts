@@ -34,9 +34,12 @@ function parse(text: string): Parsed[] {
     }
 
     const m = /^([A-Za-z0-9_.-]+):(.*)$/.exec(line)
-    cur = m ? { name: m[1], deps: m[2].split(/\s+/).filter(Boolean), body: [] } : null
-
-    if (cur) acc.push(cur)
+    if (m) {
+      cur = { name: m[1]!, deps: (m[2] ?? '').split(/\s+/).filter(Boolean), body: [] }
+      acc.push(cur)
+    } else {
+      cur = null
+    }
   }
 
   if (buf.length) {
@@ -45,8 +48,8 @@ function parse(text: string): Parsed[] {
 
     if (m) {
       acc.push({
-        name: m[1],
-        deps: m[2].split(/\s+/).filter(Boolean),
+        name: m[1]!,
+        deps: (m[2] ?? '').split(/\s+/).filter(Boolean),
         body: [],
       })
     }

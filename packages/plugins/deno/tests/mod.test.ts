@@ -24,6 +24,7 @@ Deno.test({
       assertMatch(output, /var x = 1/)
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -59,6 +60,7 @@ Deno.test({
       assertStringIncludes(output, 'Hello,')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -87,6 +89,7 @@ Deno.test({
       assertMatch('./module.wasm', /\.wasm$/i)
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -125,6 +128,7 @@ Deno.test({
       assertMatch(outputNoTranspile, /var x = 1/)
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -168,6 +172,7 @@ Deno.test({
       assertMatch(outputPreserve, /Hello/)
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -199,6 +204,7 @@ Deno.test({
     } finally {
       Deno.env.delete('PUBLIC_FOO')
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -271,6 +277,7 @@ Deno.test({
       Deno.env.delete('PUBLIC_FOO')
       Deno.env.delete('PRIVATE_BAR')
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -309,6 +316,7 @@ Deno.test({
       assertStringIncludes(debugOutput, '[DEBUG')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -349,6 +357,7 @@ Deno.test({
       assertStringIncludes(output, 'from lib')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -380,6 +389,7 @@ Deno.test({
       assertStringIncludes(output, 'assertEquals')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -411,6 +421,7 @@ Deno.test({
       assertStringIncludes(output, 'build')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -442,6 +453,7 @@ Deno.test({
       assertStringIncludes(output, 'ms')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -492,6 +504,7 @@ Deno.test({
       assertStringIncludes(output, 'world')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,
@@ -554,6 +567,7 @@ Deno.test({
       assertStringIncludes(output, 'world')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
+      await esbuild.stop()
     }
   },
   sanitizeOps: false,

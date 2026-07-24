@@ -227,7 +227,7 @@ export function cssPlugin(options: CssPluginOptions = {}): esbuild.Plugin {
       // When emitFile is enabled, we need to intercept entry point loads too,
       // so we remove the namespace filter to catch loads from any namespace
       ctx.onLoad(
-        { filter: /\.css$/, namespace: emitFile ? undefined : 'file' },
+        emitFile ? { filter: /\.css$/ } : { filter: /\.css$/, namespace: 'file' },
         async (args): Promise<esbuild.OnLoadResult> => {
           const filePath = args.path
 

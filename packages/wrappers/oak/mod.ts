@@ -8,12 +8,11 @@
  * @example
  * ```ts
  * import { Application } from "@oak/oak";
- * import { esbuild } from "@ggpwnkthx/esbuild-wrapper";
  * import esbuildMiddleware from "@ggpwnkthx/esbuild-wrapper-oak";
  *
  * const app = new Application();
  * app.use(esbuildMiddleware());
- * app.use(async (ctx) => {
+ * app.use((ctx) => {
  *   ctx.response.body = `export const value: number = 1;`;
  *   ctx.response.headers.set("content-type", "application/typescript");
  * });
@@ -22,10 +21,10 @@
  * ```
  */
 import type { Middleware } from '@oak/oak'
-import type { Options } from '@ggpwnkthx/esbuild-wrapper-shared'
 import {
+  createTranspiler,
   DEFAULT_CONTENT_TYPE,
-  getCachedOrTranspile,
+  type Options,
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,
@@ -37,9 +36,11 @@ export type { Options }
  * Oak middleware that transforms TypeScript/TSX responses using esbuild.
  *
  * Intended for development servers that serve Deno TypeScript files directly.
- * The middleware intercepts responses with a body, checks if the request path
- * matches `options.extensions`, and transforms the response body using
- * `esbuild.transform` with the `tsx` loader.
+ * The middleware runs after downstream handlers, checks if the request path
+ * matches `options.extensions`, reads `ctx.response.body`, and transforms it
+ * using `esbuild.transform` with the `tsx` loader. This mirrors the Hono
+ * wrapper's behavior so both wrappers consume the same response-body
+ * contract.
  *
  * @param options - Middleware configuration
  * @returns An Oak `Middleware`
@@ -47,12 +48,11 @@ export type { Options }
  * @example
  * ```ts
  * import { Application } from "@oak/oak";
- * import { esbuild } from "@deno/esbuild";
- * import esbuildMiddleware from "@deno/esbuild/wrappers/oak";
+ * import esbuildMiddleware from "@ggpwnkthx/esbuild-wrapper-oak";
  *
  * const app = new Application();
  * app.use(esbuildMiddleware());
- * app.use(async (ctx) => {
+ * app.use((ctx) => {
  *   ctx.response.body = `export const value: number = 1;`;
  *   ctx.response.headers.set("content-type", "application/typescript");
  * });
@@ -61,6 +61,14 @@ export type { Options }
  * ```
  */
 export default function (options?: Options): Middleware {
+  const transpiler = createTranspiler({
+    cache: options?.cache,
+    esbuild: options?.esbuild,
+    transformOptions: options?.transformOptions,
+    maxSize: options?.maxSize,
+    ttl: options?.ttl,
+  })
+
   return async (ctx, next) => {
     await next()
     const url = new URL(ctx.request.url)
@@ -69,20 +77,15 @@ export default function (options?: Options): Middleware {
       return
     }
 
-    const body = await ctx.request.body.text()
+    const body = await readResponseBody(ctx)
     const contentType = options?.contentType ?? DEFAULT_CONTENT_TYPE
 
     let code: string
     try {
-      ;({ code } = await getCachedOrTranspile({
+      ;({ code } = await transpiler.getCachedOrTranspile({
         pathname: url.pathname,
         body,
-        esbuild: options?.esbuild,
-        transformOptions: options?.transformOptions,
-        cache: options?.cache ?? false,
         shouldStop: !options?.esbuild,
-        maxSize: options?.maxSize,
-        ttl: options?.ttl,
       }))
     } catch (ex) {
       setErrorResponse('oak', ctx, body, contentType, ex, url.pathname)
@@ -91,4 +94,16 @@ export default function (options?: Options): Middleware {
 
     setSuccessResponse('oak', ctx, code, contentType)
   }
+}
+
+async function readResponseBody(
+  ctx: { response: { body: unknown } },
+): Promise<string> {
+  const body = ctx.response.body
+  if (typeof body === 'string') return body
+  if (body instanceof Uint8Array) return new TextDecoder().decode(body)
+  if (body instanceof ReadableStream) {
+    return await new Response(body).text()
+  }
+  return ''
 }

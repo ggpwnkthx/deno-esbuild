@@ -1,4 +1,10 @@
 .build
+.deno
 .env
 /bin
 /core
+coverage
+dist
+node_modules
+*.tmp
+*.partial

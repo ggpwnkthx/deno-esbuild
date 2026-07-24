@@ -5,23 +5,31 @@ middleware packages to provide a consistent transformation pipeline with built-i
 
 ## Exports
 
-| Export                 | Type                      | Description                                                  |
-| ---------------------- | ------------------------- | ------------------------------------------------------------ |
-| `responseCache`        | `Map<string, CacheEntry>` | In-memory cache for transpiled responses, keyed by pathname. |
-| `Options`              | `interface`               | Shared middleware configuration options.                     |
-| `DEFAULT_EXTENSIONS`   | `string[]`                | `[".ts", ".tsx"]`                                            |
-| `DEFAULT_CONTENT_TYPE` | `string`                  | `"text/javascript"`                                          |
-| `shouldTranspile`      | `function`                | Checks whether a pathname matches configured extensions.     |
-| `getCachedOrTranspile` | `function`                | Returns cached code or transpiles and caches the result.     |
-| `setSuccessResponse`   | `function`                | Sets the transpiled response on a Hono or Oak context.       |
-| `setErrorResponse`     | `function`                | Sets an error response and logs a warning.                   |
+| Export                 | Type        | Description                                                |
+| ---------------------- | ----------- | ---------------------------------------------------------- |
+| `createTranspiler`     | `function`  | Creates a transpiler bound to its own in-memory cache.     |
+| `Transpiler`           | `interface` | Shape returned by `createTranspiler`.                      |
+| `TranspilerOptions`    | `interface` | Per-instance configuration accepted by `createTranspiler`. |
+| `TranspileRequest`     | `interface` | Per-request options for `Transpiler.getCachedOrTranspile`. |
+| `EsbuildLike`          | `interface` | Minimal esbuild surface; lets tests inject stand-ins.      |
+| `Options`              | `interface` | Shared middleware configuration options.                   |
+| `CacheEntry`           | `interface` | Cache entry shape stored in the per-instance cache.        |
+| `DEFAULT_EXTENSIONS`   | `string[]`  | `[".ts", ".tsx"]`                                          |
+| `DEFAULT_CONTENT_TYPE` | `string`    | `"text/javascript"`                                        |
+| `shouldTranspile`      | `function`  | Checks whether a pathname matches configured extensions.   |
+| `setSuccessResponse`   | `function`  | Sets the transpiled response on a Hono or Oak context.     |
+| `setErrorResponse`     | `function`  | Sets an error response and logs a warning.                 |
+
+> **Note (1.0.0):** Prior versions exposed a module-level `responseCache: Map` and a free-standing
+> `getCachedOrTranspile` function. The module-level cache and the free function are removed; use
+> `createTranspiler` to get an isolated instance.
 
 ---
 
-## The Caching Mechanism
+## Caching
 
-The shared module uses an in-memory `Map<string, CacheEntry>` to store transformation results. Two
-eviction strategies are available:
+Each call to `createTranspiler` returns a `Transpiler` with its own `Map<string, CacheEntry>` cache.
+Two eviction strategies are available.
 
 ### TTL (Time-To-Live)
 
@@ -30,11 +38,10 @@ the elapsed time since `timestamp` exceeds that value, the entry is deleted and 
 next request.
 
 ```typescript
-// Example: entries expire after 60 seconds
-const opts: Options = {
+const transpiler = createTranspiler({
   cache: true,
   ttl: 60_000,
-}
+})
 ```
 
 ### LRU (Least Recently Used) — `maxSize`
@@ -43,15 +50,14 @@ When `maxSize` is set and the cache reaches that limit, the entry with the oldes
 evicted to make room for the new entry.
 
 ```typescript
-// Example: keep at most 100 entries in the cache
-const opts: Options = {
+const transpiler = createTranspiler({
   cache: true,
   maxSize: 100,
-}
+})
 ```
 
 Both strategies can be used together. TTL checks run on every cache read; `maxSize` checks run on
-every cache write.
+every cache write. Call `transpiler.clearCache()` to drop every entry at once.
 
 ---
 
@@ -76,7 +82,7 @@ interface Options {
    * The esbuild API to use for transformation. Defaults to the top-level
    * `esbuild` import. Allows injecting a custom esbuild instance (e.g., WASM).
    */
-  esbuild?: typeof esbuild
+  esbuild?: EsbuildLike
 
   /**
    * Value for the `content-type` response header after transformation.
@@ -113,33 +119,26 @@ esbuild-compatible instance — for example, a WASM build — via the `esbuild` 
 ```typescript
 import * as esbuildWasm from 'esbuild-wasm'
 
-const opts: Options = {
+const transpiler = createTranspiler({
   cache: true,
   esbuild: esbuildWasm,
-  // WASM builds typically require initializing before use:
-  transformOptions: {
-    loader: 'tsx',
-    // ...
-  },
-}
+})
 ```
 
-When injecting a custom instance, be aware of two differences from the default native binary:
+When injecting a custom instance, do **not** call `esbuild.stop()` after transformation if the
+injected instance does not support it (most WASM builds do not). Set `shouldStop: false` on the
+request:
 
-1. **Do not call `esbuild.stop()`** after transformation if the injected instance does not support
-   it (most WASM builds do not). The `getCachedOrTranspile` function accepts a `shouldStop` flag
-   (defaulting to `true`) to control this behavior. Set it to `false` when using WASM:
+```typescript
+await transpiler.getCachedOrTranspile({
+  pathname,
+  body,
+  shouldStop: false,
+})
+```
 
-   ```typescript
-   await getCachedOrTranspile({
-     // ...
-     esbuild: esbuildWasm,
-     shouldStop: false, // WASM instances should not be stopped
-   })
-   ```
-
-2. The `transformOptions.loader` defaults to `"tsx"` if not specified. Adjust it to match your
-   injected instance's expected loader value.
+The `transformOptions.loader` defaults to `"tsx"` if not specified. Adjust it to match your injected
+instance's expected loader value.
 
 ---
 
@@ -147,22 +146,30 @@ When injecting a custom instance, be aware of two differences from the default n
 
 ```typescript
 import {
+  createTranspiler,
   DEFAULT_CONTENT_TYPE,
   DEFAULT_EXTENSIONS,
-  getCachedOrTranspile,
-  responseCache,
+  type Options,
   setErrorResponse,
   setSuccessResponse,
   shouldTranspile,
 } from '@ggpwnkthx/esbuild-wrapper-shared'
 
-const opts = {
+const opts: Options = {
   extensions: DEFAULT_EXTENSIONS,
   contentType: DEFAULT_CONTENT_TYPE,
   cache: true,
   maxSize: 200,
   ttl: 30_000,
 }
+
+const transpiler = createTranspiler({
+  cache: opts.cache,
+  esbuild: opts.esbuild,
+  transformOptions: opts.transformOptions,
+  maxSize: opts.maxSize,
+  ttl: opts.ttl,
+})
 
 async function handleRequest(
   framework: 'hono' | 'oak',
@@ -172,23 +179,19 @@ async function handleRequest(
 ) {
   if (!shouldTranspile(pathname, opts.extensions)) return
 
-  const { code } = await getCachedOrTranspile({
-    pathname,
-    body,
-    cache: opts.cache ?? false,
-    maxSize: opts.maxSize,
-    ttl: opts.ttl,
-    transformOptions: opts.transformOptions,
-    esbuild: opts.esbuild,
-    shouldStop: true,
-  })
-
-  setSuccessResponse(
-    framework,
-    ctx,
-    code,
-    opts.contentType ?? DEFAULT_CONTENT_TYPE,
-  )
+  try {
+    const { code } = await transpiler.getCachedOrTranspile({ pathname, body })
+    setSuccessResponse(framework, ctx, code, opts.contentType ?? DEFAULT_CONTENT_TYPE)
+  } catch (ex) {
+    setErrorResponse(
+      framework,
+      ctx,
+      body,
+      opts.contentType ?? DEFAULT_CONTENT_TYPE,
+      ex,
+      pathname,
+    )
+  }
 }
 ```
 

@@ -2,27 +2,38 @@
  * Shared utility library for Deno esbuild middleware wrappers.
  *
  * This module provides caching, transpilation, and framework response helpers
- * used by both Hono and Oak wrappers. It handles the complexity of transforming
- * TypeScript/JSX on the fly with an in-memory cache, and updating framework
- * responses so you can focus on the business logic of your middleware.
+ * used by both Hono and Oak wrappers. Use {@linkcode createTranspiler} to
+ * build an isolated transpiler per middleware instance; each instance owns its
+ * own in-memory cache so multiple servers in the same process do not share
+ * state.
  *
  * @example Basic usage
  * ```ts
- * import { shouldTranspile, getCachedOrTranspile } from "@ggpwnkthx/esbuild-wrapper-shared";
+ * import { createTranspiler, shouldTranspile } from "@ggpwnkthx/esbuild-wrapper-shared";
+ *
+ * const transpiler = createTranspiler({ cache: true });
  *
  * if (shouldTranspile("/path/to/file.ts")) {
- *   const { code } = await getCachedOrTranspile({
+ *   const { code } = await transpiler.getCachedOrTranspile({
  *     pathname: "/path/to/file.ts",
  *     body: "console.log('hello')",
- *     transformOptions: { loader: "tsx" },
- *     cache: true,
- *     shouldStop: true,
  *   });
- *   // use `code` in your response...
  * }
  * ```
  */
 import * as esbuild from 'esbuild'
+
+/**
+ * Minimal esbuild surface consumed by the wrappers. Lets tests inject a
+ * stand-in without having to satisfy the full esbuild module shape.
+ */
+export interface EsbuildLike {
+  transform(
+    input: string | Uint8Array,
+    options?: esbuild.TransformOptions,
+  ): Promise<{ code: string }>
+  stop(): Promise<void>
+}
 
 /**
  * Cache entry stored for transformed responses.
@@ -33,17 +44,9 @@ export interface CacheEntry {
 }
 
 /**
- * In-memory cache for transformed responses, keyed by pathname.
+ * Configuration shared by every middleware wrapper.
  */
-export const responseCache: Map<string, CacheEntry> = new Map<
-  string,
-  CacheEntry
->()
-
-/**
- * Options for the Deno esbuild middleware.
- */
-interface Options {
+export interface Options {
   /**
    * File extensions that should be transformed. Only paths ending with one of
    * these extensions will be processed.
@@ -60,7 +63,7 @@ interface Options {
    * The esbuild API to use for transformation. Defaults to the top-level
    * `esbuild` import. Allows injecting a custom esbuild instance (e.g., WASM).
    */
-  esbuild?: typeof esbuild
+  esbuild?: EsbuildLike
   /**
    * Value for the `content-type` response header after transformation.
    * @default "text/javascript"
@@ -83,8 +86,6 @@ interface Options {
   ttl?: number
 }
 
-export type { Options }
-
 /** Default file extensions that should be transpiled. */
 export const DEFAULT_EXTENSIONS = ['.ts', '.tsx']
 /** Default Content-Type for transformed JavaScript responses. */
@@ -101,96 +102,99 @@ export function shouldTranspile(
   return exts.some((ext) => pathname.endsWith(ext))
 }
 
-/** Options for the transpile-with-cache operation. */
-export interface TranspileOptions {
+/** Options accepted by {@linkcode createTranspiler}. */
+export interface TranspilerOptions {
+  cache?: boolean | undefined
+  esbuild?: EsbuildLike | undefined
+  transformOptions?: esbuild.TransformOptions | undefined
+  maxSize?: number | undefined
+  ttl?: number | undefined
+}
+
+/** Per-request options for {@linkcode Transpiler.getCachedOrTranspile}. */
+export interface TranspileRequest {
   pathname: string
   body: string
-  /**
-   * The esbuild API to use for transformation. Defaults to the top-level
-   * `esbuild` import.
-   */
-  esbuild?: typeof esbuild
-  transformOptions: esbuild.TransformOptions | undefined
-  cache: boolean
   /**
    * When true (default), calls `esbuild.stop()` after transformation.
    * Set to false when using an injected esbuild instance (e.g., WASM)
    * that should not be stopped.
    */
-  shouldStop: boolean
-  maxSize?: number
-  ttl?: number
+  shouldStop?: boolean
+}
+
+/** A transpiler bound to a single in-memory cache. */
+export interface Transpiler {
+  getCachedOrTranspile(opts: TranspileRequest): Promise<{ code: string }>
+  clearCache(): void
 }
 
 /**
- * Get cached transpiled code or transpile and cache the result.
+ * Create an isolated transpiler that owns its own cache.
  */
-export async function getCachedOrTranspile(opts: TranspileOptions): Promise<{
-  code: string
-}> {
-  const {
-    pathname,
-    body,
-    esbuild: esbuildInstance,
-    transformOptions,
-    cache,
-    shouldStop,
-    maxSize,
-    ttl,
-  } = opts
-
-  // Normalize cache options — reject invalid values
-  const effectiveMaxSize = maxSize !== undefined && Number.isFinite(maxSize) && maxSize > 0
-    ? maxSize
+export function createTranspiler(options: TranspilerOptions = {}): Transpiler {
+  const cache: Map<string, CacheEntry> = new Map()
+  const cacheEnabled = options.cache === true
+  const esbuildInstance = options.esbuild ?? esbuild
+  const transformOptions = options.transformOptions
+  const effectiveMaxSize = typeof options.maxSize === 'number' &&
+      Number.isFinite(options.maxSize) && options.maxSize > 0
+    ? options.maxSize
     : undefined
-  const effectiveTtl = ttl !== undefined && Number.isFinite(ttl) && ttl >= 0 ? ttl : undefined
+  const effectiveTtl = typeof options.ttl === 'number' &&
+      Number.isFinite(options.ttl) && options.ttl >= 0
+    ? options.ttl
+    : undefined
 
-  if (cache) {
-    const cached = responseCache.get(pathname)
-    if (cached !== undefined) {
-      if (
-        effectiveTtl !== undefined &&
-        Date.now() - cached.timestamp >= effectiveTtl
-      ) {
-        responseCache.delete(pathname)
-      } else {
-        return { code: cached.code }
-      }
-    }
-  }
-
-  const mergedOptions = transformOptions ?? {}
-  const esbuildToUse = esbuildInstance ?? esbuild
-
-  const { code } = await esbuildToUse.transform(body, {
-    ...mergedOptions,
-    loader: mergedOptions.loader ?? 'tsx',
-  })
-
-  if (shouldStop) {
-    await esbuildToUse.stop()
-  }
-
-  if (cache) {
-    if (
-      effectiveMaxSize !== undefined && responseCache.size >= effectiveMaxSize
-    ) {
-      let oldestKey: string | null = null
-      let oldestTimestamp = Infinity
-      for (const [key, entry] of responseCache) {
-        if (entry.timestamp < oldestTimestamp) {
-          oldestKey = key
-          oldestTimestamp = entry.timestamp
+  return {
+    async getCachedOrTranspile({ pathname, body, shouldStop = true }: TranspileRequest) {
+      if (cacheEnabled) {
+        const cached = cache.get(pathname)
+        if (cached !== undefined) {
+          if (
+            effectiveTtl !== undefined &&
+            Date.now() - cached.timestamp >= effectiveTtl
+          ) {
+            cache.delete(pathname)
+          } else {
+            return { code: cached.code }
+          }
         }
       }
-      if (oldestKey !== null) {
-        responseCache.delete(oldestKey)
-      }
-    }
-    responseCache.set(pathname, { code, timestamp: Date.now() })
-  }
 
-  return { code }
+      const mergedOptions = transformOptions ?? {}
+      const { code } = await esbuildInstance.transform(body, {
+        ...mergedOptions,
+        loader: mergedOptions.loader ?? 'tsx',
+      })
+
+      if (shouldStop) {
+        await esbuildInstance.stop()
+      }
+
+      if (cacheEnabled) {
+        if (effectiveMaxSize !== undefined && cache.size >= effectiveMaxSize) {
+          let oldestKey: string | null = null
+          let oldestTimestamp = Infinity
+          for (const [key, entry] of cache) {
+            if (entry.timestamp < oldestTimestamp) {
+              oldestKey = key
+              oldestTimestamp = entry.timestamp
+            }
+          }
+          if (oldestKey !== null) {
+            cache.delete(oldestKey)
+          }
+        }
+        cache.set(pathname, { code, timestamp: Date.now() })
+      }
+
+      return { code }
+    },
+    clearCache() {
+      cache.clear()
+    },
+  }
 }
 
 /**
@@ -203,8 +207,6 @@ export function setSuccessResponse(
   contentType: string,
 ): void {
   if (framework === 'hono') {
-    // Hono's c.body() is a context method that returns a Response object
-    // We need to replace c.res with the new Response, then update its headers
     const c = ctx as {
       body: (b: string) => Response
       res: Response

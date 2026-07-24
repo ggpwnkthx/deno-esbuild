@@ -73,7 +73,7 @@ const SKIP_ASSET_PATTERN =
  * @example
  * ```ts
  * import * as esbuild from "esbuild";
- * import { denoPlugin } from "@deno/esbuild";
+ * import { denoPlugin } from "@ggpwnkthx/esbuild-plugin-deno";
  *
  * const ctx = await esbuild.build({
  *   entryPoints: ["./main.ts"],

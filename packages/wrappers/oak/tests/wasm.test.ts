@@ -10,11 +10,9 @@ const createApp = (): Application => {
 
   app.use(esbuildMiddleware())
 
-  app.use(async (ctx, next) => {
-    // deno-lint-ignore require-await
-    ctx.request.body.text = async () => source
-    ctx.request.headers.set('content-type', 'application/typescript')
-    await next()
+  app.use((ctx) => {
+    ctx.response.body = source
+    ctx.response.headers.set('content-type', 'application/typescript')
   })
 
   return app

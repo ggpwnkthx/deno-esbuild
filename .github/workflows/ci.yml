@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    name: fmt (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - .
+          - packages/esbuild
+          - packages/plugins/deno
+          - packages/plugins/css
+          - packages/wrappers/shared
+          - packages/wrappers/hono
+          - packages/wrappers/oak
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: deno fmt --check
+        working-directory: ${{ matrix.package }}
+        run: deno fmt --check
+        env:
+          DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}
+
+  lint:
+    name: lint (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    needs: fmt
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - .
+          - packages/esbuild
+          - packages/plugins/deno
+          - packages/plugins/css
+          - packages/wrappers/shared
+          - packages/wrappers/hono
+          - packages/wrappers/oak
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: deno lint
+        working-directory: ${{ matrix.package }}
+        run: deno lint
+        env:
+          DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}
+
+  check:
+    name: check (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - .
+          - packages/esbuild
+          - packages/plugins/deno
+          - packages/plugins/css
+          - packages/wrappers/shared
+          - packages/wrappers/hono
+          - packages/wrappers/oak
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: deno check
+        working-directory: ${{ matrix.package }}
+        run: deno check
+        env:
+          DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: deno audit
+        run: deno audit
+        env:
+          DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}
+
+  test:
+    name: test (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    needs: audit
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: packages/esbuild
+            permissions: --allow-read --allow-write --allow-env --allow-run --allow-net=github.com,jsr.io
+          - package: packages/plugins/deno
+            permissions: --allow-read --allow-write --allow-env --allow-net
+          - package: packages/plugins/css
+            permissions: --allow-read --allow-write --allow-env --allow-net
+          - package: packages/wrappers/shared
+            permissions: --allow-read --allow-write
+          - package: packages/wrappers/hono
+            permissions: --allow-read --allow-write --allow-env
+          - package: packages/wrappers/oak
+            permissions: --allow-read --allow-write --allow-env
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: deno test
+        working-directory: ${{ matrix.package }}
+        run: deno test ${{ matrix.permissions }}
+        env:
+          DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}

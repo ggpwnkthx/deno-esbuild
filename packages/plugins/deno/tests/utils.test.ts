@@ -22,8 +22,6 @@ Deno.test({
     assertEquals(mediaToLoader(MediaType.SourceMap), 'json')
     assertEquals(mediaToLoader(MediaType.Unknown), 'default')
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 })
 
 Deno.test({
@@ -33,8 +31,6 @@ Deno.test({
     // Since MediaType is a closed enum, we rely on the default branch for safety
     assertEquals(mediaToLoader(MediaType.Unknown), 'default')
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 })
 
 Deno.test({
@@ -43,8 +39,6 @@ Deno.test({
     assertEquals(getPlatform('browser'), 'browser')
     assertEquals(getPlatform('node'), 'node')
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 })
 
 Deno.test({
@@ -53,8 +47,6 @@ Deno.test({
     assertEquals(getPlatform('neutral'), undefined)
     assertEquals(getPlatform(undefined), undefined)
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 })
 
 Deno.test({
@@ -90,8 +82,6 @@ Deno.test({
       RequestedModuleType.Default,
     )
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 })
 
 Deno.test({
@@ -124,6 +114,4 @@ Deno.test({
     assertEquals(multi.test('foo/bar[ baz ].*'), true)
     assertEquals(multi.test('fooXbar[ baz ]X.*'), false)
   },
-  sanitizeOps: false,
-  sanitizeResources: false,
 })
