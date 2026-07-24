@@ -5,6 +5,22 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- JSDoc documentation on the remaining previously undocumented exports:
+  - `shared/types.ts`: type aliases `Platform`, `Format`, `Loader`, `LogLevel`, `Charset`, `Drop`,
+    `AbsPaths`, and `ImportKind`.
+  - `shared/types.ts`: interfaces `TsconfigRaw`, `BuildOptions`, `StdinOptions`, `Message`, `Note`,
+    `Location`, `OutputFile`, `BuildResult`, `BuildFailure`, `ServeOnRequestArgs`,
+    `TransformOptions`, `TransformResult`, `TransformFailure`, `Plugin`, `PluginBuild`,
+    `OnStartResult`, `OnEndResult`, `PartialMessage`, `PartialNote`, `BuildContext`, and
+    `InitializeOptions`.
+  - `shared/types.ts`: one-line summary on the `version` declaration, and the 16-line `//` comment
+    above `stop()` converted verbatim into a `/** */` block.
+  - `shared/worker.ts`: `WorkerInputMessage` and `GoWasmRuntimeHandle`.
+
 ## [0.2.10] - 2026-07-24
 
 ### Changed

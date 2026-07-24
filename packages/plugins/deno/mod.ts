@@ -24,6 +24,9 @@ import * as path from '@std/path'
 import { RequestedModuleType, ResolutionMode, Workspace, type WorkspaceOptions } from '@deno/loader'
 import { externalToRegex, getModuleType, getPlatform, mediaToLoader } from './utils.ts'
 
+/**
+ * Configuration for {@link denoPlugin}.
+ */
 export interface DenoPluginOptions {
   /**
    * Show debugging logs.

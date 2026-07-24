@@ -13,8 +13,23 @@
  *   `buildSync`, `transformSync`, `formatMessages`, `formatMessagesSync`,
  *   `analyzeMetafile`, `analyzeMetafileSync`, `initialize`, `stop`).
  */
+/**
+ * The platform to bundle for.
+ *
+ * @see https://esbuild.github.io/api/#platform
+ */
 export type Platform = 'browser' | 'node' | 'neutral'
+/**
+ * The output format of the bundle.
+ *
+ * @see https://esbuild.github.io/api/#format
+ */
 export type Format = 'iife' | 'cjs' | 'esm'
+/**
+ * Built-in loaders that map a file extension to how esbuild interprets the file.
+ *
+ * @see https://esbuild.github.io/api/#loader
+ */
 export type Loader =
   | 'base64'
   | 'binary'
@@ -31,6 +46,11 @@ export type Loader =
   | 'text'
   | 'ts'
   | 'tsx'
+/**
+ * The log level that esbuild uses when printing log messages.
+ *
+ * @see https://esbuild.github.io/api/#log-level
+ */
 export type LogLevel =
   | 'verbose'
   | 'debug'
@@ -38,8 +58,23 @@ export type LogLevel =
   | 'warning'
   | 'error'
   | 'silent'
+/**
+ * The character set to use when loading text-based files.
+ *
+ * @see https://esbuild.github.io/api/#charset
+ */
 export type Charset = 'ascii' | 'utf8'
+/**
+ * Debugger-like features whose calls should be removed from output.
+ *
+ * @see https://esbuild.github.io/api/#drop
+ */
 export type Drop = 'console' | 'debugger'
+/**
+ * Output paths whose values should be made absolute.
+ *
+ * @see https://esbuild.github.io/api/#abs-paths
+ */
 export type AbsPaths = 'code' | 'log' | 'metafile'
 
 interface CommonOptions {
@@ -127,6 +162,11 @@ interface CommonOptions {
   tsconfigRaw?: string | TsconfigRaw
 }
 
+/**
+ * Subset of `tsconfig.json` fields supported by esbuild's TypeScript handling.
+ *
+ * @see https://esbuild.github.io/api/#tsconfig-raw
+ */
 export interface TsconfigRaw {
   compilerOptions?: {
     alwaysStrict?: boolean
@@ -146,6 +186,11 @@ export interface TsconfigRaw {
   }
 }
 
+/**
+ * Options for configuring a single esbuild build.
+ *
+ * @see https://esbuild.github.io/api/#general-options
+ */
 export interface BuildOptions extends CommonOptions {
   /** Documentation: https://esbuild.github.io/api/#bundle */
   bundle?: boolean
@@ -211,6 +256,11 @@ export interface BuildOptions extends CommonOptions {
   nodePaths?: string[] // The "NODE_PATH" variable from Node.js
 }
 
+/**
+ * Options for configuring how an entry point is read from stdin.
+ *
+ * @see https://esbuild.github.io/api/#stdin
+ */
 export interface StdinOptions {
   contents: string | Uint8Array
   resolveDir?: string
@@ -218,6 +268,11 @@ export interface StdinOptions {
   loader?: Loader
 }
 
+/**
+ * A single esbuild log message (error or warning).
+ *
+ * @see https://esbuild.github.io/api/#errors
+ */
 export interface Message {
   id: string
   pluginName: string
@@ -233,11 +288,21 @@ export interface Message {
   detail: any
 }
 
+/**
+ * A secondary note attached to a {@link Message}.
+ *
+ * @see https://esbuild.github.io/api/#errors
+ */
 export interface Note {
   text: string
   location: Location | null
 }
 
+/**
+ * The source location associated with a {@link Message} or {@link Note}.
+ *
+ * @see https://esbuild.github.io/api/#errors
+ */
 export interface Location {
   file: string
   namespace: string
@@ -251,6 +316,11 @@ export interface Location {
   suggestion: string
 }
 
+/**
+ * A single output file produced by a build with `write: false`.
+ *
+ * @see https://esbuild.github.io/api/#write
+ */
 export interface OutputFile {
   path: string
   contents: Uint8Array
@@ -259,6 +329,11 @@ export interface OutputFile {
   readonly text: string
 }
 
+/**
+ * The result of a successful esbuild build.
+ *
+ * @see https://esbuild.github.io/api/#return-values
+ */
 export interface BuildResult<
   ProvidedOptions extends BuildOptions = BuildOptions,
 > {
@@ -278,6 +353,11 @@ export interface BuildResult<
     | (ProvidedOptions['mangleCache'] extends object ? never : undefined)
 }
 
+/**
+ * The error value rejected from a failed esbuild build.
+ *
+ * @see https://esbuild.github.io/api/#return-values
+ */
 export interface BuildFailure extends Error {
   errors: Message[]
   warnings: Message[]
@@ -300,6 +380,11 @@ export interface CORSOptions {
   origin?: string | string[]
 }
 
+/**
+ * Information about an individual request served by the dev server.
+ *
+ * @see https://esbuild.github.io/api/#serve-arguments
+ */
 export interface ServeOnRequestArgs {
   remoteAddress: string
   method: string
@@ -315,6 +400,11 @@ export interface ServeResult {
   hosts: string[]
 }
 
+/**
+ * Options for configuring a single esbuild transform.
+ *
+ * @see https://esbuild.github.io/api/#transform-api
+ */
 export interface TransformOptions extends CommonOptions {
   /** Documentation: https://esbuild.github.io/api/#sourcefile */
   sourcefile?: string
@@ -326,6 +416,11 @@ export interface TransformOptions extends CommonOptions {
   footer?: string
 }
 
+/**
+ * The result of a successful esbuild transform.
+ *
+ * @see https://esbuild.github.io/api/#transform-api
+ */
 export interface TransformResult<
   ProvidedOptions extends TransformOptions = TransformOptions,
 > {
@@ -342,16 +437,31 @@ export interface TransformResult<
     | (ProvidedOptions['legalComments'] extends 'external' ? never : undefined)
 }
 
+/**
+ * The error value rejected from a failed esbuild transform.
+ *
+ * @see https://esbuild.github.io/api/#transform-api
+ */
 export interface TransformFailure extends Error {
   errors: Message[]
   warnings: Message[]
 }
 
+/**
+ * An esbuild plugin.
+ *
+ * @see https://esbuild.github.io/plugins/
+ */
 export interface Plugin {
   name: string
   setup: (build: PluginBuild) => void | Promise<void>
 }
 
+/**
+ * The plugin callback object passed to {@link Plugin.setup}.
+ *
+ * @see https://esbuild.github.io/plugins/
+ */
 export interface PluginBuild {
   /** Documentation: https://esbuild.github.io/plugins/#build-options */
   initialOptions: BuildOptions
@@ -444,11 +554,21 @@ export interface ResolveResult {
   pluginData: any
 }
 
+/**
+ * The value returned from an `onStart` plugin callback.
+ *
+ * @see https://esbuild.github.io/plugins/#on-start
+ */
 export interface OnStartResult {
   errors?: PartialMessage[]
   warnings?: PartialMessage[]
 }
 
+/**
+ * The value returned from an `onEnd` plugin callback.
+ *
+ * @see https://esbuild.github.io/plugins/#on-end
+ */
 export interface OnEndResult {
   errors?: PartialMessage[]
   warnings?: PartialMessage[]
@@ -472,6 +592,11 @@ export interface OnResolveArgs {
   with: Record<string, string>
 }
 
+/**
+ * The kind of import operation that triggered a resolve or load callback.
+ *
+ * @see https://esbuild.github.io/plugins/#resolve-options
+ */
 export type ImportKind =
   | 'entry-point'
   // JS
@@ -536,6 +661,12 @@ export interface OnLoadResult {
   watchDirs?: string[]
 }
 
+/**
+ * A partial version of {@link Message} where every field is optional. Returned
+ * by plugin callbacks that may not have full information about an issue.
+ *
+ * @see https://esbuild.github.io/plugins/#on-start
+ */
 export interface PartialMessage {
   id?: string
   pluginName?: string
@@ -546,6 +677,11 @@ export interface PartialMessage {
   detail?: any
 }
 
+/**
+ * A partial version of {@link Note} where every field is optional.
+ *
+ * @see https://esbuild.github.io/plugins/#on-start
+ */
 export interface PartialNote {
   text?: string
   location?: Partial<Location> | null
@@ -617,6 +753,11 @@ export interface WatchOptions {
   delay?: number // In milliseconds
 }
 
+/**
+ * A long-running esbuild build context, returned from {@link context}.
+ *
+ * @see https://esbuild.github.io/api/#build
+ */
 export interface BuildContext<
   ProvidedOptions extends BuildOptions = BuildOptions,
 > {
@@ -772,6 +913,11 @@ export declare function analyzeMetafileSync(
  */
 export declare function initialize(options: InitializeOptions): Promise<void>
 
+/**
+ * Options accepted by {@link initialize}.
+ *
+ * @see https://esbuild.github.io/api/#browser
+ */
 export interface InitializeOptions {
   /**
    * The URL of the "esbuild.wasm" file. This must be provided when running
@@ -797,22 +943,25 @@ export interface InitializeOptions {
   worker?: boolean
 }
 
+/** The version string of the embedded esbuild binary. */
 export let version: string
 
-// Call this function to terminate esbuild's child process. The child process
-// is not terminated and re-created after each API call because it's more
-// efficient to keep it around when there are multiple API calls.
-//
-// In node this happens automatically before the parent node process exits. So
-// you only need to call this if you know you will not make any more esbuild
-// API calls and you want to clean up resources.
-//
-// Unlike node, Deno lacks the necessary APIs to clean up child processes
-// automatically. You must manually call stop() in Deno when you're done
-// using esbuild or Deno will continue running forever.
-//
-// Another reason you might want to call this is if you are using esbuild from
-// within a Deno test. Deno fails tests that create a child process without
-// killing it before the test ends, so you have to call this function (and
-// await the returned promise) in every Deno test that uses esbuild.
+/**
+ * Call this function to terminate esbuild's child process. The child process
+ * is not terminated and re-created after each API call because it's more
+ * efficient to keep it around when there are multiple API calls.
+ *
+ * In node this happens automatically before the parent node process exits. So
+ * you only need to call this if you know you will not make any more esbuild
+ * API calls and you want to clean up resources.
+ *
+ * Unlike node, Deno lacks the necessary APIs to clean up child processes
+ * automatically. You must manually call stop() in Deno when you're done
+ * using esbuild or Deno will continue running forever.
+ *
+ * Another reason you might want to call this is if you are using esbuild from
+ * within a Deno test. Deno fails tests that create a child process without
+ * killing it before the test ends, so you have to call this function (and
+ * await the returned promise) in every Deno test that uses esbuild.
+ */
 export declare function stop(): Promise<void>

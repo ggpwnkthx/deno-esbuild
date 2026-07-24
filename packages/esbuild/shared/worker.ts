@@ -12,6 +12,12 @@
 import './go_wasm.ts'
 import { ESBUILD_VERSION } from './common.ts'
 
+/**
+ * Messages accepted by the esbuild WASM worker.
+ *
+ * The first message must contain either a `WebAssembly.Module` or a URL
+ * string for `esbuild.wasm`; subsequent messages are stdin packets.
+ */
 export type WorkerInputMessage =
   | Uint8Array
   | ArrayBuffer
@@ -34,6 +40,9 @@ interface GoWasmFS {
   ): void
 }
 
+/**
+ * Subset of the Go WASM runtime handle exposed to esbuild's worker plumbing.
+ */
 export interface GoWasmRuntimeHandle {
   argv: string[]
   importObject: WebAssembly.Imports

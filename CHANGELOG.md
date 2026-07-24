@@ -9,6 +9,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### docs: document every exported symbol and enforce with CI guard
+
+- Added `/** ... */` blocks to all 35 previously undocumented exports across the workspace:
+  - `packages/esbuild/shared/types.ts` (33 symbols, including the type aliases `Platform`, `Format`,
+    `Loader`, `LogLevel`, `Charset`, `Drop`, `AbsPaths`, `ImportKind`, the interfaces `TsconfigRaw`,
+    `BuildOptions`, `StdinOptions`, `Message`, `Note`, `Location`, `OutputFile`, `BuildResult`,
+    `BuildFailure`, `ServeOnRequestArgs`, `TransformOptions`, `TransformResult`, `TransformFailure`,
+    `Plugin`, `PluginBuild`, `OnStartResult`, `OnEndResult`, `PartialMessage`, `PartialNote`,
+    `BuildContext`, `InitializeOptions`, and the module-level declarations `version` and `stop`).
+    The 16-line `//` comment above `stop()` was converted verbatim into a `/** */` block.
+  - `packages/esbuild/shared/worker.ts` (`WorkerInputMessage`, `GoWasmRuntimeHandle`).
+  - `packages/plugins/css/mod.ts` (`CssPluginOptions`).
+  - `packages/plugins/deno/mod.ts` (`DenoPluginOptions`).
+- Added `scripts/check_exports_documented.ts`: a CI guard that walks each workspace package's
+  `exports` map, runs `deno doc --json` on every entrypoint, and fails the run if any exported
+  declaration is missing a `jsDoc.doc` field.
+- Root `deno.json`: added a `doc:check` task that invokes the guard, and appended it to the `ci`
+  task so `deno task ci` now also enforces JSDoc coverage on every export going forward.
+
+## fd1fd23 - 2026-07-24
+
 ### chore(wrappers): allow net to github.com and jsr.io for hono/oak tests
 
 - `packages/wrappers/hono/deno.json` and `packages/wrappers/oak/deno.json`: appended

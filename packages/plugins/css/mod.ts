@@ -21,6 +21,9 @@
 import type * as esbuild from 'esbuild'
 import * as path from '@std/path'
 
+/**
+ * Configuration for {@link cssPlugin}.
+ */
 export interface CssPluginOptions {
   /** When true, emit the fully-resolved CSS as a separate output file.
    *  The CSS must be added as an entry point (not just imported from JS).

@@ -36,7 +36,8 @@
     "./.*"
   ],
   "tasks": {
-    "ci": "deno fmt --check && deno lint && deno check",
+    "ci": "deno fmt --check && deno lint && deno check && deno task doc:check",
+    "doc:check": "deno run --allow-read --allow-write --allow-run scripts/check_exports_documented.ts",
     "bin:build": "deno run --allow-read --allow-write --allow-run=git,go --allow-env scripts/main.ts",
     "bin:list": "deno run --allow-read scripts/main.ts --list"
   }
