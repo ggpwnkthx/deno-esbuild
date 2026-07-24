@@ -6,9 +6,9 @@
     "./wasm": "./transpilers/wasm.ts"
   },
   "imports": {
-    "@ggpwnkthx/esbuild-wrapper-shared": "jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.2",
-    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2",
-    "@oak/oak": "jsr:@oak/oak@^17",
+    "@ggpwnkthx/esbuild-wrapper-shared": "jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.2.9",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.9",
+    "@oak/oak": "jsr:@oak/oak@^17.2.0",
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },
   "tasks": {

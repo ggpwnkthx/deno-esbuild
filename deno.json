@@ -8,9 +8,9 @@
     "./wrappers/oak"
   ],
   "imports": {
-    "@std/cli": "jsr:@std/cli@^1.0.30",
-    "@std/encoding": "jsr:@std/encoding@^1.0.10",
-    "@std/path": "jsr:@std/path@^1.1.5",
+    "@std/cli": "jsr:@std/cli@^1.0.32",
+    "@std/encoding": "jsr:@std/encoding@^1.0.11",
+    "@std/path": "jsr:@std/path@^1.1.6",
     "@std/semver": "jsr:@std/semver@^1.0.8"
   },
   "fmt": {

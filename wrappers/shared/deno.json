@@ -3,7 +3,7 @@
   "version": "0.2.9",
   "exports": "./mod.ts",
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2"
+    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.9"
   },
   "compilerOptions": {
     "strict": true,
