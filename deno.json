@@ -1,11 +1,11 @@
 {
   "workspace": [
-    "./esbuild",
-    "./plugins/deno",
-    "./plugins/css",
-    "./wrappers/shared",
-    "./wrappers/hono",
-    "./wrappers/oak"
+    "./packages/esbuild",
+    "./packages/plugins/deno",
+    "./packages/plugins/css",
+    "./packages/wrappers/shared",
+    "./packages/wrappers/hono",
+    "./packages/wrappers/oak"
   ],
   "imports": {
     "@std/cli": "jsr:@std/cli@^1.0.32",

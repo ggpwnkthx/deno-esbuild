@@ -10,5 +10,11 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true
+  },
+  "tasks": {
+    "fmt": "deno fmt .",
+    "lint": "deno lint .",
+    "check": "deno check .",
+    "test": "deno test -A"
   }
 }

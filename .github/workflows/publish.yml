@@ -24,19 +24,19 @@ jobs:
 
       - name: Run fmt
         run: deno fmt --check
-        working-directory: esbuild
+        working-directory: packages/esbuild
 
       - name: Run lint
         run: deno lint
-        working-directory: esbuild
+        working-directory: packages/esbuild
 
       - name: Run check
         run: deno check **/*.ts
-        working-directory: esbuild
+        working-directory: packages/esbuild
 
       - name: Publish esbuild
         run: deno publish
-        working-directory: esbuild
+        working-directory: packages/esbuild
 
   shared:
     name: CI + publish (wrappers/shared)
@@ -55,19 +55,19 @@ jobs:
 
       - name: Run fmt
         run: deno fmt --check
-        working-directory: wrappers/shared
+        working-directory: packages/wrappers/shared
 
       - name: Run lint
         run: deno lint
-        working-directory: wrappers/shared
+        working-directory: packages/wrappers/shared
 
       - name: Run check
         run: deno check **/*.ts
-        working-directory: wrappers/shared
+        working-directory: packages/wrappers/shared
 
       - name: Publish
         run: deno publish
-        working-directory: wrappers/shared
+        working-directory: packages/wrappers/shared
 
   others:
     name: CI + publish (${{ matrix.package }})
@@ -81,13 +81,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - package: plugins/deno
+          - package: packages/plugins/deno
             test: true
-          - package: plugins/css
+          - package: packages/plugins/css
             test: true
-          - package: wrappers/hono
+          - package: packages/wrappers/hono
             test: false
-          - package: wrappers/oak
+          - package: packages/wrappers/oak
             test: false
 
     steps:

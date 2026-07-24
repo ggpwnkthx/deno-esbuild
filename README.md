@@ -9,33 +9,34 @@ version `0.28.1`.
 
 ## Packages
 
-| Package                             | Path               | Purpose                                                                                                                                |
-| ----------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ggpwnkthx/esbuild`                | `esbuild/`         | Deno wrapper around the official esbuild binary, with automatic download, checksum verification, local caching, and a WASM entrypoint. |
-| `@ggpwnkthx/esbuild-plugin-deno`    | `plugins/deno/`    | esbuild plugin that delegates module resolution/loading to Deno, including `file:`, `http:`, `https:`, `npm:`, and `jsr:` specifiers.  |
-| `@ggpwnkthx/esbuild-plugin-css`     | `plugins/css/`     | esbuild plugin that resolves and inlines local CSS `@import` rules.                                                                    |
-| `@ggpwnkthx/esbuild-wrapper-shared` | `wrappers/shared/` | Shared transform, cache, and response helpers used by the framework wrappers.                                                          |
-| `@ggpwnkthx/esbuild-wrapper-hono`   | `wrappers/hono/`   | Hono middleware for on-the-fly TypeScript/TSX response transformation.                                                                 |
-| `@ggpwnkthx/esbuild-wrapper-oak`    | `wrappers/oak/`    | Oak middleware for on-the-fly TypeScript/TSX response transformation.                                                                  |
+| Package                             | Path                        | Purpose                                                                                                                                |
+| ----------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ggpwnkthx/esbuild`                | `packages/esbuild/`         | Deno wrapper around the official esbuild binary, with automatic download, checksum verification, local caching, and a WASM entrypoint. |
+| `@ggpwnkthx/esbuild-plugin-deno`    | `packages/plugins/deno/`    | esbuild plugin that delegates module resolution/loading to Deno, including `file:`, `http:`, `https:`, `npm:`, and `jsr:` specifiers.  |
+| `@ggpwnkthx/esbuild-plugin-css`     | `packages/plugins/css/`     | esbuild plugin that resolves and inlines local CSS `@import` rules.                                                                    |
+| `@ggpwnkthx/esbuild-wrapper-shared` | `packages/wrappers/shared/` | Shared transform, cache, and response helpers used by the framework wrappers.                                                          |
+| `@ggpwnkthx/esbuild-wrapper-hono`   | `packages/wrappers/hono/`   | Hono middleware for on-the-fly TypeScript/TSX response transformation.                                                                 |
+| `@ggpwnkthx/esbuild-wrapper-oak`    | `packages/wrappers/oak/`    | Oak middleware for on-the-fly TypeScript/TSX response transformation.                                                                  |
 
 ## Repository layout
 
 ```txt
 .
 ├── deno.json
-├── esbuild/
-│   ├── mod.ts
-│   ├── wasm.ts
-│   ├── shared/
-│   └── tests/
-├── plugins/
-│   ├── css/
-│   └── deno/
-├── scripts/
-└── wrappers/
-    ├── hono/
-    ├── oak/
-    └── shared/
+├── packages/
+│   ├── esbuild/
+│   │   ├── mod.ts
+│   │   ├── wasm.ts
+│   │   ├── shared/
+│   │   └── tests/
+│   ├── plugins/
+│   │   ├── css/
+│   │   └── deno/
+│   └── wrappers/
+│       ├── hono/
+│       ├── oak/
+│       └── shared/
+└── scripts/
 ```
 
 The root `deno.json` defines the workspace and local development import aliases. Each package has

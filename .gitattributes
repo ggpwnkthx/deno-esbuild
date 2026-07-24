@@ -12,8 +12,5 @@
 *.yml text
 *.yaml text
 
-# Scripts
-*.sh text eol=lf
-
 # Denote all shell files have shell syntax
 *.sh text eol=lf
