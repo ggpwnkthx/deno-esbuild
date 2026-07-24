@@ -9,6 +9,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-24
 
+### chore(ci): run per-package `deno task ci` from a single job
+
+- `.github/workflows/ci.yml`: collapsed the four-stage fmt/lint/check/test pipeline into a single
+  `ci` job. The job uses `jq` to detect whether the package's `deno.json` declares a `ci` task and
+  runs `deno task ci` when present, falling back to
+  `deno fmt --check && deno lint && deno check && deno test -A` for packages that don't. The
+  preceding `audit` job keeps its repo-wide scope.
+- This trims the duplicated matrix setup (cache + checkout + setup-deno + step runs) down to a
+  single block per package, and removes the need to keep the workflow in lockstep with every
+  package's task surface.
+
+## 9f70418 - 2026-07-24
+
 ### chore(net): allow release-assets.githubusercontent.com
 
 - `packages/esbuild/README.md`: replaced `--allow-net=github.com` with
