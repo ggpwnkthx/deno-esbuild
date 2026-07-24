@@ -58,6 +58,7 @@ import * as ourselves from './mod.ts'
 import { install } from './binary_installer.ts'
 import { spawnWithDenoCommand } from './shared/spawn.ts'
 import { createEsbuildApi } from './shared/create_esbuild_api.ts'
+import type { EsbuildApi } from './shared/create_esbuild_api.ts'
 
 /** The esbuild binary version string (e.g. "0.28.1").
  * @see https://github.com/evanw/esbuild/releases */
@@ -160,7 +161,7 @@ const ensureServiceIsRunning = (): Promise<common.Service> => {
   return longLivedService
 }
 
-const api = createEsbuildApi({
+const api: EsbuildApi = createEsbuildApi({
   ensureService: ensureServiceIsRunning,
   syncStubs: common.createSyncStubs(),
   runtime: 'native',

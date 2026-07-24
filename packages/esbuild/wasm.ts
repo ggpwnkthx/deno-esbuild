@@ -35,6 +35,7 @@ import * as common from './shared/mod.ts'
 import * as ourselves from './wasm.ts'
 import { version } from './mod.ts'
 import { createEsbuildApi } from './shared/create_esbuild_api.ts'
+import type { EsbuildApi } from './shared/create_esbuild_api.ts'
 
 interface WorkerMessageEvent {
   readonly data: unknown
@@ -187,7 +188,7 @@ const ensureServiceIsRunning = (): Promise<common.Service> => {
   return initializePromise
 }
 
-const api = createEsbuildApi({
+const api: EsbuildApi = createEsbuildApi({
   ensureService: ensureServiceIsRunning,
   syncStubs: common.createSyncStubs(),
   runtime: 'wasm',
