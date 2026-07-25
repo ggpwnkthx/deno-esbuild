@@ -1,14 +1,65 @@
 name: Publish
-
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
+    branches:
+      - main
 
 jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+      - name: Cache Deno dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: deno audit
+        run: deno audit
+
+  ci:
+    name: ci (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    needs: audit
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - packages/esbuild
+          - packages/plugins/deno
+          - packages/plugins/css
+          - packages/wrappers/shared
+          - packages/wrappers/hono
+          - packages/wrappers/oak
+    steps:
+      - uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
+      - name: Cache Deno dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: ${{ runner.os }}-deno-
+      - name: Detect ci task
+        id: detect
+        working-directory: ${{ matrix.package }}
+        run: |
+          if jq -e '.tasks.ci' deno.json > /dev/null; then
+            echo "has_ci=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_ci=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run ci
+        working-directory: ${{ matrix.package }}
+        run: ${{ steps.detect.outputs.has_ci == 'true' && 'deno task ci' || 'deno fmt --check && deno lint && deno check && deno test -A' }}
+        
   publish-base:
     name: publish-base (${{ matrix.package }})
     runs-on: ubuntu-latest
+    needs: ci
     permissions:
       contents: read
       id-token: write
