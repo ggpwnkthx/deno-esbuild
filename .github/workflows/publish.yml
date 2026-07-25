@@ -57,6 +57,23 @@ jobs:
         with:
           package: ${{ matrix.package }}
 
+      - name: Inspect published version
+        if: always()
+        shell: bash
+        working-directory: ${{ matrix.package }}
+        run: |
+          pkg=$(jq -r '.name' deno.json)
+          ver=$(jq -r '.version' deno.json)
+          scope=$(echo "$pkg" | awk -F/ '{print $1}' | tr -d '@')
+          name=$(echo "$pkg" | awk -F/ '{print $2}')
+          echo "--- JSR version API for ${pkg}@${ver} ---"
+          curl -fsS "https://jsr.io/api/scopes/${scope}/packages/${name}/versions/${ver}" -o /tmp/version.json -w 'http=%{http_code}\n' || echo "(probe failed)"
+          jq '{version, rekorLogId, usesNpm}' /tmp/version.json 2>/dev/null || cat /tmp/version.json
+          echo "--- last 60 lines of /tmp/publish.log ---"
+          tail -n 60 /tmp/publish.log 2>/dev/null || true
+          echo "--- last 60 lines of /tmp/diagnose.log ---"
+          tail -n 60 /tmp/diagnose.log 2>/dev/null || true
+
   publish-deps:
     name: publish-deps (${{ matrix.package }})
     needs: publish-base
@@ -98,6 +115,23 @@ jobs:
         with:
           package: ${{ matrix.package }}
 
+      - name: Inspect published version
+        if: always()
+        shell: bash
+        working-directory: ${{ matrix.package }}
+        run: |
+          pkg=$(jq -r '.name' deno.json)
+          ver=$(jq -r '.version' deno.json)
+          scope=$(echo "$pkg" | awk -F/ '{print $1}' | tr -d '@')
+          name=$(echo "$pkg" | awk -F/ '{print $2}')
+          echo "--- JSR version API for ${pkg}@${ver} ---"
+          curl -fsS "https://jsr.io/api/scopes/${scope}/packages/${name}/versions/${ver}" -o /tmp/version.json -w 'http=%{http_code}\n' || echo "(probe failed)"
+          jq '{version, rekorLogId, usesNpm}' /tmp/version.json 2>/dev/null || cat /tmp/version.json
+          echo "--- last 60 lines of /tmp/publish.log ---"
+          tail -n 60 /tmp/publish.log 2>/dev/null || true
+          echo "--- last 60 lines of /tmp/diagnose.log ---"
+          tail -n 60 /tmp/diagnose.log 2>/dev/null || true
+
   publish-wrappers:
     name: publish-wrappers (${{ matrix.package }})
     needs: publish-deps
@@ -137,3 +171,20 @@ jobs:
       - uses: ./.github/actions/publish-package
         with:
           package: ${{ matrix.package }}
+
+      - name: Inspect published version
+        if: always()
+        shell: bash
+        working-directory: ${{ matrix.package }}
+        run: |
+          pkg=$(jq -r '.name' deno.json)
+          ver=$(jq -r '.version' deno.json)
+          scope=$(echo "$pkg" | awk -F/ '{print $1}' | tr -d '@')
+          name=$(echo "$pkg" | awk -F/ '{print $2}')
+          echo "--- JSR version API for ${pkg}@${ver} ---"
+          curl -fsS "https://jsr.io/api/scopes/${scope}/packages/${name}/versions/${ver}" -o /tmp/version.json -w 'http=%{http_code}\n' || echo "(probe failed)"
+          jq '{version, rekorLogId, usesNpm}' /tmp/version.json 2>/dev/null || cat /tmp/version.json
+          echo "--- last 60 lines of /tmp/publish.log ---"
+          tail -n 60 /tmp/publish.log 2>/dev/null || true
+          echo "--- last 60 lines of /tmp/diagnose.log ---"
+          tail -n 60 /tmp/diagnose.log 2>/dev/null || true

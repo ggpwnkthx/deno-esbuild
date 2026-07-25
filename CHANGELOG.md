@@ -9,6 +9,50 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-25
 
+### fix(ci): debug JSR OIDC provenance under deno publish + cut 0.2.14-rc.0
+
+- `.github/actions/publish-package/action.yml`: reverted the publish step from
+  `npx --yes jsr publish` back to `deno publish` (the pre-`e64866f` state). The npm-CLI swap
+  targeted the wrong hypothesis: in this codebase `deno publish` produced `rekorLogId` for releases
+  0.2.0–0.2.8 (May–June) without `npx jsr` ever being involved, so swapping CLIs is unlikely to be
+  the root cause. Instead, capture the issue on its native path with full visibility.
+- `.github/actions/publish-package/action.yml`: prepended a `Diagnose OIDC environment` composite
+  step that runs before the publish. It logs the GitHub-Actions OIDC-related env vars
+  (`GITHUB_ACTIONS`, `ACTIONS_ID_TOKEN_REQUEST_URL`, `ACTIONS_ID_TOKEN_REQUEST_TOKEN`,
+  `GITHUB_REPOSITORY`, `GITHUB_WORKFLOW_REF`, `GITHUB_REF`, `GITHUB_SHA`, `GITHUB_RUN_ID`,
+  `RUNNER_ENVIRONMENT`), the installed `deno --version` first line, the working directory, and the
+  package coordinates from `deno.json`. If both `ACTIONS_ID_TOKEN_REQUEST_*` vars are present it
+  also probes the OIDC request URL with `audience=sigstore` (the exact audience `deno publish` uses
+  per `cli/tools/publish/provenance.rs`) and saves the response to `/tmp/oidc.json`. The whole block
+  is `tee`'d to `/tmp/diagnose.log` for the post-publish inspection step to read.
+- `.github/actions/publish-package/action.yml`: wrapped the `deno publish` step in `tee` so the full
+  `DENO_LOG=debug` stream is captured to `/tmp/publish.log`. `set -o pipefail` plus
+  `exit "${PIPESTATUS[0]}"` keeps the original Deno exit code so the step still fails fast on
+  publish error — `tee` alone would have masked failures.
+- `.github/workflows/publish.yml`: added an `Inspect published version` step with `if: always()`
+  after the composite action call in each of the three matrix jobs. The step reads the package
+  `name`/`version` from `deno.json`, calls
+  `GET https://jsr.io/api/scopes/{scope}/packages/{name}/versions/{version}` (no auth, public),
+  prints `{version, rekorLogId, usesNpm}` via `jq`, and tails the last 60 lines of
+  `/tmp/publish.log` and `/tmp/diagnose.log`. Diagnostic-only — does not fail the job.
+- `packages/esbuild/deno.json`: bumped `"version"` from `0.2.13` to `"0.2.14-rc.0"` so the publish
+  workflow has one new version to push through the reverted `deno publish` path. The rc prerelease
+  keeps `0.2.13` from being auto-eclipsed on the `latest` tag until diagnostics are reviewed.
+- `deno task versions:sync` (run, not committed directly): rewrote five sibling
+  `jsr:@ggpwnkthx/esbuild@^0.2.13` pins in `packages/wrappers/{shared,hono,oak}/deno.json` and
+  `packages/plugins/{deno,css}/deno.json` to `jsr:@ggpwnkthx/esbuild@^0.2.14-rc.0` to track the
+  local source. Other packages' `version` fields were left untouched because their existing JSR
+  versions are unchanged — `deno publish` will skip them in the workflow run.
+- Decision table for the post-run read-back (no code changes implied, just routing):
+  | What JSR reports                                         | Interpretation                                                                                                                               | Next action                                                                |
+  | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+  | `usesNpm: false, rekorLogId: <non-null>`                 | `deno publish` works; root cause was the timing/coordination that produced the 0.2.13 read-back, not a workflow bug.                         | Cut `0.2.14`, decide whether to yank `0.2.13`.                             |
+  | `usesNpm: false, rekorLogId: null`, publish step exits 0 | Server-side provenance rejection; capture `DENO_LOG` line for the error. Inspect `/tmp/publish.log` for the JSR `/provenance` POST response. | Apply the fix implied by the captured error class (see commit body).       |
+  | OIDC env probe in `/tmp/diagnose.log` shows vars missing | OIDC token not actually issued to the runner.                                                                                                | Re-check `publish.yml` permissions and composite-action shell inheritance. |
+  | `usesNpm: true` after publish                            | Deno 2.9.x silently delegated to the npm CLI under the hood — informational, provenance is recorded if `rekorLogId` is non-null.             | Document behavior in CHANGELOG.                                            |
+- `packages/esbuild/CHANGELOG.md`: corresponding `[0.2.14-rc.0]` entry (release coordination; no
+  behavioral change vs. `0.2.13`).
+
 ### fix(ci): restore JSR OIDC provenance by publishing through the npm CLI
 
 - `.github/actions/publish-package/action.yml`: switched the publish step from `deno publish` to

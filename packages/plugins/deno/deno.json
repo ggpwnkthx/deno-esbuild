@@ -5,7 +5,7 @@
     ".": "./mod.ts"
   },
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.12",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.14-rc.0",
     "@deno/graph": "jsr:@deno/graph@^0.110.2",
     "@deno/loader": "jsr:@deno/loader@^0.5.0",
     "@std/path": "jsr:@std/path@^1.1.6",

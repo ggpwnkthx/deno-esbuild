@@ -5,6 +5,16 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14-rc.0] - 2026-07-25
+
+### Changed
+
+- `deno.json`: version bumped to `0.2.14-rc.0`. Identical content to `0.2.13`; the rc prerelease is
+  a diagnostic build used to verify that the publish workflow produces a Sigstore Rekor entry under
+  the reverted `deno publish` path (see root `CHANGELOG.md`, "fix(ci): debug JSR OIDC provenance
+  under deno publish + cut 0.2.14-rc.0"). Once the diagnostic run produces a non-null `rekorLogId`
+  for `0.2.14-rc.0`, a follow-up release will cut `0.2.14` for stable adoption.
+
 ## [0.2.13] - 2026-07-25
 
 ### Added
