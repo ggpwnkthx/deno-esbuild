@@ -9,6 +9,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-25
 
+### simplify(ci): adopt JSR-canonical publish step in workflow chain
+
+- `.github/workflows/publish.yml`: rewritten to the JSR docs publish pattern
+  (`actions/checkout@v6` + `npx jsr publish`) inlined in each of the three matrix jobs
+  (`publish-base` → `publish-deps` → `publish-wrappers`). Workflow-level
+  `permissions: contents: read, id-token: write` retained; job-level permissions retained for
+  clarity. The `denoland/setup-deno@v2` and `actions/cache@v5` steps are removed — `npx jsr publish`
+  ships its own Deno binary internally (`jsr-io/jsr-npm/src/deno_version.ts`, currently `v2.6.7`)
+  and manages its own cache. Removed the post-publish `Inspect published version` step that
+  previously tailed `/tmp/diagnose.log` and `/tmp/publish.log`; the upstream provenance
+  investigation continues out of band. Outcome for `0.2.14-rc.0` is unchanged by this commit:
+  `rekorLogId` is still `null` because `npx jsr publish` shells out to the same Deno CLI that signs
+  the metadata hash while JSR's `provenance::verify` (after `jsr-io/jsr#1465`) requires the tarball
+  hash. The fix lives in `denoland/deno` (signature in `cli/tools/publish/mod.rs`).
+- `.github/actions/publish-package/action.yml`: deleted. The composite action was a wrapper around
+  `working-directory: ${{ inputs.package }}` + `run: deno publish`; inlining `npx jsr publish`
+  directly in each job's step removes a layer without changing behavior.
+- Workflow-level `env: DENO_VERSION: "2.9.4"` removed (only consumed by `setup-deno@v2`).
+
 ### fix(ci): debug JSR OIDC provenance under deno publish + cut 0.2.14-rc.0
 
 - `.github/actions/publish-package/action.yml`: reverted the publish step from

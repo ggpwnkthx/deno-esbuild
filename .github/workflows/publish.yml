@@ -15,9 +15,6 @@ permissions:
   contents: read
   id-token: write
 
-env:
-  DENO_VERSION: "2.9.4"
-
 jobs:
   publish-base:
     name: publish-base (${{ matrix.package }})
@@ -42,37 +39,9 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/checkout@v6
 
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
-          restore-keys: ${{ runner.os }}-deno-
-
-      - uses: ./.github/actions/publish-package
-        with:
-          package: ${{ matrix.package }}
-
-      - name: Inspect published version
-        if: always()
-        shell: bash
+      - name: Publish package
         working-directory: ${{ matrix.package }}
-        run: |
-          pkg=$(jq -r '.name' deno.json)
-          ver=$(jq -r '.version' deno.json)
-          scope=$(echo "$pkg" | awk -F/ '{print $1}' | tr -d '@')
-          name=$(echo "$pkg" | awk -F/ '{print $2}')
-          echo "--- JSR version API for ${pkg}@${ver} ---"
-          curl -fsS "https://jsr.io/api/scopes/${scope}/packages/${name}/versions/${ver}" -o /tmp/version.json -w 'http=%{http_code}\n' || echo "(probe failed)"
-          jq '{version, rekorLogId, usesNpm}' /tmp/version.json 2>/dev/null || cat /tmp/version.json
-          echo "--- last 60 lines of /tmp/publish.log ---"
-          tail -n 60 /tmp/publish.log 2>/dev/null || true
-          echo "--- last 60 lines of /tmp/diagnose.log ---"
-          tail -n 60 /tmp/diagnose.log 2>/dev/null || true
+        run: npx jsr publish
 
   publish-deps:
     name: publish-deps (${{ matrix.package }})
@@ -100,37 +69,9 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/checkout@v6
 
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
-          restore-keys: ${{ runner.os }}-deno-
-
-      - uses: ./.github/actions/publish-package
-        with:
-          package: ${{ matrix.package }}
-
-      - name: Inspect published version
-        if: always()
-        shell: bash
+      - name: Publish package
         working-directory: ${{ matrix.package }}
-        run: |
-          pkg=$(jq -r '.name' deno.json)
-          ver=$(jq -r '.version' deno.json)
-          scope=$(echo "$pkg" | awk -F/ '{print $1}' | tr -d '@')
-          name=$(echo "$pkg" | awk -F/ '{print $2}')
-          echo "--- JSR version API for ${pkg}@${ver} ---"
-          curl -fsS "https://jsr.io/api/scopes/${scope}/packages/${name}/versions/${ver}" -o /tmp/version.json -w 'http=%{http_code}\n' || echo "(probe failed)"
-          jq '{version, rekorLogId, usesNpm}' /tmp/version.json 2>/dev/null || cat /tmp/version.json
-          echo "--- last 60 lines of /tmp/publish.log ---"
-          tail -n 60 /tmp/publish.log 2>/dev/null || true
-          echo "--- last 60 lines of /tmp/diagnose.log ---"
-          tail -n 60 /tmp/diagnose.log 2>/dev/null || true
+        run: npx jsr publish
 
   publish-wrappers:
     name: publish-wrappers (${{ matrix.package }})
@@ -157,34 +98,6 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/checkout@v6
 
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
-          restore-keys: ${{ runner.os }}-deno-
-
-      - uses: ./.github/actions/publish-package
-        with:
-          package: ${{ matrix.package }}
-
-      - name: Inspect published version
-        if: always()
-        shell: bash
+      - name: Publish package
         working-directory: ${{ matrix.package }}
-        run: |
-          pkg=$(jq -r '.name' deno.json)
-          ver=$(jq -r '.version' deno.json)
-          scope=$(echo "$pkg" | awk -F/ '{print $1}' | tr -d '@')
-          name=$(echo "$pkg" | awk -F/ '{print $2}')
-          echo "--- JSR version API for ${pkg}@${ver} ---"
-          curl -fsS "https://jsr.io/api/scopes/${scope}/packages/${name}/versions/${ver}" -o /tmp/version.json -w 'http=%{http_code}\n' || echo "(probe failed)"
-          jq '{version, rekorLogId, usesNpm}' /tmp/version.json 2>/dev/null || cat /tmp/version.json
-          echo "--- last 60 lines of /tmp/publish.log ---"
-          tail -n 60 /tmp/publish.log 2>/dev/null || true
-          echo "--- last 60 lines of /tmp/diagnose.log ---"
-          tail -n 60 /tmp/diagnose.log 2>/dev/null || true
+        run: npx jsr publish
