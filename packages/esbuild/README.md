@@ -101,6 +101,31 @@ ESBUILD_BINARY_PATH=/usr/local/bin/esbuild deno run \
   build.ts
 ```
 
+## Embedder platform registration
+
+The native wrapper ships with a built-in `Deno.build.target` → release-asset map (see the table
+above). Embedders running on custom targets — wasmer, Deno Deploy, bespoke CI images, third-party
+distributions — can register an additional mapping at startup. These helpers live in the
+`binary_installer` submodule, which is shipped as part of the JSR package:
+
+```ts
+import {
+  knownPlatforms,
+  registerPlatform,
+  unregisterPlatform,
+} from 'jsr:@ggpwnkthx/esbuild/binary_installer'
+
+registerPlatform('x86_64-unknown-linux-musl', 'esbuild-linux-x64')
+
+console.log(knownPlatforms())
+// ['aarch64-apple-darwin', 'x86_64-apple-darwin', ..., 'x86_64-unknown-linux-musl']
+```
+
+`registerPlatform(name, assetName)` adds the mapping; `unregisterPlatform(name)` removes it and
+returns `true` or `false` depending on whether the entry was present. Re-registering the same `name`
+silently overrides the previous mapping. The new mapping is only consulted by the next `install()`
+call — already-resolved paths are unaffected.
+
 ## API overview
 
 All supported root APIs are asynchronous except for the exported sync variants, which are present
