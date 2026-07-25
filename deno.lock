@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@deno/graph@~0.110.2": "0.110.2",
     "jsr:@deno/loader@0.5": "0.5.0",
     "jsr:@hono/hono@^4.12.32": "4.12.32",
     "jsr:@oak/commons@1": "1.0.1",
@@ -22,6 +23,9 @@
     "npm:path-to-regexp@^6.3.0": "6.3.0"
   },
   "jsr": {
+    "@deno/graph@0.110.2": {
+      "integrity": "9ebc8a4451969ae2650f09da3ea7371dff42f703d68eb3993811ecb814d51995"
+    },
     "@deno/loader@0.5.0": {
       "integrity": "a6d94408de5e6bacac404f8f6963c8b8cc278cfd1a878aa2f06b34a083d6bfee"
     },
@@ -113,6 +117,7 @@
       },
       "packages/plugins/deno": {
         "dependencies": [
+          "jsr:@deno/graph@~0.110.2",
           "jsr:@deno/loader@0.5",
           "jsr:@ggpwnkthx/esbuild@~0.2.11",
           "jsr:@std/assert@^1.0.19",

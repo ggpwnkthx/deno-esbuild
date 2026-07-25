@@ -5,13 +5,54 @@ All notable changes to `@ggpwnkthx/esbuild-plugin-deno` are documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-07-25
+
+### Added
+
+- New `unbundle()` export for emitting every dependency as a separate ESM file under a target
+  directory. Given Deno-style entrypoints (`npm:react`, `jsr:@hono/hono@4.12.32/jsx/dom`, import-map
+  bare specifiers, file paths, etc.), the function walks the full module graph, transpiles each
+  module to ESM via `@deno/loader` + esbuild, and writes one file per module with imports rewritten
+  to local relative paths. Useful for serving Deno-style code from a CDN, debugging dependency
+  trees, or feeding the emitted tree to a dev server that wants per-file control.
+  - `graph.ts`: walks the Deno-style module graph using `@deno/graph` for dependency edges and
+    `@deno/loader` for resolution + transpilation. Resolves relative entrypoints to file URLs,
+    primes `@deno/loader` via `addEntrypoints`, and returns a `Map<url, UnbundledModule>`.
+  - `path.ts`: maps resolved URLs to deterministic output paths mirroring the original namespace
+    (`npm__react@18.3.1/index.js`, `jsr__@hono__hono@4.12.32/src/jsx/dom/index.js`,
+    `https__example.com/mod.js`, etc.). Recognises Deno's `node_modules/.deno/<name>@<ver>/...` npm
+    cache layout and the `https://jsr.io/<scope>/<name>/<version>/<sub>` JSR registry layout.
+  - `rewrite.ts`: handles the per-file pipeline — optional `publicEnvVarPrefix` substitution,
+    specifier text rewriting (`from "<spec>"` and `import("<spec>")`) against the emitted path map,
+    then `esbuild.transform` with `format: 'esm'` for CJS/TS/JSX transpilation.
+  - `assets.ts`: classifies media types into JS transpiled, binary passthrough (CSS, HTML, SQL,
+    JSON, source maps, wasm), and computed paths that preserve the original extension.
+  - `unbundle.ts`: top-level driver. Builds the `Workspace`, walks the graph, computes the path map,
+    transpiles each module, writes files under `outdir`, and returns `{ files, entryFiles }`.
+  - `UnbundleOptions`: `entryPoints`, `outdir`, `configPath`, `noTranspile`, `jsx` (`'transform'` |
+    `'preserve'`), `jsxImportSource`, `jsxFactory`, `jsxFragment`, `publicEnvVarPrefix`, `target`,
+    `debug`.
+  - `UnbundleResult`: `files` (absolute paths of every emitted file) and `entryFiles` (subset
+    corresponding to `entryPoints` in the same order).
+- `tests/unbundle.test.ts`: 8 new tests covering `npm:react` end-to-end (entry + subpath sibling
+  files), `jsr:@hono/hono@4.12.32/jsx/dom` with `jsx: 'preserve'` and `jsx: 'transform'` modes, a
+  `deno.json` import-map rewrite from a bare specifier to a local relative path, `npm:ms@2.1.3`
+  CJS→ESM conversion, `publicEnvVarPrefix` inlining of `Deno.env.get('PUBLIC_TEST_VAR')`, and
+  re-rooted relative imports (`./util.ts` → `./util.js`).
+
+### Changed
+
+- `mod.ts`: re-exports `unbundle`, `UnbundleOptions`, and `UnbundleResult` from `./unbundle.ts`.
+- `deno.json` (this package): added `jsr:@deno/graph@^0.110.2` to `imports`; added `graph.ts`,
+  `path.ts`, `rewrite.ts`, `assets.ts`, and `unbundle.ts` to `publish.include`.
+- `README.md`: new "Unbundled output" section showing the `unbundle()` API, a sample output tree,
+  and a table of supported options.
+
+## [0.2.10] - 2026-07-24
 
 ### Added
 
 - JSDoc documentation on the `DenoPluginOptions` interface in `mod.ts`.
-
-## [0.2.10] - 2026-07-24
 
 ### Changed
 

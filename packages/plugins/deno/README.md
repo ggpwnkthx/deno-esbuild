@@ -110,6 +110,73 @@ const { PUBLIC_API_URL = 'https://api.example.com', PUBLIC_KEY = null } = Deno.e
 Note: `process.env` and `import.meta.env` references are only inlined when the variable name starts
 with the configured prefix.
 
+## Unbundled output
+
+The plugin also exports a stand-alone `unbundle()` function that emits every dependency as a
+separate ESM file under a directory you choose, with imports rewritten to local relative paths.
+
+This is useful for serving Deno-style code from a CDN, debugging dependency trees, or feeding the
+emitted tree to a dev server that wants per-file control over caching and content-types.
+
+```ts
+import { unbundle } from '@ggpwnkthx/esbuild-plugin-deno'
+
+const result = await unbundle({
+  entryPoints: [
+    'npm:react@18.3.1',
+    'jsr:@hono/hono@4.12.32/jsx/dom',
+    './main.ts',
+  ],
+  outdir: './dist',
+  configPath: './deno.json',
+  jsx: 'transform', // or 'preserve'
+  jsxImportSource: 'hono/jsx',
+  publicEnvVarPrefix: 'PUBLIC_',
+})
+
+console.log(result.files) // absolute paths of every emitted file
+console.log(result.entryFiles) // subset corresponding to entryPoints
+```
+
+The result mirrors each specifier's namespace under `outdir`:
+
+```
+dist/
+├── npm__react@18.3.1/
+│   ├── index.js
+│   └── cjs/
+│       ├── react.development.js
+│       └── react.production.min.js
+├── jsr__@hono__hono@4.12.32/
+│   └── src/jsx/dom/
+│       ├── index.js
+│       ├── jsx-runtime.js
+│       └── …
+├── main.js
+└── util.js
+```
+
+Every emitted `.js` file is standard ESM. Imports between modules are rewritten to relative paths
+(`./sibling.js`, `../parent.js`, etc.) so the tree is self-contained and can be served by any static
+file server. CJS modules (e.g. `npm:ms@2`, `npm:react/cjs/...`) are converted to ESM via esbuild's
+`format: 'esm'` transpile. Binary assets (CSS, images, etc.) are copied verbatim with their original
+extension preserved.
+
+### `unbundle()` options
+
+| Option                       | Type                          | Description                                                                                              |
+| ---------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `entryPoints`                | `string[]`                    | Required. Deno-style specifiers (`npm:`, `jsr:`, `http(s):`, file paths, or import-map bare specifiers). |
+| `outdir`                     | `string`                      | Required. Output directory. Created if missing.                                                          |
+| `configPath`                 | `string`                      | Optional path to a `deno.json` to drive the loader. Auto-discovered if omitted.                          |
+| `noTranspile`                | `boolean`                     | Skip Deno's transpile step.                                                                              |
+| `jsx`                        | `'transform'` \| `'preserve'` | Selects JSX handling. Default `'transform'`.                                                             |
+| `jsxImportSource`            | `string`                      | Forwarded to esbuild when `jsx === 'transform'`.                                                         |
+| `jsxFactory` / `jsxFragment` | `string`                      | Classic JSX transform options.                                                                           |
+| `publicEnvVarPrefix`         | `string`                      | Same semantics as the bundled plugin's option.                                                           |
+| `target`                     | `esbuild target`              | esbuild transpile target. Default `es2022`.                                                              |
+| `debug`                      | `boolean`                     | Forward debug logs from `@deno/loader`.                                                                  |
+
 ## What the plugin handles
 
 ### Resolution schemes

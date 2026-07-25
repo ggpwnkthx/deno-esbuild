@@ -23,6 +23,7 @@ import type * as esbuild from 'esbuild'
 import * as path from '@std/path'
 import { RequestedModuleType, ResolutionMode, Workspace, type WorkspaceOptions } from '@deno/loader'
 import { externalToRegex, getModuleType, getPlatform, mediaToLoader } from './utils.ts'
+export { unbundle, type UnbundleOptions, type UnbundleResult } from './unbundle.ts'
 
 /**
  * Configuration for {@link denoPlugin}.
