@@ -4,12 +4,6 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-  workflow_dispatch:
-    inputs:
-      package:
-        description: "Workspace member to publish (empty for all)"
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -18,7 +12,6 @@ permissions:
 jobs:
   publish-base:
     name: publish-base (${{ matrix.package }})
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,24 +22,14 @@ jobs:
         package:
           - packages/esbuild
     steps:
-      - name: Checkout CI run commit
-        if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Checkout
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v6
-
+      - uses: actions/checkout@v6
       - name: Publish package
         working-directory: ${{ matrix.package }}
-        run: npx jsr publish
+        run: deno publish
 
   publish-deps:
     name: publish-deps (${{ matrix.package }})
     needs: publish-base
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -59,24 +42,14 @@ jobs:
           - packages/plugins/deno
           - packages/plugins/css
     steps:
-      - name: Checkout CI run commit
-        if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Checkout
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v6
-
+      - uses: actions/checkout@v6
       - name: Publish package
         working-directory: ${{ matrix.package }}
-        run: npx jsr publish
+        run: deno publish
 
   publish-wrappers:
     name: publish-wrappers (${{ matrix.package }})
     needs: publish-deps
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,16 +61,7 @@ jobs:
           - packages/wrappers/hono
           - packages/wrappers/oak
     steps:
-      - name: Checkout CI run commit
-        if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Checkout
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v6
-
+      - uses: actions/checkout@v6
       - name: Publish package
         working-directory: ${{ matrix.package }}
-        run: npx jsr publish
+        run: deno publish

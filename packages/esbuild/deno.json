@@ -1,6 +1,6 @@
 {
   "name": "@ggpwnkthx/esbuild",
-  "version": "0.2.14-rc.0",
+  "version": "0.2.14-rc.1",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },
