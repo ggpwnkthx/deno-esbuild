@@ -24,10 +24,14 @@ export type WorkerInputMessage =
   | WebAssembly.Module
   | string
 
+/** Messages the worker posts back to the host. Either a stdout chunk,
+ * `null` when the worker is ready, or an `Error` if it failed to start. */
 type WorkerOutputMessage = Uint8Array | Error | null
 
+/** Errno-style callback used by the Go WASM filesystem shim. */
 type ErrnoCallback = (err: Error | null, count?: number) => void
 
+/** Subset of the Go WASM filesystem shim used by the worker. */
 interface GoWasmFS {
   writeSync(fd: number, buffer: Uint8Array): number
   read(
@@ -44,24 +48,36 @@ interface GoWasmFS {
  * Subset of the Go WASM runtime handle exposed to esbuild's worker plumbing.
  */
 export interface GoWasmRuntimeHandle {
+  /** Command-line arguments passed to the Go runtime. */
   argv: string[]
+  /** WebAssembly imports the runtime needs to instantiate. */
   importObject: WebAssembly.Imports
+  /** Boot the runtime against the given WebAssembly instance. */
   run(instance: WebAssembly.Instance): Promise<void> | void
 
+  /** Pending `setTimeout` ids, used by `wasm.ts` to clean up the
+   * main-thread runtime when `worker: false` is requested. */
   // This exists on the Go runtime shim and is used by wasm.ts to clean up the
   // main-thread runtime when worker: false is used.
   _scheduledTimeouts: Map<number, ReturnType<typeof setTimeout>>
 }
 
+/** Constructor signature for the Go WASM runtime. */
 interface GoWasmRuntimeConstructor {
   new (): GoWasmRuntimeHandle
 }
 
+/** Subset of the `globalThis` shape the worker reads at startup. */
 interface EsbuildWorkerGlobal {
+  /** Filesystem shim installed by `go_wasm.ts`. */
   fs?: GoWasmFS
+  /** Go runtime constructor installed by `go_wasm.ts`. */
   Go?: GoWasmRuntimeConstructor
+  /** Outbound message channel. */
   postMessage?: (message: WorkerOutputMessage) => void
+  /** Inbound message channel. */
   onmessage?: ((message: { data: WorkerInputMessage }) => void) | null
+  /** Presence of `document` distinguishes browser main thread from workers. */
   document?: unknown
 }
 

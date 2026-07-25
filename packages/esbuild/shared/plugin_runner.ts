@@ -43,11 +43,18 @@ import {
  * original value. `clear()` is called between builds to bound memory.
  */
 export interface ObjectStash {
+  /** Drop every previously-stored value, freeing the underlying references. */
   clear(): void
+  /** Look up a value previously stored under `id`. */
   load(id: number): unknown
+  /** Store `value` and return the lookup id; `undefined` maps to id `-1`. */
   store(value: unknown): number
 }
 
+/**
+ * Builds a fresh in-memory {@link ObjectStash} keyed by an auto-incrementing
+ * integer. Each stash is short-lived and scoped to a single build.
+ */
 export function createObjectStash(): ObjectStash {
   const map = new Map<number, unknown>()
   let nextID = 0
@@ -74,7 +81,9 @@ export function createObjectStash(): ObjectStash {
  * the plugin runner and the transport tractable.
  */
 export interface PluginStreamIn extends StreamInLike {
+  /** Whether the host transport is synchronous (i.e. `buildSync`). */
   isSync: boolean
+  /** Re-export of the full esbuild namespace passed to plugin callbacks. */
   esbuild: types.PluginBuild['esbuild']
 }
 
@@ -86,6 +95,11 @@ export interface PluginStreamIn extends StreamInLike {
 // deno-lint-ignore no-explicit-any
 export type RequestCallback = (id: number, request: any) => Promise<void> | void
 
+/**
+ * Signature the transport invokes after each build to run registered
+ * `onEnd` hooks. The callback must call `done` so the transport can
+ * surface the additional errors and warnings emitted by plugins.
+ */
 export type RunOnEndCallbacks = (
   result: types.BuildResult,
   done: (errors: types.Message[], warnings: types.Message[]) => void,
@@ -97,9 +111,13 @@ export type RunOnEndCallbacks = (
  * returns the optional `Note` showing where the callback was registered.
  */
 export interface PluginMessageContext {
+  /** Stash used to deduplicate `detail` references across the build. */
   details: ObjectStash
+  /** Name of the plugin these messages are attributed to. */
   name: string
+  /** Stream shape used by the surrounding transport. */
   streamIn: PluginStreamIn
+  /** Lazy accessor for the registration-site note. */
   note: (() => types.Note | undefined) | undefined
 }
 
@@ -170,16 +188,25 @@ export function exceptionToMessage(
   )
 }
 
+/** Successful outcome of {@link handlePlugins}. */
 export interface HandlePluginsResult {
+  /** Discriminator that lets callers narrow to this shape. */
   ok: true
+  /** Protocol shape sent to the Go service. */
   requestPlugins: protocol.BuildPlugin[]
+  /** Callback the transport runs after a build to invoke `onEnd` hooks. */
   runOnEndCallbacks: RunOnEndCallbacks
+  /** Schedule the per-plugin `onDispose` callbacks on a fresh call stack. */
   scheduleOnDisposeCallbacks: () => void
 }
 
+/** Failed outcome of {@link handlePlugins}. */
 export interface HandlePluginsFailure {
+  /** Discriminator that lets callers narrow to this shape. */
   ok: false
+  /** Validation/setup error raised while iterating the plugin array. */
   error: Error
+  /** Name of the plugin on which the error originated. */
   pluginName: string
 }
 

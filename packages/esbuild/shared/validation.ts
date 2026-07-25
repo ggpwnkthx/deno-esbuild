@@ -13,8 +13,14 @@ import type * as types from './types.ts'
 
 const quote: (x: string) => string = JSON.stringify
 
+/** Bookkeeping set used to track which keys an options object has already
+ * validated. Written into by {@link getFlag} and checked by
+ * {@link checkForInvalidFlags} to reject unknown options. */
 export type OptionKeys = { [key: string]: boolean }
 
+/** Reads, validates, and records a single key from an options object. The
+ * `mustBeFn` callback returns `null` for valid values and a human-readable
+ * description of the expected type otherwise. */
 export function getFlag<T, K extends (keyof T & string)>(
   object: T,
   keys: OptionKeys,
@@ -29,6 +35,9 @@ export function getFlag<T, K extends (keyof T & string)>(
   return value
 }
 
+/** Throws if `object` has any keys that `keys` does not record. Used after
+ * a sequence of {@link getFlag} calls to ensure no unrecognized options
+ * were passed. */
 export function checkForInvalidFlags(
   object: object,
   keys: OptionKeys,
@@ -41,55 +50,71 @@ export function checkForInvalidFlags(
   }
 }
 
+/** Validator that accepts any value, including `undefined`. */
 export const canBeAnything = (): string | null => null
 
+/** Validator that accepts only `boolean` values. */
 export const mustBeBoolean = (value: boolean | undefined): string | null =>
   typeof value === 'boolean' ? null : 'a boolean'
 
+/** Validator that accepts only `string` values. */
 export const mustBeString = (value: string | undefined): string | null =>
   typeof value === 'string' ? null : 'a string'
 
+/** Validator that accepts only `RegExp` instances. */
 export const mustBeRegExp = (value: RegExp | undefined): string | null =>
   value instanceof RegExp ? null : 'a RegExp object'
 
+/** Validator that accepts only finite integer values. */
 export const mustBeInteger = (value: number | undefined): string | null =>
   typeof value === 'number' && value === (value | 0) ? null : 'an integer'
 
+/** Validator that accepts only valid TCP port numbers (0-65535). */
 export const mustBeValidPortNumber = (value: number | undefined): string | null =>
   typeof value === 'number' && value === (value | 0) && value >= 0 &&
     value <= 0xFFFF
     ? null
     : 'a valid port number'
 
+/** Validator that accepts only function values. */
 export const mustBeFunction = (
   value: (arg0: unknown) => unknown | undefined,
 ): string | null => typeof value === 'function' ? null : 'a function'
 
+/** Validator that accepts only arrays of `T`. */
 export const mustBeArray = <T>(value: T[] | undefined): string | null =>
   Array.isArray(value) ? null : 'an array'
 
+/** Validator that accepts only arrays of `string`. */
 export const mustBeArrayOfStrings = (value: string[] | undefined): string | null =>
   Array.isArray(value) && value.every((x) => typeof x === 'string') ? null : 'an array of strings'
 
+/** Validator that accepts only plain objects (not arrays, not null). */
 export const mustBeObject = (value: object | undefined): string | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value) ? null : 'an object'
 
+/** Validator that accepts only `array` or `object` (the two shapes
+ * `BuildOptions.entryPoints` accepts). */
 export const mustBeEntryPoints = (
   value: types.BuildOptions['entryPoints'],
 ): string | null => typeof value === 'object' && value !== null ? null : 'an array or an object'
 
+/** Validator that accepts only `WebAssembly.Module` instances. */
 export const mustBeWebAssemblyModule = (
   value: WebAssembly.Module | undefined,
 ): string | null => value instanceof WebAssembly.Module ? null : 'a WebAssembly.Module'
 
+/** Validator that accepts only plain objects or `null`. */
 export const mustBeObjectOrNull = (value: object | null | undefined): string | null =>
   typeof value === 'object' && !Array.isArray(value) ? null : 'an object or null'
 
+/** Validator that accepts only `string` or `boolean` values. */
 export const mustBeStringOrBoolean = (
   value: string | boolean | undefined,
 ): string | null =>
   typeof value === 'string' || typeof value === 'boolean' ? null : 'a string or a boolean'
 
+/** Validator that accepts only `string` or plain-object values. */
 export const mustBeStringOrObject = (
   value: string | object | undefined,
 ): string | null =>
@@ -98,6 +123,7 @@ export const mustBeStringOrObject = (
     ? null
     : 'a string or an object'
 
+/** Validator that accepts only a `string` or an array of `string`. */
 export const mustBeStringOrArrayOfStrings = (
   value: string | string[] | undefined,
 ): string | null =>
@@ -106,14 +132,18 @@ export const mustBeStringOrArrayOfStrings = (
     ? null
     : 'a string or an array of strings'
 
+/** Validator that accepts only a `string` or a `Uint8Array`. */
 export const mustBeStringOrUint8Array = (
   value: string | Uint8Array | undefined,
 ): string | null =>
   typeof value === 'string' || value instanceof Uint8Array ? null : 'a string or a Uint8Array'
 
+/** Validator that accepts only a `string` or a `URL`. */
 export const mustBeStringOrURL = (value: string | URL | undefined): string | null =>
   typeof value === 'string' || value instanceof URL ? null : 'a string or a URL'
 
+/** Discriminator passed to {@link validateInitializeOptions} that picks
+ * which set of `initialize()` options is valid. */
 export type RuntimeKind = 'native' | 'wasm'
 
 /**
@@ -163,10 +193,17 @@ export function validateInitializeOptions(
   return result
 }
 
+/** Map of property name to either its mangled replacement or `false` to
+ * indicate the property should not be mangled. */
 export type MangleCache = Record<string, string | false>
 
+/** Combined input shape accepted by both the build and transform flag
+ * builders. */
 export type CommonOptions = types.BuildOptions | types.TransformOptions
 
+/** Validates `mangleCache` entries and returns a defensively-copied map if
+ * any entries are present. Values must be `string` (the mangled name) or
+ * `false` (do not mangle). */
 export function validateMangleCache(
   mangleCache: MangleCache | undefined,
 ): MangleCache | undefined {
@@ -207,6 +244,9 @@ export function validateStringValue(
   return value
 }
 
+/** Validates each entry of `values` and joins them with a single comma.
+ * Used for flag values that serialize multiple entries into one comma-
+ * separated string. */
 export function validateAndJoinStringArray(values: string[], what: string): string {
   const toJoin: string[] = []
   for (const value of values) {

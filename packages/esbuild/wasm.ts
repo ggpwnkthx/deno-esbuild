@@ -37,10 +37,13 @@ import { version } from './mod.ts'
 import { createEsbuildApi } from './shared/create_esbuild_api.ts'
 import type { EsbuildApi } from './shared/create_esbuild_api.ts'
 
+/** Subset of the `MessageEvent` shape the WASM worker uses. */
 interface WorkerMessageEvent {
   readonly data: unknown
 }
 
+/** Minimal worker interface used by the WASM transport. Concrete
+ * implementations are either a real `Worker` or an in-thread polyfill. */
 interface WorkerLike {
   postMessage(message: WorkerInputMessage): void
   terminate(): void
@@ -51,8 +54,14 @@ interface WorkerLike {
 /** The esbuild binary version string (e.g. "0.28.1"). @see ../mod.ts */
 export { version }
 
+/** Promise that resolves to the started service. Undefined until the
+ * first API call triggers service startup. */
 let initializePromise: Promise<common.Service> | undefined
+/** Stop function invoked by the public `stop()` API. Undefined until the
+ * service has been started. */
 let stopService: (() => void) | undefined
+/** Set to `true` by the `initialize()` hook so we only accept a single
+ * `initialize()` call per process. */
 let hasInitialized = false
 
 /**
@@ -62,6 +71,8 @@ let hasInitialized = false
  */
 let currentWasmOptions: types.InitializeOptions = {}
 
+/** Starts the WASM service: spins up a worker (or main-thread runner) and
+ * resolves once the WASM module is ready to serve requests. */
 const startRunningService = async (
   options: types.InitializeOptions,
 ): Promise<common.Service> => {
@@ -174,10 +185,13 @@ const startRunningService = async (
   })
 }
 
+/** Coerces an unknown thrown value into a real `Error`. */
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error))
 }
 
+/** Returns the running WASM service, starting it on first call. Resets
+ * the cached promise on failure so the next call can retry. */
 const ensureServiceIsRunning = (): Promise<common.Service> => {
   if (!initializePromise) {
     initializePromise = startRunningService(currentWasmOptions).catch((err) => {
@@ -188,6 +202,7 @@ const ensureServiceIsRunning = (): Promise<common.Service> => {
   return initializePromise
 }
 
+/** Public API surface of the WASM transport. */
 const api: EsbuildApi = createEsbuildApi({
   ensureService: ensureServiceIsRunning,
   syncStubs: common.createSyncStubs(),

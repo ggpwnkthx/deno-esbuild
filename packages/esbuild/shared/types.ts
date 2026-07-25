@@ -77,6 +77,10 @@ export type Drop = 'console' | 'debugger'
  */
 export type AbsPaths = 'code' | 'log' | 'metafile'
 
+/**
+ * Options shared between {@link BuildOptions} and {@link TransformOptions}.
+ * Kept internal because it's a structural supertype, not a public input.
+ */
 interface CommonOptions {
   /** Documentation: https://esbuild.github.io/api/#sourcemap */
   sourcemap?: boolean | 'linked' | 'inline' | 'external' | 'both'
@@ -168,20 +172,38 @@ interface CommonOptions {
  * @see https://esbuild.github.io/api/#tsconfig-raw
  */
 export interface TsconfigRaw {
+  /**
+   * Subset of the `compilerOptions` section of `tsconfig.json` recognized by
+   * esbuild's TypeScript handling.
+   */
   compilerOptions?: {
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     alwaysStrict?: boolean
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     baseUrl?: string
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     experimentalDecorators?: boolean
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     importsNotUsedAsValues?: 'remove' | 'preserve' | 'error'
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     jsx?: 'preserve' | 'react-native' | 'react' | 'react-jsx' | 'react-jsxdev'
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     jsxFactory?: string
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     jsxFragmentFactory?: string
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     jsxImportSource?: string
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     paths?: Record<string, string[]>
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     preserveValueImports?: boolean
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     strict?: boolean
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     target?: string
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     useDefineForClassFields?: boolean
+    /** Documentation: https://esbuild.github.io/api/#tsconfig-raw */
     verbatimModuleSyntax?: boolean
   }
 }
@@ -262,9 +284,13 @@ export interface BuildOptions extends CommonOptions {
  * @see https://esbuild.github.io/api/#stdin
  */
 export interface StdinOptions {
+  /** Source code to use as the implicit entry point. */
   contents: string | Uint8Array
+  /** Directory used to resolve relative paths inside `contents`. */
   resolveDir?: string
+  /** Synthetic filename reported to plugins and source maps. */
   sourcefile?: string
+  /** Loader used to interpret `contents`. */
   loader?: Loader
 }
 
@@ -274,10 +300,15 @@ export interface StdinOptions {
  * @see https://esbuild.github.io/api/#errors
  */
 export interface Message {
+  /** Stable identifier for the error category (e.g. `"TS2322"`). */
   id: string
+  /** Name of the plugin that produced the message, or empty for the service. */
   pluginName: string
+  /** Human-readable description of the diagnostic. */
   text: string
+  /** Source location the diagnostic refers to, or null if unknown. */
   location: Location | null
+  /** Additional notes attached to the message. */
   notes: Note[]
 
   /**
@@ -294,7 +325,9 @@ export interface Message {
  * @see https://esbuild.github.io/api/#errors
  */
 export interface Note {
+  /** Human-readable description of the note. */
   text: string
+  /** Source location the note refers to, or null if unknown. */
   location: Location | null
 }
 
@@ -304,15 +337,19 @@ export interface Note {
  * @see https://esbuild.github.io/api/#errors
  */
 export interface Location {
+  /** Absolute path of the file the diagnostic refers to. */
   file: string
+  /** Loader namespace (e.g. `"file"`, `"http"`) associated with the path. */
   namespace: string
-  /** 1-based */
+  /** 1-based line number. */
   line: number
-  /** 0-based, in bytes */
+  /** 0-based column offset, in bytes. */
   column: number
-  /** in bytes */
+  /** Length of the highlighted region, in bytes. */
   length: number
+  /** Text of the source line that contains the diagnostic. */
   lineText: string
+  /** Replacement text suggested by esbuild, or empty if none. */
   suggestion: string
 }
 
@@ -322,8 +359,11 @@ export interface Location {
  * @see https://esbuild.github.io/api/#write
  */
 export interface OutputFile {
+  /** Absolute path of the generated output file. */
   path: string
+  /** Raw bytes of the generated output file. */
   contents: Uint8Array
+  /** Short content hash for cache-busting query strings. */
   hash: string
   /** "contents" as text (changes automatically with "contents") */
   readonly text: string
@@ -337,7 +377,9 @@ export interface OutputFile {
 export interface BuildResult<
   ProvidedOptions extends BuildOptions = BuildOptions,
 > {
+  /** Recoverable errors collected during the build. */
   errors: Message[]
+  /** Recoverable warnings collected during the build. */
   warnings: Message[]
   /** Only when "write: false" */
   outputFiles:
@@ -359,24 +401,35 @@ export interface BuildResult<
  * @see https://esbuild.github.io/api/#return-values
  */
 export interface BuildFailure extends Error {
+  /** Errors that caused the build to fail. */
   errors: Message[]
+  /** Warnings collected before the build failed. */
   warnings: Message[]
 }
 
 /** Documentation: https://esbuild.github.io/api/#serve-arguments */
 export interface ServeOptions {
+  /** TCP port the dev server should listen on. */
   port?: number
+  /** Hostname or IP address to bind to. */
   host?: string
+  /** Directory of static files to serve alongside the bundled output. */
   servedir?: string
+  /** Path to the TLS private key file. */
   keyfile?: string
+  /** Path to the TLS certificate file. */
   certfile?: string
+  /** Fallback HTML file served when the requested path is not found. */
   fallback?: string
+  /** CORS configuration for the dev server. */
   cors?: CORSOptions
+  /** Callback fired for every incoming HTTP request. */
   onRequest?: (args: ServeOnRequestArgs) => void
 }
 
 /** Documentation: https://esbuild.github.io/api/#cors */
 export interface CORSOptions {
+  /** Allowed `Origin` header value(s); strings or a list of strings. */
   origin?: string | string[]
 }
 
@@ -386,9 +439,13 @@ export interface CORSOptions {
  * @see https://esbuild.github.io/api/#serve-arguments
  */
 export interface ServeOnRequestArgs {
+  /** Client IP address reported for the request. */
   remoteAddress: string
+  /** HTTP method (e.g. `"GET"`, `"POST"`). */
   method: string
+  /** Request path, including the leading slash. */
   path: string
+  /** HTTP status code the server responded with. */
   status: number
   /** The time to generate the response, not to send it */
   timeInMS: number
@@ -396,7 +453,9 @@ export interface ServeOnRequestArgs {
 
 /** Documentation: https://esbuild.github.io/api/#serve-return-values */
 export interface ServeResult {
+  /** TCP port the dev server is bound to. */
   port: number
+  /** Hostname(s) the dev server can be reached on. */
   hosts: string[]
 }
 
@@ -424,8 +483,11 @@ export interface TransformOptions extends CommonOptions {
 export interface TransformResult<
   ProvidedOptions extends TransformOptions = TransformOptions,
 > {
+  /** Transformed source code. */
   code: string
+  /** Source map string, or empty when not requested. */
   map: string
+  /** Warnings collected during the transform. */
   warnings: Message[]
   /** Only when "mangleCache" is present */
   mangleCache:
@@ -443,7 +505,9 @@ export interface TransformResult<
  * @see https://esbuild.github.io/api/#transform-api
  */
 export interface TransformFailure extends Error {
+  /** Errors that caused the transform to fail. */
   errors: Message[]
+  /** Warnings collected before the transform failed. */
   warnings: Message[]
 }
 
@@ -453,7 +517,9 @@ export interface TransformFailure extends Error {
  * @see https://esbuild.github.io/plugins/
  */
 export interface Plugin {
+  /** Unique name used in error messages and registry lookups. */
   name: string
+  /** Callback invoked once per build to register hooks. */
   setup: (build: PluginBuild) => void | Promise<void>
 }
 
@@ -512,7 +578,11 @@ export interface PluginBuild {
   /** Documentation: https://esbuild.github.io/plugins/#on-dispose */
   onDispose(callback: () => void): void
 
-  // This is a full copy of the esbuild library in case you need it
+  /**
+   * Full copy of the esbuild library accessible from inside a plugin. Useful
+   * for spawning nested builds without taking a dependency on the entry
+   * module.
+   */
   esbuild: {
     context: typeof context
     build: typeof build
@@ -530,26 +600,41 @@ export interface PluginBuild {
 
 /** Documentation: https://esbuild.github.io/plugins/#resolve-options */
 export interface ResolveOptions {
+  /** Name of the plugin whose `onResolve` should perform the resolve. */
   pluginName?: string
+  /** Importer path to use as the relative base for `path`. */
   importer?: string
+  /** Loader namespace to resolve inside. */
   namespace?: string
+  /** Directory used to resolve relative paths. */
   resolveDir?: string
+  /** Kind of import that triggered the resolve call. */
   kind?: ImportKind
+  /** Opaque per-call data the previous `onResolve` may have attached. */
   // deno-lint-ignore no-explicit-any
   pluginData?: any
+  /** Import attributes (e.g. `{ type: "json" }`). */
   with?: Record<string, string>
 }
 
 /** Documentation: https://esbuild.github.io/plugins/#resolve-results */
 export interface ResolveResult {
+  /** Errors from the resolve call. */
   errors: Message[]
+  /** Warnings from the resolve call. */
   warnings: Message[]
 
+  /** Resolved path. */
   path: string
+  /** Whether the resolved path should be treated as external. */
   external: boolean
+  /** Whether the module has side effects (used for tree shaking). */
   sideEffects: boolean
+  /** Loader namespace the resolved path belongs to. */
   namespace: string
+  /** Suffix appended to the resolved path (e.g. `?query`). */
   suffix: string
+  /** Opaque per-call data the next `onResolve` may consume. */
   // deno-lint-ignore no-explicit-any
   pluginData: any
 }
@@ -560,7 +645,9 @@ export interface ResolveResult {
  * @see https://esbuild.github.io/plugins/#on-start
  */
 export interface OnStartResult {
+  /** Errors to surface before the build begins. */
   errors?: PartialMessage[]
+  /** Warnings to surface before the build begins. */
   warnings?: PartialMessage[]
 }
 
@@ -570,25 +657,36 @@ export interface OnStartResult {
  * @see https://esbuild.github.io/plugins/#on-end
  */
 export interface OnEndResult {
+  /** Errors to surface after the build completes. */
   errors?: PartialMessage[]
+  /** Warnings to surface after the build completes. */
   warnings?: PartialMessage[]
 }
 
 /** Documentation: https://esbuild.github.io/plugins/#on-resolve-options */
 export interface OnResolveOptions {
+  /** Regular expression tested against the import path. */
   filter: RegExp
+  /** Loader namespace to listen on. */
   namespace?: string
 }
 
 /** Documentation: https://esbuild.github.io/plugins/#on-resolve-arguments */
 export interface OnResolveArgs {
+  /** Import path the resolve callback was triggered for. */
   path: string
+  /** Importer path that issued the import (or empty for entry points). */
   importer: string
+  /** Loader namespace the import originated from. */
   namespace: string
+  /** Directory used to resolve relative paths. */
   resolveDir: string
+  /** Kind of import that triggered the resolve call. */
   kind: ImportKind
+  /** Opaque data attached by an earlier `onResolve` callback. */
   // deno-lint-ignore no-explicit-any
   pluginData: any
+  /** Import attributes (e.g. `{ type: "json" }`). */
   with: Record<string, string>
 }
 
@@ -611,53 +709,80 @@ export type ImportKind =
 
 /** Documentation: https://esbuild.github.io/plugins/#on-resolve-results */
 export interface OnResolveResult {
+  /** Name of the plugin claiming the resolved path. */
   pluginName?: string
 
+  /** Errors to surface for this resolve attempt. */
   errors?: PartialMessage[]
+  /** Warnings to surface for this resolve attempt. */
   warnings?: PartialMessage[]
 
+  /** Resolved path produced by the plugin. */
   path?: string
+  /** Whether the resolved path should be treated as external. */
   external?: boolean
+  /** Whether the module has side effects (used for tree shaking). */
   sideEffects?: boolean
+  /** Loader namespace the resolved path belongs to. */
   namespace?: string
+  /** Suffix appended to the resolved path (e.g. `?query`). */
   suffix?: string
+  /** Opaque data attached for the next `onResolve` callback. */
   // deno-lint-ignore no-explicit-any
   pluginData?: any
 
+  /** Additional files to watch alongside the build. */
   watchFiles?: string[]
+  /** Additional directories to watch alongside the build. */
   watchDirs?: string[]
 }
 
 /** Documentation: https://esbuild.github.io/plugins/#on-load-options */
 export interface OnLoadOptions {
+  /** Regular expression tested against the path. */
   filter: RegExp
+  /** Loader namespace to listen on. */
   namespace?: string
 }
 
 /** Documentation: https://esbuild.github.io/plugins/#on-load-arguments */
 export interface OnLoadArgs {
+  /** Path the load callback was triggered for. */
   path: string
+  /** Loader namespace the path belongs to. */
   namespace: string
+  /** Suffix appended to the path (e.g. `?query`). */
   suffix: string
+  /** Opaque data attached by an earlier `onResolve` callback. */
   // deno-lint-ignore no-explicit-any
   pluginData: any
+  /** Import attributes (e.g. `{ type: "json" }`). */
   with: Record<string, string>
 }
 
 /** Documentation: https://esbuild.github.io/plugins/#on-load-results */
 export interface OnLoadResult {
+  /** Name of the plugin claiming the loaded content. */
   pluginName?: string
 
+  /** Errors to surface during the load. */
   errors?: PartialMessage[]
+  /** Warnings to surface during the load. */
   warnings?: PartialMessage[]
 
+  /** Module contents to feed back into esbuild. */
   contents?: string | Uint8Array
+  /** Directory used to resolve relative paths inside `contents`. */
   resolveDir?: string
+  /** Loader used to interpret `contents`. */
   loader?: Loader
+  /** Opaque data attached for downstream consumers. */
   // deno-lint-ignore no-explicit-any
   pluginData?: any
 
+  /** Additional files to watch alongside the build. */
   watchFiles?: string[]
+  /** Additional directories to watch alongside the build. */
   watchDirs?: string[]
 }
 
@@ -668,11 +793,17 @@ export interface OnLoadResult {
  * @see https://esbuild.github.io/plugins/#on-start
  */
 export interface PartialMessage {
+  /** Stable identifier for the error category (e.g. `"TS2322"`). */
   id?: string
+  /** Name of the plugin that produced the message, or empty for the service. */
   pluginName?: string
+  /** Human-readable description of the diagnostic. */
   text?: string
+  /** Source location the diagnostic refers to, or null if unknown. */
   location?: Partial<Location> | null
+  /** Additional notes attached to the message. */
   notes?: PartialNote[]
+  /** Optional user-specified data passed through unmodified. */
   // deno-lint-ignore no-explicit-any
   detail?: any
 }
@@ -683,41 +814,61 @@ export interface PartialMessage {
  * @see https://esbuild.github.io/plugins/#on-start
  */
 export interface PartialNote {
+  /** Human-readable description of the note. */
   text?: string
+  /** Source location the note refers to, or null if unknown. */
   location?: Partial<Location> | null
 }
 
 /** Documentation: https://esbuild.github.io/api/#metafile */
 export interface Metafile {
+  /** Inputs read by the build, keyed by path. */
   inputs: {
     [path: string]: {
+      /** Size of the input on disk, in bytes. */
       bytes: number
       imports: {
+        /** Path the input imports. */
         path: string
+        /** Kind of import that triggered the load. */
         kind: ImportKind
+        /** Whether the imported path is external. */
         external?: boolean
+        /** Original text the bundler rewrote into `path`. */
         original?: string
+        /** Import attributes (e.g. `{ type: "json" }`). */
         with?: Record<string, string>
       }[]
+      /** Module format detected for the input. */
       format?: 'cjs' | 'esm'
+      /** Import attributes for the input module. */
       with?: Record<string, string>
     }
   }
+  /** Outputs produced by the build, keyed by path. */
   outputs: {
     [path: string]: {
+      /** Size of the output on disk, in bytes. */
       bytes: number
       inputs: {
         [path: string]: {
+          /** Bytes contributed by the input to the output. */
           bytesInOutput: number
         }
       }
       imports: {
+        /** Path the output imports. */
         path: string
+        /** Kind of import that triggered the load. */
         kind: ImportKind | 'file-loader'
+        /** Whether the imported path is external. */
         external?: boolean
       }[]
+      /** Names exported by the output. */
       exports: string[]
+      /** Entry point that produced this output, if any. */
       entryPoint?: string
+      /** Path to the bundled CSS sibling, if any. */
       cssBundle?: string
     }
   }
@@ -729,8 +880,11 @@ export interface Metafile {
  * @see https://esbuild.github.io/api/#format-messages
  */
 export interface FormatMessagesOptions {
+  /** Whether the messages are errors or warnings. */
   kind: 'error' | 'warning'
+  /** Whether to emit ANSI color escapes. */
   color?: boolean
+  /** Width of the terminal used for line wrapping. */
   terminalWidth?: number
 }
 
@@ -740,7 +894,9 @@ export interface FormatMessagesOptions {
  * @see https://esbuild.github.io/api/#analyze
  */
 export interface AnalyzeMetafileOptions {
+  /** Whether to emit ANSI color escapes. */
   color?: boolean
+  /** Whether to include every input in the analysis output. */
   verbose?: boolean
 }
 
@@ -750,6 +906,7 @@ export interface AnalyzeMetafileOptions {
  * @see https://esbuild.github.io/api/#watch
  */
 export interface WatchOptions {
+  /** Throttle delay between watch rebuilds, in milliseconds. */
   delay?: number // In milliseconds
 }
 
@@ -770,13 +927,19 @@ export interface BuildContext<
   /** Documentation: https://esbuild.github.io/api/#serve */
   serve(options?: ServeOptions): Promise<ServeResult>
 
+  /** Cancel the in-flight build without tearing down the context. */
   cancel(): Promise<void>
+  /** Release all resources held by the context. */
   dispose(): Promise<void>
 }
 
-// This is a TypeScript type-level function which replaces any keys in "In"
-// that aren't in "Out" with "never". We use this to reject properties with
-// typos in object literals. See: https://stackoverflow.com/questions/49580725
+/**
+ * Type-level helper that rejects properties with typos in object literals.
+ * Excess keys (present on `In` but not on `Out`) are typed as `never`, so
+ * TypeScript catches them at the call site.
+ *
+ * @see https://stackoverflow.com/questions/49580725
+ */
 type SameShape<Out, In extends Out> =
   & In
   & { [Key in Exclude<keyof In, keyof Out>]: never }

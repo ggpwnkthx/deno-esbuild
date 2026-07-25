@@ -53,37 +53,53 @@ import {
  */
 export const ESBUILD_VERSION: string = '0.28.1'
 
-/** Input end of the stdio channel used to drive the esbuild service process/worker. */
+/** Input end of the stdio channel used to drive the esbuild service
+ * process/worker. The transport writes to the service via `writeToStdin`,
+ * and the optional `readFileSync` is used by the stack-trace helpers. */
 export interface StreamIn {
+  /** Writes a packet to the service's stdin. */
   writeToStdin: (data: Uint8Array) => void
+  /** Optional synchronous file reader used by the stack-trace helpers. */
   readFileSync?: (path: string, encoding: 'utf8') => string
+  /** Whether the host transport is synchronous (i.e. uses `buildSync`). */
   isSync: boolean
+  /** Whether the transport can write to the real filesystem. */
   hasFS: boolean
+  /** Re-export of the full esbuild namespace. */
   esbuild: types.PluginBuild['esbuild']
 }
 
 /** Output end of the stdio channel from the esbuild service process/worker. */
 export interface StreamOut {
+  /** Feeds a chunk of stdout bytes into the channel parser. */
   readFromStdout: (data: Uint8Array) => void
+  /** Notifies the host that the service has disconnected. */
   afterClose: (error: Error | null) => void
+  /** Request dispatcher the host invokes to make RPC calls. */
   service: StreamService
 }
 
-/** File system shim passed to the transform() service call. */
+/** File system shim passed to the `transform()` service call so that
+ * generated output files can be read back into the host. */
 export interface StreamFS {
+  /** Writes `contents` to a temp file and reports the path via `callback`. */
   writeFile(
     contents: string | Uint8Array,
     callback: (path: string | null) => void,
   ): void
+  /** Reads the file at `path` and yields its contents as a UTF-8 string. */
   readFile(
     path: string,
     callback: (err: Error | null, contents: string | null) => void,
   ): void
 }
 
-/** Reference-counting helpers for stream lifetime management. */
+/** Reference-counting helpers used to extend a stream's lifetime while
+ * external code is waiting on its callbacks. */
 export interface Refs {
+  /** Increment the reference count. */
   ref(): void
+  /** Decrement the reference count. */
   unref(): void
 }
 
@@ -93,6 +109,7 @@ export interface Refs {
  * Implemented by {@link createChannel}.
  */
 export interface StreamService {
+  /** Sends a `build` (or `context`) request to the service. */
   buildOrContext(args: {
     callName: string
     refs: Refs | null
@@ -105,6 +122,7 @@ export interface StreamService {
     ) => void
   }): void
 
+  /** Sends a `transform` request to the service. */
   transform(args: {
     callName: string
     refs: Refs | null
@@ -115,6 +133,7 @@ export interface StreamService {
     callback: (err: Error | null, res: types.TransformResult | null) => void
   }): void
 
+  /** Sends a `formatMessages` request to the service. */
   formatMessages(args: {
     callName: string
     refs: Refs | null
@@ -123,6 +142,7 @@ export interface StreamService {
     callback: (err: Error | null, res: string[] | null) => void
   }): void
 
+  /** Sends an `analyzeMetafile` request to the service. */
   analyzeMetafile(args: {
     callName: string
     refs: Refs | null
@@ -139,17 +159,25 @@ export interface StreamService {
  * RPC layer.
  */
 export interface Service {
+  /** Implementation of {@link types.build} for this transport. */
   build: typeof types.build
+  /** Implementation of {@link types.context} for this transport. */
   context: typeof types.context
+  /** Implementation of {@link types.transform} for this transport. */
   transform: typeof types.transform
+  /** Implementation of {@link types.formatMessages} for this transport. */
   formatMessages: typeof types.formatMessages
+  /** Implementation of {@link types.analyzeMetafile} for this transport. */
   analyzeMetafile: typeof types.analyzeMetafile
 }
 
 /** Per-transport knobs for {@link createService}. */
 export interface ServiceEnv {
+  /** Whether the host's stdout is a TTY. */
   isTTY: boolean
+  /** Default working directory for builds that don't pin one. */
   defaultWD: string
+  /** File system shim used to shuttle transform output back. */
   transformFs?: StreamFS
 }
 
@@ -233,9 +261,13 @@ export function createService(service: StreamService, env: ServiceEnv): Service 
  * re-export these from {@link createSyncStubs}.
  */
 export interface SyncStubs {
+  /** Synchronous `build` stub that throws on call. */
   buildSync: typeof types.buildSync
+  /** Synchronous `transform` stub that throws on call. */
   transformSync: typeof types.transformSync
+  /** Synchronous `formatMessages` stub that throws on call. */
   formatMessagesSync: typeof types.formatMessagesSync
+  /** Synchronous `analyzeMetafile` stub that throws on call. */
   analyzeMetafileSync: typeof types.analyzeMetafileSync
 }
 
@@ -257,8 +289,11 @@ export function createSyncStubs(): SyncStubs {
   }
 }
 
+/** Bookkeeping for the channel shutdown sequence. */
 type CloseData = { didClose: boolean; reason: string }
 
+/** Maximum size of a single wire packet, in bytes. Larger packets are rejected
+ * so a misbehaving peer cannot cause the host to allocate unbounded memory. */
 const MAX_PACKET_BYTES = 64 * 1024 * 1024
 
 export { type RuntimeKind, validateInitializeOptions }
@@ -448,6 +483,8 @@ export function createChannel(streamIn: StreamIn): StreamOut {
     }
   }
 
+  /** Stream-channel implementation of `build` and `context`; both delegate
+   * to {@link buildOrContextImpl} with the matching `callName`. */
   const buildOrContext: StreamService['buildOrContext'] = (
     { callName, refs, options, isTTY, defaultWD, callback },
   ) => {
@@ -497,6 +534,9 @@ export function createChannel(streamIn: StreamIn): StreamOut {
     )
   }
 
+  /** Stream-channel implementation of `transform`. Uses a temporary file
+   * for inputs larger than 1 MiB to avoid the os pipe write chunk size
+   * limit on macOS. */
   const transform: StreamService['transform'] = (
     { callName, refs, input, options, isTTY, fs, callback },
   ) => {
@@ -634,6 +674,8 @@ export function createChannel(streamIn: StreamIn): StreamOut {
     start(null)
   }
 
+  /** Stream-channel implementation of `formatMessages`. Validates the
+   * options locally and forwards them to the Go service. */
   const formatMessages: StreamService['formatMessages'] = (
     { callName, refs, messages, options, callback },
   ) => {
@@ -675,6 +717,7 @@ export function createChannel(streamIn: StreamIn): StreamOut {
     )
   }
 
+  /** Stream-channel implementation of `analyzeMetafile`. */
   const analyzeMetafile: StreamService['analyzeMetafile'] = (
     { callName, refs, metafile, options, callback },
   ) => {
@@ -714,6 +757,12 @@ export function createChannel(streamIn: StreamIn): StreamOut {
   }
 }
 
+/**
+ * Higher-level implementation of the `build` and `context` calls. Bundles
+ * plugin setup, validates the options, and sends the final `build` packet
+ * to the service. Implemented in continuation-passing style so the same
+ * code path can run synchronously (`buildSync`) and asynchronously.
+ */
 export function buildOrContextImpl(
   callName: string,
   buildKey: number,
@@ -1170,6 +1219,10 @@ export function buildOrContextImpl(
   }
 }
 
+/**
+ * Converts a wire-format `BuildOutputFile` into the public `OutputFile`
+ * shape. The `text` property is generated lazily on first access.
+ */
 export function convertOutputFiles(
   { path, contents, hash }: protocol.BuildOutputFile,
 ): types.OutputFile {
@@ -1201,6 +1254,11 @@ export function convertOutputFiles(
   }
 }
 
+/**
+ * Parses JSON from a `Uint8Array` without first allocating a string. Falls
+ * back to the byte-level parser in {@link ./uint8array_json_parser.ts} when
+ * V8's string-length cap blocks a direct `decodeUTF8 + JSON.parse`.
+ */
 export function parseJSON(bytes: Uint8Array): unknown {
   let text: string
   try {

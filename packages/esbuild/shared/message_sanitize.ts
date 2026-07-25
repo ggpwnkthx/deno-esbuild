@@ -34,10 +34,18 @@ import {
  * this shape to avoid a circular import.
  */
 export interface ObjectStashLike {
+  /** Store `value` and return the lookup id used by `load`. */
   store(value: unknown): number
+  /** Look up a value previously stored under `id`. */
   load(id: number): unknown
 }
 
+/**
+ * Normalizes a `PartialMessage['location']` into a fully populated
+ * {@link types.Message} location. Fills missing fields with defaults and
+ * trims the trailing `lineText` for the performance-sensitive case of
+ * huge minified files (see esbuild#3467).
+ */
 export function sanitizeLocation(
   location: types.PartialMessage['location'],
   where: string,
@@ -94,6 +102,11 @@ export function sanitizeLocation(
   }
 }
 
+/**
+ * Sanitizes a list of `PartialMessage` objects into `Message` objects, filling
+ * defaults, validating the shape, and deduplicating `detail` references via
+ * the supplied object stash when one is provided.
+ */
 export function sanitizeMessages(
   messages: types.PartialMessage[],
   property: string,
@@ -148,6 +161,11 @@ export function sanitizeMessages(
   return messagesClone
 }
 
+/**
+ * Validates that every entry of `values` is a string and returns a typed
+ * array. Used by the plugin pipeline for hand-written arrays of plugin
+ * metadata (e.g. `watchFiles`, `watchDirs`).
+ */
 export function sanitizeStringArray(values: unknown[], property: string): string[] {
   const result: string[] = []
   for (const value of values) {
@@ -159,6 +177,11 @@ export function sanitizeStringArray(values: unknown[], property: string): string
   return result
 }
 
+/**
+ * Validates that every entry of `map` has a string value and returns a
+ * typed `Record<string, string>`. Returns a null-prototype object so the
+ * shape is predictable downstream.
+ */
 export function sanitizeStringMap(
   map: Record<string, unknown>,
   property: string,
@@ -176,6 +199,11 @@ export function sanitizeStringMap(
   return result
 }
 
+/**
+ * Replaces the `detail` field on each message with the live object looked up
+ * from the stash. Idempotent in the sense that the input messages are
+ * mutated and returned.
+ */
 export function replaceDetailsInMessages(
   messages: types.Message[],
   stash: ObjectStashLike,

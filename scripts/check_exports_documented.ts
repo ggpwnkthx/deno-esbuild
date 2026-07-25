@@ -35,14 +35,14 @@ const SCOPED_DIRS: ReadonlySet<string> = new Set([
 
 const packages: Package[] = []
 for (const member of members) {
-  if (!SCOPED_DIRS.has(member)) continue
+  // `deno.json#workspace` prefixes member paths with `./`.
+  const normalized = member.replace(/^\.\//, '')
+  if (!SCOPED_DIRS.has(normalized)) continue
   const denoJsonPath = new URL(`../${member}/deno.json`, import.meta.url)
   const pkg = JSON.parse(await Deno.readTextFile(denoJsonPath)) as Json
   const exports = normalizeExports(pkg.exports)
   if (exports) packages.push({ dir: member, exports })
 }
-
-console.error(`[doc:check] packages: ${JSON.stringify(packages.map((p) => p.dir))}`)
 
 interface Location {
   filename: string
@@ -148,14 +148,15 @@ const failures: { file: string; symbol: string; kind: string; line: number }[] =
 /**
  * Files excluded from the JSDoc guard because they are vendored from
  * upstream sources whose style and licensing we do not control.
+ * Matched as filename suffixes so the entries don't have to encode the
+ * absolute path of the workspace.
  */
-const VENDORED_FILES: ReadonlySet<string> = new Set([
-  '/workspace/deno-esbuild/packages/esbuild/shared/go_wasm.ts',
-  '/workspace/deno-esbuild/packages/esbuild/shared/uint8array_json_parser.ts',
-])
+const VENDORED_FILES: ReadonlyArray<string> = [
+  '/packages/esbuild/shared/go_wasm.ts',
+  '/packages/esbuild/shared/uint8array_json_parser.ts',
+]
 
 for (const pkg of packages) {
-  console.error(`[doc:check] processing package ${pkg.dir}`)
   for (const [subpath, relTarget] of Object.entries(pkg.exports)) {
     const cmd = new Deno.Command(Deno.execPath(), {
       args: ['doc', '--json', relTarget],
@@ -173,7 +174,7 @@ for (const pkg of packages) {
     const doc = JSON.parse(new TextDecoder().decode(stdout)) as Doc
 
     for (const [fileUrl, fileDoc] of Object.entries(doc.nodes)) {
-      if (VENDORED_FILES.has(fileUrl)) continue
+      if (VENDORED_FILES.some((suffix) => fileUrl.endsWith(suffix))) continue
       if (!fileDoc.symbols) continue
       for (const sym of fileDoc.symbols) {
         walkSymbol(sym, sym.name, fileUrl)

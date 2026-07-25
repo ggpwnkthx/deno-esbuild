@@ -64,8 +64,13 @@ import type { EsbuildApi } from './shared/create_esbuild_api.ts'
  * @see https://github.com/evanw/esbuild/releases */
 export const version = common.ESBUILD_VERSION
 
+/** Default working directory used when a build does not specify
+ * `absWorkingDir`. Captured at module load time. */
 const defaultWD = Deno.cwd()
 
+/** File system shim used by the native transport to shuttle transform
+ * output back from the service child. The native binary writes its
+ * compile result to a temp file that the host reads back. */
 const nativeTransformFs: common.StreamFS = {
   readFile(tempFile, callback) {
     Deno.readFile(tempFile).then(
@@ -96,10 +101,17 @@ const nativeTransformFs: common.StreamFS = {
   },
 }
 
+/** Promise that resolves to the started service. Undefined until the
+ * first API call triggers service startup. */
 let longLivedService: Promise<common.Service> | undefined
+/** Stop function invoked by the public `stop()` API. Undefined until the
+ * service has been started. */
 let stopService: (() => Promise<void>) | undefined
+/** Set to `true` by the `initialize()` hook so we only accept a single
+ * `initialize()` call per process. */
 let initializeWasCalled = false
 
+/** Returns the running esbuild service, starting it on first call. */
 const ensureServiceIsRunning = (): Promise<common.Service> => {
   if (!longLivedService) {
     longLivedService = (async (): Promise<common.Service> => {
@@ -161,6 +173,7 @@ const ensureServiceIsRunning = (): Promise<common.Service> => {
   return longLivedService
 }
 
+/** Public API surface of the native transport. */
 const api: EsbuildApi = createEsbuildApi({
   ensureService: ensureServiceIsRunning,
   syncStubs: common.createSyncStubs(),

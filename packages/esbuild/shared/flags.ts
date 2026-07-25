@@ -33,9 +33,13 @@ import {
 } from './validation.ts'
 import * as protocol from './stdio_protocol.ts'
 
+/** Default log level for `build` calls when the caller does not specify one. */
 const buildLogLevelDefault = 'warning'
+/** Default log level for `transform` calls when the caller does not specify one. */
 const transformLogLevelDefault = 'silent'
 
+/** Appends the log-related CLI flags (`--color`, `--log-level`, `--log-limit`)
+ * to `flags`. Called by both flag builders so the log shape is consistent. */
 export function pushLogFlags(
   flags: string[],
   options: CommonOptions,
@@ -53,6 +57,9 @@ export function pushLogFlags(
   flags.push(`--log-limit=${logLimit || 0}`)
 }
 
+/** Appends the CLI flags shared between `build` and `transform` (target,
+ * format, minify, JSX, define, etc.) to `flags`. Internal counterpart of
+ * {@link pushLogFlags}. */
 function pushCommonFlags(
   flags: string[],
   options: CommonOptions,
@@ -231,17 +238,28 @@ function pushCommonFlags(
   if (keepNames) flags.push('--keep-names')
 }
 
+/** Output of {@link flagsForBuildOptions}: the assembled CLI flags plus
+ * the side-channel data that the transport needs to package the request. */
 export interface BuildFlagsResult {
+  /** Resolved entry-point pairs (`output`, `input`). */
   entries: [string, string][]
+  /** CLI flags string to send to the service. */
   flags: string[]
+  /** Whether the service should write output files to disk. */
   write: boolean
+  /** Synthetic stdin contents used when the service has no real stdin. */
   stdinContents: Uint8Array | null
+  /** Resolve directory for the synthetic stdin. */
   stdinResolveDir: string | null
+  /** Override for the build's working directory. */
   absWorkingDir: string | undefined
+  /** Value to copy to `NODE_PATH` for the service child. */
   nodePaths: string[]
+  /** Validated mangle cache to forward to the service. */
   mangleCache: MangleCache | undefined
 }
 
+/** Builds the CLI flags and reserialized metadata for a `build` call. */
 export function flagsForBuildOptions(
   callName: string,
   options: types.BuildOptions,
@@ -491,11 +509,16 @@ export function flagsForBuildOptions(
   }
 }
 
+/** Output of {@link flagsForTransformOptions}: the assembled CLI flags plus
+ * the validated mangle cache. */
 export interface TransformFlagsResult {
+  /** CLI flags string to send to the service. */
   flags: string[]
+  /** Validated mangle cache to forward to the service. */
   mangleCache: MangleCache | undefined
 }
 
+/** Builds the CLI flags and reserialized metadata for a `transform` call. */
 export function flagsForTransformOptions(
   callName: string,
   options: types.TransformOptions,
@@ -529,5 +552,7 @@ export function flagsForTransformOptions(
   }
 }
 
+/** Default log level used by `build` calls when none is supplied. */
 export const buildLogLevelDefaultValue: types.LogLevel = buildLogLevelDefault
+/** Default log level used by `transform` calls when none is supplied. */
 export const transformLogLevelDefaultValue: types.LogLevel = transformLogLevelDefault

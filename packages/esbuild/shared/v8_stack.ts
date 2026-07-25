@@ -16,7 +16,10 @@ import * as protocol from './stdio_protocol.ts'
  * The input end of the stdio channel. Only the optional `readFileSync`
  * property is used here; the rest is for the transport layer.
  */
+/** Subset of the {@link ../transport.ts:StreamIn} shape consumed by the
+ * stack-trace helpers. Only the optional `readFileSync` is used here. */
 export interface StreamInLike {
+  /** Synchronous UTF-8 file reader used to load source for stack frames. */
   readFileSync?: (path: string, encoding: 'utf8') => string
 }
 
@@ -27,6 +30,7 @@ export interface StreamInLike {
  * either direction without a circular import.
  */
 export interface ObjectStashLike {
+  /** Stores `value` and returns the lookup id used by `load`. */
   store(value: unknown): number
 }
 
@@ -104,11 +108,17 @@ export function extractErrorMessageV8(
   }
 }
 
+/**
+ * Parses V8-style stack trace lines into a {@link types.Location}. Returns
+ * `null` when the input doesn't look like a V8 stack trace or when no
+ * recognizable file frame can be located.
+ */
 export function parseStackLinesV8(
   streamIn: StreamInLike,
   lines: string[],
   ident: string,
 ): types.Location | null {
+  /** Stack-frame prefix emitted by V8 (`'    at '`). */
   const at = '    at '
 
   // Check to see if this looks like a V8 stack trace

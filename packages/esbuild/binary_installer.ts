@@ -17,9 +17,11 @@
  */
 import { ESBUILD_VERSION } from './shared/mod.ts'
 
+/** Base URL of the GitHub release that hosts the esbuild binaries. */
 const RELEASE_BASE_URL =
   `https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${ESBUILD_VERSION}`
 
+/** Whether {@link fetchChecked} should return the body as bytes or text. */
 type FetchKind = 'bytes' | 'text'
 
 /**
@@ -43,6 +45,7 @@ async function fetchChecked<K extends FetchKind>(
     : await response.text()) as K extends 'bytes' ? Uint8Array : string
 }
 
+/** Computes the lowercase hex SHA-256 digest of `bytes`. */
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const copy = new Uint8Array(bytes)
   const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
@@ -180,6 +183,9 @@ async function installFromRelease(assetName: string): Promise<string> {
   return finalPath
 }
 
+/** Static map of `Deno.build.target` strings to the esbuild release asset
+ * name for that platform. May be augmented at runtime via
+ * {@link registerPlatform}. */
 const platformAssetRegistry = new Map<string, string>([
   // Deno-supported platforms
   ['aarch64-apple-darwin', 'esbuild-darwin-arm64'],
