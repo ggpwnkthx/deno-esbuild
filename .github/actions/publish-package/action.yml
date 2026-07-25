@@ -16,4 +16,4 @@ runs:
       if: ${{ github.event.inputs.package == '' || github.event.inputs.package == inputs.package }}
       working-directory: ${{ inputs.package }}
       shell: bash
-      run: deno publish
+      run: npx --yes jsr publish

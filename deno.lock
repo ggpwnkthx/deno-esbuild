@@ -108,6 +108,11 @@
       "jsr:@std/semver@^1.0.8"
     ],
     "members": {
+      "packages/esbuild": {
+        "dependencies": [
+          "jsr:@std/assert@^1.0.19"
+        ]
+      },
       "packages/plugins/css": {
         "dependencies": [
           "jsr:@ggpwnkthx/esbuild@~0.2.12",

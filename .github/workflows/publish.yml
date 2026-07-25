@@ -11,6 +11,10 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
   DENO_VERSION: "2.9.4"
 

@@ -7,7 +7,27 @@ individual packages live in each package's own `CHANGELOG.md`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## latest - 2026-07-24
+## latest - 2026-07-25
+
+### fix(ci): restore JSR OIDC provenance by publishing through the npm CLI
+
+- `.github/actions/publish-package/action.yml`: switched the publish step from `deno publish` to
+  `npx --yes jsr publish`. The Deno CLI invocation introduced in `0b1e8ee` has not been producing
+  Sigstore Rekor entries since 2026-07-24 (versions 0.2.9 through 0.2.12 of `@ggpwnkthx/esbuild`
+  report `"rekorLogId": null` and `usesNpm: false` in the JSR version API, and the JSR score page
+  reads "Has provenance 0/1"). The JSR npm CLI is the canonical OIDC publishing path —
+  `@ggpwnkthx/deno-csr` continues to publish via `npx jsr publish` and gets a Rekor entry on every
+  release — so switching all six workspace members back to the npm CLI should restore provenance for
+  the upcoming `0.2.13` cycle. Verify via
+  `https://jsr.io/api/scopes/ggpwnkthx/packages/esbuild/versions/0.2.13` and confirm `rekorLogId` is
+  non-null and `usesNpm` is `true`.
+- `.github/workflows/publish.yml`: added a workflow-level `permissions:` block declaring
+  `contents: read` and `id-token: write`. All three existing publish jobs already declare the same
+  two permissions at the job level, so this is a forward-looking default rather than a behavioral
+  change — a future job that forgets to set `permissions:` will still get the OIDC token it needs.
+  Cannot narrow the current token scope.
+
+## 429bad - 2026-07-24
 
 ### feat(workspace): local sibling imports via scope overrides + version sync script
 
