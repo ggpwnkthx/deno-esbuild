@@ -13,13 +13,9 @@ jobs:
   audit:
     name: audit
     runs-on: ubuntu-latest
-    env:
-      DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}
     steps:
       - uses: actions/checkout@v6
       - uses: denoland/setup-deno@v2
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
       - name: Cache Deno dependencies
         uses: actions/cache@v5
         with:
@@ -33,13 +29,10 @@ jobs:
     name: ci (${{ matrix.package }})
     runs-on: ubuntu-latest
     needs: audit
-    env:
-      DENO_VERSION: ${{ inputs.deno-version || '2.9.4' }}
     strategy:
       fail-fast: false
       matrix:
         package:
-          - .
           - packages/esbuild
           - packages/plugins/deno
           - packages/plugins/css
@@ -49,8 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: denoland/setup-deno@v2
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
       - name: Cache Deno dependencies
         uses: actions/cache@v5
         with:
