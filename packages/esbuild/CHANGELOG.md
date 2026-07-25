@@ -5,6 +5,47 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] - 2026-07-25
+
+### Added
+
+- Comprehensive protocol-level test suite (97 new tests, all passing) covering:
+  - `tests/validation.test.ts`: every `mustBe*` validator, `getFlag`, `checkForInvalidFlags`,
+    `validateInitializeOptions` for both `native` and `wasm` runtimes, `validateMangleCache`,
+    `validateStringValue`, and `validateAndJoinStringArray`.
+  - `tests/stdio_protocol.test.ts`: `encodePacket`/`decodePacket` round-trips for every `Value`
+    variant, the id-word encoding, the 4-byte length prefix, malformed/truncated packet handling,
+    UTF-8 in both directions, and a 1 MiB payload round-trip.
+  - `tests/message_sanitize.test.ts`: location trimming (the esbuild#3467 "huge minified file"
+    path), `detail` stash round-tripping, `failureErrorWithLog` summary formatting (singular/plural,
+    5-entry ellipsis truncation, lazy getters).
+  - `tests/build.test.ts`: end-to-end builds through the native transport covering stdin TS input,
+    `write: false`, metafile, minify, the `cjs` / `iife` / `esm` formats, `bundle: false`,
+    build-promise rejection on unresolved entry points and unknown option keys, and the
+    `build → build → stop` reuse path.
+  - `tests/transform.test.ts`: TS stripping, minify, `esm`/`cjs` formats, `Uint8Array` input, JSX
+    loader, target rewriting, invalid input shape, and sourcemap JSON validity.
+  - `tests/plugin.test.ts`: virtual-module injection (`onResolve` + `onLoad` + custom namespace),
+    path rerouting, `pluginData` round-tripping from `onResolve` to `onLoad`, `initialOptions`
+    exposure, plugin-returned `errors` and throwing callbacks, plugin name validation,
+    `build.resolve()` from inside a plugin, and `onDispose` after a `context.dispose()`.
+
+### Fixed
+
+- `shared/plugin_runner.ts`: `onResolve` and `onLoad` handlers now accept `errors` and `warnings`
+  keys on their return values. The strict `checkForInvalidFlags` whitelist at the start of each
+  handler was excluding those keys, so every documented esbuild plugin that returned `errors: [...]`
+  or `warnings: [...]` from a callback was rejected with "Invalid option from onResolve() callback"
+  instead of surfacing the messages. The 0.2.11 fix had only removed the redundant call from
+  `collectPluginMessages`; the inline whitelists in the two handlers were missed and have now been
+  corrected. Plugin authors should now find the
+  [`errors`/`warnings` return shape](https://esbuild.github.io/plugins/) works as documented.
+
+### Changed
+
+- `deno.json`: added an `imports` map entry for `@std/assert` so the new test suite can use the
+  project's convention without `deno add`. No runtime impact.
+
 ## [0.2.12] - 2026-07-25
 
 ### Added

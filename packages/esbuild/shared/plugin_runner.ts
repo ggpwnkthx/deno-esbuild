@@ -586,6 +586,11 @@ export async function handlePlugins(
             'watchDirs',
             mustBeArrayOfStrings,
           )
+          // `errors` and `warnings` are handled by `collectPluginMessages`
+          // below; whitelist them here so they don't trip the strict
+          // unknown-option check (documented esbuild API).
+          keys.errors = true
+          keys.warnings = true
           checkForInvalidFlags(
             result,
             keys,
@@ -672,6 +677,11 @@ export async function handlePlugins(
             'watchDirs',
             mustBeArrayOfStrings,
           )
+          // `errors` and `warnings` are handled by `collectPluginMessages`
+          // below; whitelist them here so they don't trip the strict
+          // unknown-option check (documented esbuild API).
+          keys.errors = true
+          keys.warnings = true
           checkForInvalidFlags(
             result,
             keys,

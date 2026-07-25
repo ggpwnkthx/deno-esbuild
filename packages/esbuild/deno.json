@@ -1,6 +1,9 @@
 {
   "name": "@ggpwnkthx/esbuild",
-  "version": "0.2.12",
+  "version": "0.2.13",
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.19"
+  },
   "exports": {
     ".": "./mod.ts",
     "./wasm": "./wasm.ts",
