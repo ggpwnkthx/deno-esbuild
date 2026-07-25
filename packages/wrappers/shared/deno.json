@@ -3,7 +3,7 @@
   "version": "0.2.10",
   "exports": "./mod.ts",
   "imports": {
-    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.11",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.12",
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },
   "publish": {

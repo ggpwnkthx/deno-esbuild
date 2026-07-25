@@ -110,7 +110,7 @@
     "members": {
       "packages/plugins/css": {
         "dependencies": [
-          "jsr:@ggpwnkthx/esbuild@~0.2.11",
+          "jsr:@ggpwnkthx/esbuild@~0.2.12",
           "jsr:@std/assert@^1.0.19",
           "jsr:@std/path@^1.1.6"
         ]
@@ -119,7 +119,7 @@
         "dependencies": [
           "jsr:@deno/graph@~0.110.2",
           "jsr:@deno/loader@0.5",
-          "jsr:@ggpwnkthx/esbuild@~0.2.11",
+          "jsr:@ggpwnkthx/esbuild@~0.2.12",
           "jsr:@std/assert@^1.0.19",
           "jsr:@std/path@^1.1.6"
         ]
@@ -127,7 +127,7 @@
       "packages/wrappers/hono": {
         "dependencies": [
           "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.10",
-          "jsr:@ggpwnkthx/esbuild@~0.2.11",
+          "jsr:@ggpwnkthx/esbuild@~0.2.12",
           "jsr:@hono/hono@^4.12.32",
           "jsr:@std/assert@^1.0.19"
         ]
@@ -135,14 +135,14 @@
       "packages/wrappers/oak": {
         "dependencies": [
           "jsr:@ggpwnkthx/esbuild-wrapper-shared@~0.2.10",
-          "jsr:@ggpwnkthx/esbuild@~0.2.11",
+          "jsr:@ggpwnkthx/esbuild@~0.2.12",
           "jsr:@oak/oak@^17.2.0",
           "jsr:@std/assert@^1.0.19"
         ]
       },
       "packages/wrappers/shared": {
         "dependencies": [
-          "jsr:@ggpwnkthx/esbuild@~0.2.11",
+          "jsr:@ggpwnkthx/esbuild@~0.2.12",
           "jsr:@std/assert@^1.0.19"
         ]
       }

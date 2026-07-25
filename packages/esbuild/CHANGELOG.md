@@ -5,6 +5,54 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] - 2026-07-25
+
+### Added
+
+- JSDoc documentation on previously undocumented fields and helpers across the esbuild package:
+  - `mod.ts`: doc comments on `defaultWD`, `nativeTransformFs`, `longLivedService`, `stopService`,
+    `initializeWasCalled`, `ensureServiceIsRunning`, and `api`.
+  - `wasm.ts`: doc comments on the internal `WorkerMessageEvent` / `WorkerLike` interfaces, the
+    `initializePromise` / `stopService` / `hasInitialized` / `currentWasmOptions` state,
+    `startRunningService`, `toError`, `ensureServiceIsRunning`, and `api`.
+  - `shared/types.ts`: per-field JSDoc on `TsconfigRaw.compilerOptions`, `StdinOptions`, `Message`,
+    `Note`, `Location`, `OutputFile`, `BuildResult`, `BuildFailure`, `ServeOptions`, `CORSOptions`,
+    `ServeOnRequestArgs`, `ServeResult`, plus module-level docs on the internal `CommonOptions`
+    supertype.
+  - `shared/stdio_protocol.ts`: per-field JSDoc on every wire-protocol request/response interface
+    (`BuildRequest`, `ServeRequest`, `ServeResponse`, `BuildPlugin`, `BuildResponse`,
+    `OnEndRequest`, `OnEndResponse`, `BuildOutputFile`, `PingRequest`, `RebuildRequest`,
+    `RebuildResponse`, `DisposeRequest`, `CancelRequest`, `WatchRequest`, `OnServeRequest`,
+    `TransformRequest`, `TransformResponse`, etc.).
+  - `shared/transport.ts`: per-field JSDoc on `StreamIn`, `StreamOut`, `StreamFS`, `Refs`,
+    `StreamService`, `Service`, `ServiceEnv`, `SyncStubs`, plus module-level docs on `CloseData` and
+    `MAX_PACKET_BYTES`.
+  - `shared/plugin_runner.ts`: per-field JSDoc on `ObjectStash`, `PluginStreamIn`,
+    `PluginMessageContext`, `HandlePluginsResult`, `HandlePluginsFailure`, and module-level docs on
+    `createObjectStash`, `RequestCallback`, `RunOnEndCallbacks`.
+  - `shared/message_sanitize.ts`: module-level docs on `ObjectStashLike`, `sanitizeLocation`,
+    `sanitizeMessages`, `sanitizeStringArray`, `sanitizeStringMap`, and `replaceDetailsInMessages`.
+  - `shared/flags.ts`: docs on `pushLogFlags`, `pushCommonFlags`, `buildLogLevelDefault`,
+    `transformLogLevelDefault`, `BuildFlagsResult`, `flagsForBuildOptions`, `TransformFlagsResult`,
+    `flagsForTransformOptions`, `buildLogLevelDefaultValue`, and `transformLogLevelDefaultValue`.
+  - `shared/v8_stack.ts`: docs on `StreamInLike`, `ObjectStashLike`, and `parseStackLinesV8` (plus
+    the inner `at` frame prefix).
+  - `shared/validation.ts`: per-field docs on `OptionKeys`; module-level docs on `getFlag`,
+    `checkForInvalidFlags`, every `mustBe*` validator, `RuntimeKind`, `validateInitializeOptions`,
+    `MangleCache`, `CommonOptions`, `validateMangleCache`, `validateStringValue`, and
+    `validateAndJoinStringArray`.
+  - `shared/worker.ts`: docs on `WorkerOutputMessage`, `ErrnoCallback`, `GoWasmFS`,
+    `GoWasmRuntimeHandle`, `GoWasmRuntimeConstructor`, `EsbuildWorkerGlobal`, and module-level docs
+    on the worker bridge.
+  - `binary_installer.ts`: docs on `RELEASE_BASE_URL`, `FetchKind`, `sha256Hex`, and
+    `platformAssetRegistry`.
+
+### Fixed
+
+- `mod.ts` and `wasm.ts`: the exported `api` object is now annotated as `EsbuildApi` so consumers
+  see the full typed public surface (`build`, `context`, `transform`, `formatMessages`,
+  `analyzeMetafile`, `initialize`, `stop`) without having to import the type manually.
+
 ## [0.2.11] - 2026-07-24
 
 ### Added
