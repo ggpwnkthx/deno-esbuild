@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Component library demo</title>
+    <style>
+    /* TODO: move these demo styles into src/styles.css and link it here so the
+     * CSS track the same class names used by Button.tsx and Card.tsx without
+     * duplicating the BEM vocabulary in this HTML file.
+     */
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+    }
+    .gg-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+    .gg-btn--secondary {
+      background: white;
+      color: #1a73e8;
+    }
+    .gg-card {
+      max-width: 360px;
+      padding: 1rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    }
+    .gg-card__title {
+      margin: 0 0 0.5rem;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>

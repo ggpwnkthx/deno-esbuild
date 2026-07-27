@@ -5,9 +5,10 @@
     "./packages/plugins/css",
     "./packages/wrappers/shared",
     "./packages/wrappers/hono",
-    "./packages/wrappers/oak"
+    "./packages/wrappers/oak",
+    "./examples/component-library"
   ],
-  "nodeModulesDir": "none",
+  "nodeModulesDir": "auto",
   "minimumDependencyAge": 0,
   "compilerOptions": {
     "strict": true,
@@ -39,6 +40,11 @@
     "./packages/wrappers/oak/": {
       "esbuild": "../esbuild/mod.ts",
       "@ggpwnkthx/esbuild-wrapper-shared": "../wrappers/shared/mod.ts"
+    },
+    "./examples/": {
+      "esbuild": "./packages/esbuild/mod.ts",
+      "@ggpwnkthx/esbuild-plugin-deno": "./packages/plugins/deno/mod.ts",
+      "@ggpwnkthx/esbuild-wrapper-shared": "./packages/wrappers/shared/mod.ts"
     }
   },
   "fmt": {
@@ -63,5 +69,6 @@
     "bin:list": "deno run --allow-read scripts/main.ts --list",
     "versions:sync": "deno run --allow-read --allow-write scripts/sync_versions.ts",
     "versions:check": "deno run --allow-read --allow-write scripts/sync_versions.ts --check"
-  }
+  },
+  "lock": false
 }

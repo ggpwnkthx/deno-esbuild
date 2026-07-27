@@ -7,7 +7,127 @@ individual packages live in each package's own `CHANGELOG.md`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## latest - 2026-07-25
+## latest - 2026-07-27
+
+### refactor(workspace): promote Router + import rewriter + MIME helpers into shared wrapper; ship examples/component-library
+
+- `@ggpwnkthx/esbuild-wrapper-shared` (`packages/wrappers/shared/`) bumped from `0.2.10` to `0.3.1`
+  — a patch release after the rolled-back `0.3.0`. New public exports so Hono and Oak consumers and
+  the new examples workspace member share one source of truth:
+  - `Router`, `Route`, `RouteContext`: a framework-agnostic ordered route dispatcher. Each `Route`
+    is a `{ match, handle }` pair; `router.dispatch(req, ctx)` returns the first matching route's
+    response or a 404. The `Route` shape is intentionally compatible with both Hono and Oak handlers
+    so the same route list can dispatch into either framework through a thin adapter.
+  - `rewriteImports`, `RewriteOptions`: an AST-based import rewriter that parses JS/TS sources with
+    `@deno/graph`'s `parseModule`, locates the character spans of bare-specifier imports, and
+    splices them back by absolute offset using a caller-supplied
+    `resolveBareSpecifier(spec) → url | undefined` callback. The callback API keeps the rewriter
+    framework-agnostic; the example's `/@modules/<spec>` allowlist is one possible mapping, not a
+    hard-coded assumption. `RewriteOptions.failAsErrorBody` catches rewrite errors and returns a JS
+    `throw new Error("rewrite failed for <specifier>: <message>");` body string (also
+    `console.warn`d) so browser-facing dev servers surface failures inline as executable module
+    bodies rather than as server-side 5xx.
+  - `mimeFor`, `JS_MIME`, `DEFAULT_MIME`: a small MIME type table for dev-server static routes.
+    POSIX and Windows separator support; hidden files like `.gitignore` resolve to `DEFAULT_MIME`
+    (`"application/octet-stream"`). Inline `extname` avoids adding `@std/path` as a dependency.
+  - `TranspileRequest.version`: caller-supplied invalidation token (e.g. source file mtime) compared
+    against the cached entry on lookup; a mismatch evicts the entry and forces a fresh transform.
+    When `undefined`, behavior is identical to the prior release — only TTL or LRU invalidates the
+    entry.
+  - `TranspileRequest.postProcess`: optional `(code) => string | Promise<string>` hook invoked after
+    `esbuild.transform`. Its return value is what gets cached and returned; errors propagate and the
+    failing call is not cached. Used by the example to layer `rewriteImports` over a transformed
+    module body.
+- New shared dependency: `jsr:@deno/graph@^0.110.2` (used by `rewriteImports` for AST parsing).
+- `publish.include` in `packages/wrappers/shared/deno.json` updated to ship `mime.ts`,
+  `rewrite_imports.ts`, and `router.ts` alongside `mod.ts`.
+- `@ggpwnkthx/esbuild-wrapper-shared` sibling pins bumped from `^0.2.10` to `^0.3.1` in
+  `packages/wrappers/hono/deno.json`, `packages/wrappers/oak/deno.json` (each cut to `0.2.11` in
+  lockstep), and `examples/component-library/deno.json`.
+- Shared package test coverage reorganized: new `tests/router.test.ts`,
+  `tests/rewrite_imports.test.ts`, and `tests/mime.test.ts` replace the older
+  `tests/router_and_rewrite.test.ts` so each new export is exercised next to its implementation.
+  `tests/mod.test.ts` adds cases for `version`-based cache invalidation and `postProcess`
+  success/error propagation.
+- `packages/wrappers/shared/README.md`: documents every new export (`Router`/`Route`/
+  `RouteContext`, `rewriteImports`/`RewriteOptions` with a field table, `mimeFor`/`JS_MIME`/
+  `DEFAULT_MIME`) with usage examples.
+- New workspace member `examples/component-library/`: a React component-library demo that authors
+  Deno source and serves an unbundled ESM tree through `@ggpwnkthx/esbuild-wrapper-shared` +
+  `@ggpwnkthx/esbuild-plugin-deno`.
+  - `examples/component-library/src/serve.ts` boots a `deno serve` dev server that on-the-fly
+    transpiles each `*.tsx`/`*.ts` request via `esbuild.transform`, runs the output through shared
+    `rewriteImports` (using a callback wired to the local allowlist) to splice bare specifiers into
+    `/@modules/<spec>` URLs, and bundles allowed npm modules on demand through
+    `createDenoPlugin().build(spec)`. Routes are wired through shared `Router` + `Route` +
+    `shouldTranspile` + `JS_MIME` + `mimeFor`; the per-file transform caches on shared `Transpiler`
+    invalidated by `version = sourceMtimeMs`.
+  - `examples/component-library/src/server/`: 7 files / 207 lines total (`allowlist.ts`, `paths.ts`,
+    `plugin.ts`, `serve_module.ts`, `serve_static.ts`, `serve_transform.ts` + the entry `serve.ts`).
+    No local `mime.ts` / `rewrite_imports.ts` / `router.ts` — those moved to shared. Old line count
+    before the extraction was 10 files / 312 lines; net savings of ~105 lines and 3 files of
+    duplicated logic.
+  - `examples/component-library/src/Button.tsx` and `Card.tsx` are the published components (only
+    the two ship in the example's JSR tarball via `publish.exclude`). `index.html`, `main.tsx`,
+    `serve.ts`, `src/server/`, and `tests/` are dev-time only.
+  - `examples/component-library/tests/`: `allowlist_test.ts` (allowlist shape), `router_test.ts`
+    (shared `Router` dispatching), `serve_transform_test.ts` (local transform pipeline with
+    mtime-based cache invalidation + `failureBody`), `selectors.ts` (shared test selectors and copy
+    constants), `browser_test.ts` (headless Chromium end-to-end through `@astral/astral`).
+- `deno.json` (root): `examples/**` added to `workspace`; `scopes` block now carries a single
+  `./examples/` key redirecting `esbuild`, `@ggpwnkthx/esbuild-plugin-deno`, and
+  `@ggpwnkthx/esbuild-wrapper-shared` to the local source paths during development (the previous
+  draft key `./example/` did not match the actual workspace member name and is fixed here). Switched
+  `nodeModulesDir` from `"none"` to `"auto"` so the example can resolve `npm:react` /
+  `npm:react-dom`. Set `lock: false` — the workspace had no top-level `deno.lock` in this cycle and
+  each member publishes its own tarball.
+- `deno.lock`: deleted — `lock: false` makes the root lockfile redundant; each member manages its
+  own dependency surface.
+- `README.md` (root): repository-layout diagram lists `examples/` alongside `packages/` and
+  `scripts/`.
+
+### feat(deno-plugin): expand unbundle() with outbase, platform, CJS interop, and an in-memory API
+
+- `packages/plugins/deno/{mod,unbundle,path,rewrite,utils,env,resolve,workspace}.ts`:
+  `unbundleInMemory()` returns the same transpiled ESM tree as `unbundle()` in a
+  `Map<string, Uint8Array>` for runtime flows. `unbundle()` and `unbundleInMemory()` gain `outbase`
+  (project-rooted local output paths) and `platform` (`'browser' | 'node' | 'neutral'`) options.
+  CommonJS modules are now bundled per module with co-located `__commonJS` runtimes; ESM named
+  imports against a CJS dependency are rewritten to import a local default shim and destructure.
+  `path.ts` was rewritten as a scheme-dispatch table that also recognises the global
+  `npm/registry.npmjs.org/<name>/<version>/` cache layout and normalises `outbase` with
+  `path.resolve()`. `mod.ts` now delegates `publicEnvVarPrefix` inlining to `env.ts`, importer
+  substitution to `resolve.ts`, and `WorkspaceOptions` construction to `workspace.ts`. `utils.ts`
+  adds `hasUrlScheme()` and `schemeToNamespace()` and switches the loader / platform maps to a
+  table-driven shape.
+- `packages/plugins/deno/tests/{unbundle,utils,resolve}.test.ts`: new tests covering the new
+  options, the per-module CJS conversion, the in-memory API, and `resolveImporter` semantics.
+- `packages/plugins/deno/{README,CHANGELOG,deno.json}`: README and CHANGELOG updated; `env.ts`,
+  `resolve.ts`, and `workspace.ts` added to `publish.include`.
+
+### chore(esbuild): release 0.2.14 (stable) and sync dependent pins
+
+- `packages/esbuild/CHANGELOG.md`: added the `[0.2.14]` stable-cut entry (identical content to
+  `0.2.14-rc.0`).
+- `packages/plugins/{css,deno}/deno.json` and `packages/wrappers/{hono,oak,shared}/deno.json`:
+  `jsr:@ggpwnkthx/esbuild@^0.2.14-rc.0` pins rewritten to `jsr:@ggpwnkthx/esbuild@^0.2.14` by
+  `deno task versions:sync` so each published tarball resolves the new stable source.
+
+### chore(workspace): add examples/component-library member and enable npm cache
+
+- `deno.json` (root): added `./examples/component-library` to `workspace`; added a matching `scopes`
+  block redirecting `esbuild` and `@ggpwnkthx/esbuild-plugin-deno` to the local source paths during
+  development; switched `nodeModulesDir` from `"none"` to `"auto"` so the example can resolve
+  `npm:react` / `npm:react-dom`; set `lock: false` (the workspace has no top-level `deno.lock` and
+  each member owns its own dependency surface).
+- `deno.lock`: deleted — `lock: false` makes the root lockfile redundant, and each member publishes
+  its own tarball.
+- `examples/component-library/`: new workspace member that demonstrates authoring Deno source and
+  serving an unbundled ESM tree with `@ggpwnkthx/esbuild-plugin-deno` — `src/serve.ts` is a
+  `deno serve` module that calls `unbundleInMemory()` at module load and resolves `/📦/<rel>`
+  against the in-memory map. `tests/browser_test.ts` runs a headless Chromium end-to-end check.
+  `publish.exclude` drops the demo (`index.html`, `main.tsx`, `serve.ts`) and tests from the
+  example's published tarball.
 
 ### simplify(ci): adopt JSR-canonical publish step in workflow chain
 

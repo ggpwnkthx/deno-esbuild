@@ -1,0 +1,43 @@
+{
+  "imports": {
+    "react": "npm:react@^18.3.1",
+    "react-dom": "npm:react-dom@^18.3.1",
+    "@types/react": "npm:@types/react@^18.3.12",
+    "@types/react-dom": "npm:@types/react-dom@^18.3.1",
+    "@astral/astral": "jsr:@astral/astral@^0.5.4",
+    "@deno/graph": "jsr:@deno/graph@^0.110.2",
+    "@ggpwnkthx/esbuild-wrapper-shared": "jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.1",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/path": "jsr:@std/path@^1.1.6"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "types": [
+      "@types/react",
+      "@types/react-dom"
+    ],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "deno.ns",
+      "deno.window",
+      "esnext"
+    ]
+  },
+  "publish": {
+    "exclude": [
+      "src/index.html",
+      "src/main.tsx",
+      "src/serve.ts",
+      "src/server/",
+      "tests/"
+    ]
+  },
+  "tasks": {
+    "serve": "deno serve -A --port=8000 src/serve.ts",
+    "dev": "deno serve -A --watch --port=8000 src/serve.ts",
+    "test": "deno test --allow-read --allow-write --allow-net --allow-env --allow-run",
+    "ci": "deno fmt --check && deno lint && deno check . && deno task test"
+  }
+}

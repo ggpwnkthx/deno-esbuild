@@ -26,6 +26,7 @@ The per-package READMEs cover installation, configuration, API reference, and ex
 ```txt
 .
 ├── deno.json
+├── examples/component-library/   # component-library demo
 ├── packages/
 │   ├── esbuild/
 │   ├── plugins/

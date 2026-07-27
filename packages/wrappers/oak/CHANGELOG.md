@@ -5,6 +5,17 @@ All notable changes to `@ggpwnkthx/esbuild-wrapper-oak` are documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2026-07-27
+
+### Changed
+
+- Sibling pin `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.2.10` bumped to
+  `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.1` so the wrapper consumes the new shared release
+  (additive `Router`/`Route`/`rewriteImports`/`mimeFor` exports plus the `TranspileRequest.version`
+  and `TranspileRequest.postProcess` cache hooks). No code change in this wrapper — the pin moves
+  the dependency surface forward so consumers get the new shared utilities through the wrapper
+  package.
+
 ## [0.2.10] - 2026-07-24
 
 ### Changed

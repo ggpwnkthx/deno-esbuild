@@ -1,11 +1,12 @@
 /**
  * Shared utility library for Deno esbuild middleware wrappers.
  *
- * This module provides caching, transpilation, and framework response helpers
+ * This module provides caching, transpilation, framework response helpers,
+ * a framework-agnostic route dispatcher, and an AST-based import rewriter
  * used by both Hono and Oak wrappers. Use {@linkcode createTranspiler} to
- * build an isolated transpiler per middleware instance; each instance owns its
- * own in-memory cache so multiple servers in the same process do not share
- * state.
+ * build an isolated transpiler per middleware instance; each instance owns
+ * its own in-memory cache so multiple servers in the same process do not
+ * share state.
  *
  * @example Basic usage
  * ```ts
@@ -23,6 +24,10 @@
  */
 import * as esbuild from 'esbuild'
 
+export { DEFAULT_MIME, JS_MIME, mimeFor } from './mime.ts'
+export { type Route, type RouteContext, Router } from './router.ts'
+export { rewriteImports, type RewriteOptions } from './rewrite_imports.ts'
+
 /**
  * Minimal esbuild surface consumed by the wrappers. Lets tests inject a
  * stand-in without having to satisfy the full esbuild module shape.
@@ -37,10 +42,16 @@ export interface EsbuildLike {
 
 /**
  * Cache entry stored for transformed responses.
+ *
+ * `version` is an optional caller-supplied invalidation token (e.g. the file
+ * mtime of the source). When set, a cache hit with a different `version` is
+ * treated as a miss and the entry is evicted before re-transforming. When
+ * `undefined`, the cache only invalidates via TTL or LRU eviction.
  */
 export interface CacheEntry {
   code: string
   timestamp: number
+  version?: string | number
 }
 
 /**
@@ -121,6 +132,22 @@ export interface TranspileRequest {
    * that should not be stopped.
    */
   shouldStop?: boolean
+  /**
+   * Caller-supplied invalidation token. Compared against the cached entry's
+   * `version` on lookup; a mismatch evicts the entry and forces a fresh
+   * transform. Typical use: pass the source file's mtime so a dev server
+   * picks up edits without waiting for TTL expiry. Has no effect when the
+   * cache is disabled.
+   */
+  version?: string | number | undefined
+  /**
+   * Post-transform hook. Receives the esbuild output and returns the code
+   * that should actually be cached and returned to the caller. Useful for
+   * dev-server pipelines that need to run an additional step (e.g. an
+   * import rewriter) before serving the response. Errors propagate; the
+   * failing call is not cached.
+   */
+  postProcess?: (code: string) => Promise<string> | string
 }
 
 /** A transpiler bound to a single in-memory cache. */
@@ -147,14 +174,16 @@ export function createTranspiler(options: TranspilerOptions = {}): Transpiler {
     : undefined
 
   return {
-    async getCachedOrTranspile({ pathname, body, shouldStop = true }: TranspileRequest) {
+    async getCachedOrTranspile(
+      { pathname, body, shouldStop = true, version, postProcess }: TranspileRequest,
+    ) {
       if (cacheEnabled) {
         const cached = cache.get(pathname)
         if (cached !== undefined) {
-          if (
-            effectiveTtl !== undefined &&
+          const versionMismatch = version !== undefined && cached.version !== version
+          const ttlExpired = effectiveTtl !== undefined &&
             Date.now() - cached.timestamp >= effectiveTtl
-          ) {
+          if (versionMismatch || ttlExpired) {
             cache.delete(pathname)
           } else {
             return { code: cached.code }
@@ -163,10 +192,14 @@ export function createTranspiler(options: TranspilerOptions = {}): Transpiler {
       }
 
       const mergedOptions = transformOptions ?? {}
-      const { code } = await esbuildInstance.transform(body, {
+      let { code } = await esbuildInstance.transform(body, {
         ...mergedOptions,
         loader: mergedOptions.loader ?? 'tsx',
       })
+
+      if (postProcess) {
+        code = await postProcess(code)
+      }
 
       if (shouldStop) {
         await esbuildInstance.stop()
@@ -186,7 +219,9 @@ export function createTranspiler(options: TranspilerOptions = {}): Transpiler {
             cache.delete(oldestKey)
           }
         }
-        cache.set(pathname, { code, timestamp: Date.now() })
+        const entry: CacheEntry = { code, timestamp: Date.now() }
+        if (version !== undefined) entry.version = version
+        cache.set(pathname, entry)
       }
 
       return { code }

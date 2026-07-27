@@ -42,7 +42,11 @@ for (const member of members) {
     await Deno.readTextFile(new URL(`../${member}/deno.json`, import.meta.url)),
   ) as MemberConfig
   if (!cfg.name || !cfg.version) {
-    throw new Error(`Package at ${member} is missing name or version`)
+    // Workspace members without a JSR `name` and `version` (e.g. local-only
+    // demo apps like `examples/component-library`) have nothing to publish
+    // and nothing to pin against. Skip them in both the registry-building
+    // pass and the sibling-pin rewrite pass below.
+    continue
   }
   if (nameToVersion.has(cfg.name) && nameToVersion.get(cfg.name) !== cfg.version) {
     throw new Error(
@@ -59,6 +63,10 @@ for (const member of members) {
   const url = new URL(`../${member}/deno.json`, import.meta.url)
   const original = await Deno.readTextFile(url)
   const cfg = JSON.parse(original) as MemberConfig
+  if (!cfg.name || !cfg.version) {
+    // Skip non-published workspace members (see note above).
+    continue
+  }
   let dirty = false
 
   if (cfg.imports) {
