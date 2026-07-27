@@ -2,42 +2,38 @@ import type * as esbuild from 'esbuild'
 import { MediaType, RequestedModuleType } from '@deno/loader'
 import type { WorkspaceOptions } from '@deno/loader'
 
+const MEDIA_TO_LOADER: ReadonlyMap<MediaType, esbuild.Loader> = new Map([
+  [MediaType.Jsx, 'jsx'],
+  [MediaType.JavaScript, 'js'],
+  [MediaType.Mjs, 'js'],
+  [MediaType.Cjs, 'js'],
+  [MediaType.TypeScript, 'ts'],
+  [MediaType.Mts, 'ts'],
+  [MediaType.Dmts, 'ts'],
+  [MediaType.Dcts, 'ts'],
+  [MediaType.Tsx, 'tsx'],
+  [MediaType.Css, 'css'],
+  [MediaType.Json, 'json'],
+  [MediaType.Html, 'default'],
+  [MediaType.Sql, 'default'],
+  [MediaType.Wasm, 'binary'],
+  [MediaType.SourceMap, 'json'],
+  [MediaType.Unknown, 'default'],
+])
+
 /**
  * Converts a media type to an esbuild loader identifier.
  */
 export function mediaToLoader(type: MediaType): esbuild.Loader {
-  switch (type) {
-    case MediaType.Jsx:
-      return 'jsx'
-    case MediaType.JavaScript:
-    case MediaType.Mjs:
-    case MediaType.Cjs:
-      return 'js'
-    case MediaType.TypeScript:
-    case MediaType.Mts:
-    case MediaType.Dmts:
-    case MediaType.Dcts:
-      return 'ts'
-    case MediaType.Tsx:
-      return 'tsx'
-    case MediaType.Css:
-      return 'css'
-    case MediaType.Json:
-      return 'json'
-    case MediaType.Html:
-      return 'default'
-    case MediaType.Sql:
-      return 'default'
-    case MediaType.Wasm:
-      return 'binary'
-    case MediaType.SourceMap:
-      return 'json'
-    case MediaType.Unknown:
-      return 'default'
-    default:
-      return 'default'
-  }
+  return MEDIA_TO_LOADER.get(type) ?? 'default'
 }
+
+const PLATFORM_MAP: ReadonlyMap<esbuild.Platform, WorkspaceOptions['platform']> = new Map(
+  [
+    ['browser', 'browser'],
+    ['node', 'node'],
+  ],
+)
 
 /**
  * Maps an esbuild platform option to a workspace platform option.
@@ -45,15 +41,37 @@ export function mediaToLoader(type: MediaType): esbuild.Loader {
 export function getPlatform(
   platform: esbuild.Platform | undefined,
 ): WorkspaceOptions['platform'] {
-  switch (platform) {
-    case 'browser':
-      return 'browser'
-    case 'node':
-      return 'node'
-    case 'neutral':
-    default:
-      return undefined
+  if (platform === undefined) return undefined
+  return PLATFORM_MAP.get(platform)
+}
+
+const URL_PREFIX_RE = /^(?:https?|npm|jsr|file):/
+
+/**
+ * Returns true when the specifier looks like a URL with a known scheme prefix
+ * (`http:`, `https:`, `npm:`, `jsr:`, `file:`).
+ */
+export function hasUrlScheme(specifier: string): boolean {
+  return URL_PREFIX_RE.test(specifier)
+}
+
+const SCHEME_TO_NAMESPACE: ReadonlyMap<string, string> = new Map([
+  ['file:', 'file'],
+  ['http:', 'http'],
+  ['https:', 'https'],
+  ['npm:', 'npm'],
+  ['jsr:', 'jsr'],
+])
+
+/**
+ * Returns the esbuild namespace for a resolved URL, or `undefined` if the
+ * scheme is not handled by this plugin.
+ */
+export function schemeToNamespace(resolved: string): string | undefined {
+  for (const prefix of SCHEME_TO_NAMESPACE.keys()) {
+    if (resolved.startsWith(prefix)) return SCHEME_TO_NAMESPACE.get(prefix)
   }
+  return undefined
 }
 
 /**

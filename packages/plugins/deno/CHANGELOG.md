@@ -5,6 +5,74 @@ All notable changes to `@ggpwnkthx/esbuild-plugin-deno` are documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2026-07-26
+
+### Preface
+
+- v0.3.0 was a poorly executed idea that should have had far more testing than it received and was
+  yanked.
+
+### Added
+
+- `createDenoPlugin()` returns a long-lived `DenoPluginHandle` that wraps the shared Deno
+  `Workspace`
+  - `Loader` plus the esbuild plugin. The handle exposes `resolve(spec, importer?)` (returns
+    `{ url, absPath }`) and `build(entry, opts?)` (runs
+    `esbuild.build({ bundle: true, write: false })` with the Deno plugin wired in and returns the
+    bundled output as text). Call `handle[Symbol.dispose]()` when done — the handle owns loader
+    lifetime so a dev server can hold one across many requests. New types: `ResolvedModule`,
+    `ModuleBuildOptions`, `DenoPluginHandle`.
+
+### Removed
+
+- `unbundle()`, `unbundleInMemory()`, and the `UnbundleOptions` / `UnbundleInMemoryOptions` /
+  `UnbundleResult` / `UnbundleInMemoryResult` types have been removed. The package now exposes only
+  the esbuild `denoPlugin()` integration; multi-file Deno-style emit is out of scope. Use
+  `esbuild.build({ bundle: true })` for bundling.
+- `packages/plugins/deno/{unbundle,graph,path,rewrite,assets}.ts` and
+  `packages/plugins/deno/tests/unbundle.test.ts` deleted.
+- `packages/plugins/deno/deno.json`: removed `@deno/graph` from `imports` and dropped the deleted
+  files from `publish.include`.
+
+### Added
+
+- `unbundleInMemory()` returns the same transpiled, import-rewritten ESM tree that `unbundle()`
+  would have written to disk, keyed by output-relative path in a `Map<string, Uint8Array>`. Useful
+  for runtime transpile flows (e.g. `deno serve` dev servers) that don't want to mediate a temporary
+  directory.
+- `unbundle()` / `unbundleInMemory()` accept `outbase` to strip a project-root prefix from local
+  file paths, and `platform` (`'browser'` | `'node'` | `'neutral'`) for package export conditions.
+
+### Changed
+
+- `unbundle()` / `unbundleInMemory()` convert CommonJS modules (raw CJS plus loader-detected CJS
+  inside an ESM facade) through per-module esbuild bundles with co-located `__commonJS` runtimes.
+  ESM importers that request named CJS properties are rewritten to import a local default shim and
+  destructure it locally, eliminating browser-side `require()` / `module.exports`. Per-module CJS
+  conversion is intentionally more expensive and may duplicate dependency code in exchange for
+  browser-executable ESM.
+- `path.ts`: rewrote as a scheme-dispatch table (`npm:`, `jsr:`, `file://`, `http(s)://`) with
+  separate mappers. Recognises Deno's global `npm/registry.npmjs.org/<name>/<version>/` cache layout
+  in addition to `node_modules/.deno/<name>@<ver>/...`, normalises `outbase` against
+  `path.resolve()` so the emitted tree is stable across platforms, and uses POSIX separators for the
+  resulting relative paths.
+- `utils.ts`: `mediaToLoader` and `getPlatform` are now table-driven maps. Added `hasUrlScheme()`
+  and `schemeToNamespace()` to centralise scheme classification shared with the plugin resolver.
+- `mod.ts`: extracted `publicEnvVarPrefix` inlining to `env.ts`, the importer-substitution logic to
+  `resolve.ts`, and `WorkspaceOptions` construction plus the shared `CommonOptions` interface to
+  `workspace.ts`. `DenoPluginOptions` and `UnbundleOptions` now `extends CommonOptions`, so the same
+  `configPath` / `platform` / `noTranspile` / `preserveJsx` / `debug` fields appear on both.
+- `deno.json` (this package): added `env.ts`, `resolve.ts`, and `workspace.ts` to `publish.include`.
+- `tests/utils.test.ts`: added coverage for `hasUrlScheme` and `schemeToNamespace`.
+- `tests/resolve.test.ts`: new file covering `resolveImporter` (no workspace root, synthetic
+  referrer, remote URLs, in-workspace, out-of-workspace, managed package locations, bare absolute
+  path importer).
+- `tests/unbundle.test.ts`: added tests for `outbase` re-rooting, `npm:react` CJS subpath emitting
+  with `__commonJS`, an ESM importer of a CJS module referencing a local shim, `platform: 'browser'`
+  resolving the browser condition, and the new `unbundleInMemory()` API (entry + outbase).
+- `README.md`: documented `outbase`, `platform`, and the CJS→ESM shim behavior, and refreshed the
+  `unbundle()` options table.
+
 ## [0.3.0] - 2026-07-25
 
 ### Added

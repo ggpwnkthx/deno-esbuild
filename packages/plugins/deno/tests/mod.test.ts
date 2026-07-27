@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild'
+import * as path from '@std/path'
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
-import { denoPlugin } from '../mod.ts'
+import { createDenoPlugin, denoPlugin } from '../mod.ts'
 
 Deno.test({
   name: 'denoPlugin - transpiles TypeScript to JavaScript',
@@ -56,11 +57,101 @@ Deno.test({
       })
 
       const output = result.outputFiles[0]?.text ?? ''
-      assertStringIncludes(output, 'greet')
-      assertStringIncludes(output, 'Hello,')
+      assertStringIncludes(output, 'hello')
+      assertStringIncludes(output, 'world')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
       await esbuild.stop()
+    }
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+})
+
+Deno.test({
+  name: 'createDenoPlugin - bundles an entry through the handle.build helper',
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir()
+    try {
+      const denoJsonPath = `${tmpDir}/deno.json`
+      const utilPath = `${tmpDir}/util.ts`
+      const mainPath = `${tmpDir}/main.ts`
+      await Deno.writeTextFile(denoJsonPath, `{}`)
+      await Deno.writeTextFile(utilPath, `export const greet = (n: string) => 'Hi ' + n;`)
+      await Deno.writeTextFile(
+        mainPath,
+        `import { greet } from "./util.ts";\nexport const v = greet("there");`,
+      )
+
+      const handle = await createDenoPlugin({ configPath: denoJsonPath })
+      try {
+        const { code } = await handle.build(mainPath)
+        // The bundled output inlines util.ts and the call site; the literal
+        // concatenated string is built at module init, not present in source.
+        assertStringIncludes(code, 'greet("there")')
+        assertStringIncludes(code, 'Hi ')
+      } finally {
+        handle[Symbol.dispose]()
+        await esbuild.stop()
+      }
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true })
+    }
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+})
+
+Deno.test({
+  name: 'createDenoPlugin - resolve() returns file: URL and absPath for local specifiers',
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir()
+    try {
+      const denoJsonPath = `${tmpDir}/deno.json`
+      const utilPath = `${tmpDir}/util.ts`
+      await Deno.writeTextFile(denoJsonPath, `{}`)
+      await Deno.writeTextFile(utilPath, `export const v = 1;`)
+
+      const handle = await createDenoPlugin({ configPath: denoJsonPath })
+      try {
+        const resolved = await handle.resolve(
+          './util.ts',
+          new URL('./main.ts', path.toFileUrl(`${tmpDir}/`)).href,
+        )
+        assertMatch(resolved.url, /^file:\/\//)
+        assertMatch(resolved.absPath, /\/util\.ts$/)
+      } finally {
+        handle[Symbol.dispose]()
+      }
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true })
+    }
+  },
+  sanitizeOps: false,
+  sanitizeResources: false,
+})
+
+Deno.test({
+  name: 'createDenoPlugin - resolve() resolves npm: specifiers',
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir()
+    try {
+      const denoJsonPath = `${tmpDir}/deno.json`
+      await Deno.writeTextFile(denoJsonPath, `{}`)
+
+      const handle = await createDenoPlugin({ configPath: denoJsonPath })
+      try {
+        // Deno's loader resolves npm: specifiers into a file:// URL inside
+        // its npm cache; the package name and version appear in the path.
+        const resolved = await handle.resolve('npm:ms@2')
+        assertMatch(resolved.url, /^file:\/\//)
+        assertMatch(resolved.url, /ms/)
+        assertMatch(resolved.absPath, /ms/)
+      } finally {
+        handle[Symbol.dispose]()
+      }
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true })
     }
   },
   sanitizeOps: false,

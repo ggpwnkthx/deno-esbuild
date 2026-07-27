@@ -110,73 +110,6 @@ const { PUBLIC_API_URL = 'https://api.example.com', PUBLIC_KEY = null } = Deno.e
 Note: `process.env` and `import.meta.env` references are only inlined when the variable name starts
 with the configured prefix.
 
-## Unbundled output
-
-The plugin also exports a stand-alone `unbundle()` function that emits every dependency as a
-separate ESM file under a directory you choose, with imports rewritten to local relative paths.
-
-This is useful for serving Deno-style code from a CDN, debugging dependency trees, or feeding the
-emitted tree to a dev server that wants per-file control over caching and content-types.
-
-```ts
-import { unbundle } from '@ggpwnkthx/esbuild-plugin-deno'
-
-const result = await unbundle({
-  entryPoints: [
-    'npm:react@18.3.1',
-    'jsr:@hono/hono@4.12.32/jsx/dom',
-    './main.ts',
-  ],
-  outdir: './dist',
-  configPath: './deno.json',
-  jsx: 'transform', // or 'preserve'
-  jsxImportSource: 'hono/jsx',
-  publicEnvVarPrefix: 'PUBLIC_',
-})
-
-console.log(result.files) // absolute paths of every emitted file
-console.log(result.entryFiles) // subset corresponding to entryPoints
-```
-
-The result mirrors each specifier's namespace under `outdir`:
-
-```
-dist/
-├── npm__react@18.3.1/
-│   ├── index.js
-│   └── cjs/
-│       ├── react.development.js
-│       └── react.production.min.js
-├── jsr__@hono__hono@4.12.32/
-│   └── src/jsx/dom/
-│       ├── index.js
-│       ├── jsx-runtime.js
-│       └── …
-├── main.js
-└── util.js
-```
-
-Every emitted `.js` file is standard ESM. Imports between modules are rewritten to relative paths
-(`./sibling.js`, `../parent.js`, etc.) so the tree is self-contained and can be served by any static
-file server. CJS modules (e.g. `npm:ms@2`, `npm:react/cjs/...`) are converted to ESM via esbuild's
-`format: 'esm'` transpile. Binary assets (CSS, images, etc.) are copied verbatim with their original
-extension preserved.
-
-### `unbundle()` options
-
-| Option                       | Type                          | Description                                                                                              |
-| ---------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `entryPoints`                | `string[]`                    | Required. Deno-style specifiers (`npm:`, `jsr:`, `http(s):`, file paths, or import-map bare specifiers). |
-| `outdir`                     | `string`                      | Required. Output directory. Created if missing.                                                          |
-| `configPath`                 | `string`                      | Optional path to a `deno.json` to drive the loader. Auto-discovered if omitted.                          |
-| `noTranspile`                | `boolean`                     | Skip Deno's transpile step.                                                                              |
-| `jsx`                        | `'transform'` \| `'preserve'` | Selects JSX handling. Default `'transform'`.                                                             |
-| `jsxImportSource`            | `string`                      | Forwarded to esbuild when `jsx === 'transform'`.                                                         |
-| `jsxFactory` / `jsxFragment` | `string`                      | Classic JSX transform options.                                                                           |
-| `publicEnvVarPrefix`         | `string`                      | Same semantics as the bundled plugin's option.                                                           |
-| `target`                     | `esbuild target`              | esbuild transpile target. Default `es2022`.                                                              |
-| `debug`                      | `boolean`                     | Forward debug logs from `@deno/loader`.                                                                  |
-
 ## What the plugin handles
 
 ### Resolution schemes
@@ -273,6 +206,68 @@ await ctx.dispose()
 
 Running `deno run -A build.ts` produces a bundled output where the `PUBLIC_`-prefixed environment
 variable references have been replaced with their string values.
+
+## `createDenoPlugin()` — long-lived handle for runtime/dev-server use
+
+For one-shot builds, `denoPlugin()` is the right choice: it creates a `Workspace` + `Loader`
+internally and disposes them when esbuild's build context is disposed.
+
+When the same loader should back many small esbuild calls — e.g. a `deno serve` dev server that
+transforms or bundles on every HTTP request — use `createDenoPlugin()`. It returns a single
+`DenoPluginHandle` that owns the shared `Workspace` + `Loader` and exposes:
+
+- `handle.plugin` — the esbuild plugin, suitable for `plugins: [handle.plugin]`.
+- `handle.resolve(spec, importer?)` — resolve any specifier through Deno's resolver, returning
+  `{ url, absPath }`.
+- `handle.build(entry, opts?)` — resolve `entry` and run
+  `esbuild.build({ bundle: true, write: false })` with the plugin wired in. Returns `{ code }`.
+- `handle[Symbol.dispose]()` — release the underlying loader (call once at shutdown).
+
+### Example: dev server that transpiles + bundles per request
+
+```ts
+import { createDenoPlugin } from '@ggpwnkthx/esbuild-plugin-deno'
+
+const handle = await createDenoPlugin({ configPath: './deno.json' })
+
+Deno.serve({ port: 8000 }, async (req) => {
+  const url = new URL(req.url)
+
+  // Serve a transformed local source file
+  if (url.pathname.endsWith('.tsx') || url.pathname.endsWith('.ts')) {
+    const abs = `./src${url.pathname}`
+    const { code } = await esbuild.transform(
+      await Deno.readTextFile(abs),
+      { loader: 'tsx', jsx: 'automatic', jsxImportSource: 'react', format: 'esm' },
+    )
+    return new Response(code, { headers: { 'content-type': 'application/javascript' } })
+  }
+
+  // Serve a fully bundled npm module
+  if (url.pathname.startsWith('/@modules/')) {
+    const spec = decodeURIComponent(url.pathname.slice('/@modules/'.length))
+    const { code } = await handle.build(spec)
+    return new Response(code, { headers: { 'content-type': 'application/javascript' } })
+  }
+
+  return new Response('not found', { status: 404 })
+})
+
+// On shutdown:
+addEventListener('unload', () => handle[Symbol.dispose]())
+```
+
+### `ModuleBuildOptions`
+
+| Field             | Default       | Description                                              |
+| ----------------- | ------------- | -------------------------------------------------------- |
+| `format`          | `'esm'`       | esbuild output format.                                   |
+| `platform`        | `'browser'`   | esbuild platform.                                        |
+| `target`          | `'es2022'`    | esbuild target.                                          |
+| `jsx`             | `'automatic'` | JSX transform.                                           |
+| `jsxImportSource` | `'react'`     | JSX runtime import source.                               |
+| `sourcemap`       | `'inline'`    | `false`, `'inline'`, `'external'`, `'linked'`, `'both'`. |
+| `minify`          | `false`       | Minify the bundled output.                               |
 
 ## Dependencies
 

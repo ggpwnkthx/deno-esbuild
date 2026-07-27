@@ -1,6 +1,13 @@
 import { assertEquals } from '@std/assert'
 import { MediaType, RequestedModuleType } from '@deno/loader'
-import { externalToRegex, getModuleType, getPlatform, mediaToLoader } from '../utils.ts'
+import {
+  externalToRegex,
+  getModuleType,
+  getPlatform,
+  hasUrlScheme,
+  mediaToLoader,
+  schemeToNamespace,
+} from '../utils.ts'
 
 Deno.test({
   name: 'mediaToLoader - maps MediaType to esbuild.Loader',
@@ -113,5 +120,32 @@ Deno.test({
     const multi = externalToRegex('foo/bar[ baz ].*')
     assertEquals(multi.test('foo/bar[ baz ].*'), true)
     assertEquals(multi.test('fooXbar[ baz ]X.*'), false)
+  },
+})
+
+Deno.test({
+  name: 'hasUrlScheme - detects known URL schemes',
+  fn() {
+    assertEquals(hasUrlScheme('http://example.com'), true)
+    assertEquals(hasUrlScheme('https://example.com'), true)
+    assertEquals(hasUrlScheme('npm:react@18.2.0'), true)
+    assertEquals(hasUrlScheme('jsr:@hono/hono@4'), true)
+    assertEquals(hasUrlScheme('file:///abs/path'), true)
+    assertEquals(hasUrlScheme('./relative.ts'), false)
+    assertEquals(hasUrlScheme('node:fs'), false)
+    assertEquals(hasUrlScheme('react'), false)
+  },
+})
+
+Deno.test({
+  name: 'schemeToNamespace - maps resolved URL to esbuild namespace',
+  fn() {
+    assertEquals(schemeToNamespace('file:///abs/path'), 'file')
+    assertEquals(schemeToNamespace('http://example.com'), 'http')
+    assertEquals(schemeToNamespace('https://example.com'), 'https')
+    assertEquals(schemeToNamespace('npm:react@18.2.0'), 'npm')
+    assertEquals(schemeToNamespace('jsr:@hono/hono@4'), 'jsr')
+    assertEquals(schemeToNamespace('node:fs'), undefined)
+    assertEquals(schemeToNamespace('./relative.ts'), undefined)
   },
 })
