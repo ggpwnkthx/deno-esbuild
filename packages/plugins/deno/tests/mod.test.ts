@@ -57,8 +57,8 @@ Deno.test({
       })
 
       const output = result.outputFiles[0]?.text ?? ''
-      assertStringIncludes(output, 'hello')
-      assertStringIncludes(output, 'world')
+      assertStringIncludes(output, 'greet')
+      assertStringIncludes(output, 'Hello,')
     } finally {
       await Deno.remove(tmpDir, { recursive: true })
       await esbuild.stop()
