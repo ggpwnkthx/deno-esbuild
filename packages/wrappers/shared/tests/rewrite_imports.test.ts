@@ -8,6 +8,8 @@ const ALLOWLIST: RewriteOptions['resolveBareSpecifier'] = (spec) => {
     'react-dom/client': '/@modules/react-dom/client',
     'react/jsx-runtime': '/@modules/react/jsx-runtime',
     'react/jsx-dev-runtime': '/@modules/react/jsx-dev-runtime',
+    '@mui/material': '/@modules/@mui/material',
+    '@emotion/react': '/@modules/@emotion/react',
   }
   return map[spec]
 }
@@ -99,6 +101,43 @@ Deno.test('rewriteImports - leaves URL-scheme specifiers untouched', async () =>
     resolveBareSpecifier: ALLOWLIST,
   })
   assertEquals(out, source)
+})
+
+Deno.test('rewriteImports - rewrites scoped bare specifiers (e.g. @mui/material)', async () => {
+  const source =
+    `import { Button, Card } from "@mui/material";\nimport { css } from "@emotion/react";\n`
+  const out = await rewriteImports(source, {
+    specifier: 'main.tsx',
+    defaultJsxImportSource: 'react',
+    resolveBareSpecifier: ALLOWLIST,
+  })
+  assertStringIncludes(out, `from "/@modules/@mui/material"`)
+  assertStringIncludes(out, `from "/@modules/@emotion/react"`)
+  assert(!out.includes('from "@mui/material"'), `expected source to be rewritten, got: ${out}`)
+  assert(!out.includes('from "@emotion/react"'), `expected source to be rewritten, got: ${out}`)
+})
+
+Deno.test('rewriteImports - normalises non-TS/JSX specifier to .js for parseModule', async () => {
+  const source = `import * as React from "react";\nimport { jsx } from "react/jsx-runtime";\n`
+  const out = await rewriteImports(source, {
+    specifier: 'react',
+    defaultJsxImportSource: 'react',
+    resolveBareSpecifier: ALLOWLIST,
+  })
+  assertStringIncludes(out, `from "/@modules/react"`)
+  assertStringIncludes(out, `from "/@modules/react/jsx-runtime"`)
+  assert(!out.includes('from "react"'), `expected react specifier rewritten, got: ${out}`)
+})
+
+Deno.test('rewriteImports - normalises scoped npm specifier (no extension) to .js', async () => {
+  const source = `import { Button } from "@mui/material";\n`
+  const out = await rewriteImports(source, {
+    specifier: '@mui/material',
+    defaultJsxImportSource: 'react',
+    resolveBareSpecifier: ALLOWLIST,
+  })
+  assertStringIncludes(out, `from "/@modules/@mui/material"`)
+  assert(!out.includes('from "@mui/material"'), `expected @mui/material rewritten, got: ${out}`)
 })
 
 Deno.test('rewriteImports - returns empty string for empty input', async () => {

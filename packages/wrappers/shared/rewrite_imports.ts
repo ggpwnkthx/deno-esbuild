@@ -147,7 +147,24 @@ function isBareSpec(spec: string): boolean {
   if (spec.length === 0) return false
   if (spec.includes(':')) return false
   if (spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('/')) return false
-  return /^[A-Za-z]/.test(spec)
+  return /^[A-Za-z@_$]/.test(spec)
+}
+
+/**
+ * Normalize a specifier to a `.js`-suffixed form for `parseModule`. The
+ * upstream `@deno/graph@^0.110.2` parser returns zero-width AST spans for
+ * imports when the specifier lacks a recognized JS extension, which silently
+ * drops most imports during a `rewriteImports` pass. Coercing any input —
+ * whether `.ts`/`.tsx`, a bare npm spec like `react`, or a custom spec — to
+ * a `.js` URL before parsing gives the parser a known file kind to anchor
+ * its span calculation against.
+ */
+function jsLikeSpecifier(input: string): string {
+  if (input.endsWith('.tsx') || input.endsWith('.ts')) {
+    return input.replace(/\.tsx?$/, '.js')
+  }
+  if (/\.(?:[mc]?js|jsx|mjs|cjs)$/.test(input)) return input
+  return `${input}.js`
 }
 
 function spansAreZeroWidth(deps: ReadonlyArray<DepLike>): boolean {
@@ -197,9 +214,7 @@ async function rewriteImportsInner(
   if (source.length === 0) return source
   const lineOffsets = lineStarts(source)
   const input = options.specifier ?? 'rewriter-input.js'
-  const safeSpecifier = input.endsWith('.tsx') || input.endsWith('.ts')
-    ? input.replace(/\.tsx?$/, '.js')
-    : input
+  const safeSpecifier = jsLikeSpecifier(input)
   const specifier = `file:///${safeSpecifier.replace(/^\/+/, '')}`
   const parseOptions: {
     defaultJsxImportSource?: string
@@ -217,9 +232,12 @@ async function rewriteImportsInner(
   )
   let deps: ReadonlyArray<DepLike> = module.dependencies ?? []
   if (spansAreZeroWidth(deps)) {
-    // Workaround: `@deno/graph@^0.110.2` returns zero-width spans when
-    // the specifier ends in `.tsx`. Force a `.js` extension so span
-    // positions are populated correctly on the second pass.
+    // Workaround: `@deno/graph@^0.110.2` returns zero-width spans when the
+    // specifier lacks a recognized JS extension. The first parse can miss
+    // most imports (e.g. for an `npm:` spec like `@mui/material` whose
+    // bundled output has 380+ imports, only the handful near the top get
+    // non-zero spans). Re-parse with the `.js`-suffixed form so all spans
+    // are populated correctly.
     module = await parseModule(
       specifier,
       new TextEncoder().encode(source),

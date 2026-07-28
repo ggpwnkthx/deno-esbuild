@@ -5,6 +5,39 @@ All notable changes to `@ggpwnkthx/esbuild-wrapper-shared` are documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-07-27
+
+### Added
+
+- `TranspilerOptions.postProcess` and `Options.postProcess` — a transpiler-wide
+  `(code: string) => string | Promise<string>` hook that runs on every `esbuild.transform` output
+  before it is cached or returned. A per-call `TranspileRequest.postProcess` (when supplied)
+  overrides the constructor-time default. Lets the Hono and Oak wrappers register one shared
+  rewriter at setup time without wrapping the `EsbuildLike` per request.
+
+### Fixed
+
+- `rewriteImports` now normalizes the `specifier` to a `.js`-suffixed form before calling
+  `parseModule`. The previous code only forced the `.js` extension when the input already ended in
+  `.tsx`/`.ts`; for any other spec (e.g. `react`, `@mui/material`) the parser returned zero-width
+  AST spans for most imports, which silently dropped them from the rewrite pass. Bundles with many
+  imports — the most common case being a bundled npm module served via `/@modules/<spec>` —
+  re-exported only the handful of imports near the top of the file and left the rest as bare
+  specifiers, triggering `TypeError: Failed to resolve module specifier "react"` at runtime. No
+  behavior change for specifiers that were already correctly handled.
+
+## [0.3.2] - 2026-07-27
+
+### Fixed
+
+- `rewriteImports` `isBareSpec` regex now matches scoped package specifiers (e.g. `@mui/material`,
+  `@emotion/react`) in addition to unprefixed bare specifiers. The previous `^[A-Za-z]` regex
+  silently left scoped bare specifiers unrewritten, which caused the browser to throw
+  `TypeError: Failed to resolve module specifier "@mui/material"` at runtime. No behavior change for
+  any specifier that was previously matched. The regex also matches identifiers starting with `_` or
+  `$` (e.g. `_internal`); this is broader than the previous regex but is the safer direction for the
+  bug being fixed.
+
 ## [0.3.1] - 2026-07-27
 
 ### Added

@@ -236,6 +236,62 @@ Deno.test('createTranspiler - postProcess runs after transform and is what gets 
   assertEquals(second.code, first.code)
 })
 
+Deno.test('createTranspiler - constructor postProcess default runs without per-call override', async () => {
+  let postProcessCallCount = 0
+  const mockEsbuild: EsbuildLike = {
+    transform: (_input: string | Uint8Array) => Promise.resolve({ code: 'transformed' }),
+    stop: () => Promise.resolve(),
+  }
+  const transpiler = createTranspiler({
+    cache: true,
+    esbuild: mockEsbuild,
+    postProcess: (code) => {
+      postProcessCallCount++
+      return `${code}+default`
+    },
+  })
+
+  const out = await transpiler.getCachedOrTranspile({
+    pathname: '/default-post.ts',
+    body: source,
+    shouldStop: false,
+  })
+
+  assertEquals(postProcessCallCount, 1)
+  assertEquals(out.code, 'transformed+default')
+})
+
+Deno.test('createTranspiler - per-call postProcess overrides the constructor default', async () => {
+  let defaultCallCount = 0
+  let perCallCallCount = 0
+  const mockEsbuild: EsbuildLike = {
+    transform: (_input: string | Uint8Array) => Promise.resolve({ code: 'transformed' }),
+    stop: () => Promise.resolve(),
+  }
+  const transpiler = createTranspiler({
+    cache: true,
+    esbuild: mockEsbuild,
+    postProcess: (code) => {
+      defaultCallCount++
+      return `${code}+default`
+    },
+  })
+
+  const out = await transpiler.getCachedOrTranspile({
+    pathname: '/override-post.ts',
+    body: source,
+    shouldStop: false,
+    postProcess: (code) => {
+      perCallCallCount++
+      return `${code}+per-call`
+    },
+  })
+
+  assertEquals(defaultCallCount, 0)
+  assertEquals(perCallCallCount, 1)
+  assertEquals(out.code, 'transformed+per-call')
+})
+
 Deno.test('createTranspiler - postProcess errors propagate and do not cache', async () => {
   let transformCallCount = 0
   const mockEsbuild: EsbuildLike = {

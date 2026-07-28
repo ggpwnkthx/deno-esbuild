@@ -95,6 +95,14 @@ export interface Options {
    * is considered stale and evicted on the next access. Defaults to undefined (no expiry).
    */
   ttl?: number
+  /**
+   * Post-transform hook. Receives the esbuild output and returns the code
+   * that should actually be cached and served. Useful for dev-server
+   * pipelines that need to run an additional step (e.g. an import rewriter)
+   * after esbuild has transpiled the body. Per-call `postProcess` (via
+   * {@linkcode TranspileRequest.postProcess}) overrides this default.
+   */
+  postProcess?: (code: string) => Promise<string> | string
 }
 
 /** Default file extensions that should be transpiled. */
@@ -120,6 +128,7 @@ export interface TranspilerOptions {
   transformOptions?: esbuild.TransformOptions | undefined
   maxSize?: number | undefined
   ttl?: number | undefined
+  postProcess?: ((code: string) => Promise<string> | string) | undefined
 }
 
 /** Per-request options for {@linkcode Transpiler.getCachedOrTranspile}. */
@@ -147,7 +156,7 @@ export interface TranspileRequest {
    * import rewriter) before serving the response. Errors propagate; the
    * failing call is not cached.
    */
-  postProcess?: (code: string) => Promise<string> | string
+  postProcess?: ((code: string) => Promise<string> | string) | undefined
 }
 
 /** A transpiler bound to a single in-memory cache. */
@@ -172,6 +181,7 @@ export function createTranspiler(options: TranspilerOptions = {}): Transpiler {
       Number.isFinite(options.ttl) && options.ttl >= 0
     ? options.ttl
     : undefined
+  const defaultPostProcess = options.postProcess
 
   return {
     async getCachedOrTranspile(
@@ -197,8 +207,9 @@ export function createTranspiler(options: TranspilerOptions = {}): Transpiler {
         loader: mergedOptions.loader ?? 'tsx',
       })
 
-      if (postProcess) {
-        code = await postProcess(code)
+      const effectivePostProcess = postProcess ?? defaultPostProcess
+      if (effectivePostProcess) {
+        code = await effectivePostProcess(code)
       }
 
       if (shouldStop) {
