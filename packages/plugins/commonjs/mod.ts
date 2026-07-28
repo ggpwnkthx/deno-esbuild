@@ -13,10 +13,17 @@
  * conversion leaves those calls as a `__require` helper that the
  * browser can't satisfy. The transform rewrites those calls to static
  * `import` statements, which the browser's module loader handles.
+ *
+ * The same transform also handles `exports.X = Y` at module top
+ * scope, rewriting it to `const X = Y; export { X }`. Previously
+ * those assignments were left in place (which silently threw at
+ * runtime in ESM); the fix makes the named-export forward
+ * statically resolvable. See `./transform.ts` for the full pattern
+ * catalogue.
  */
 
 import * as esbuild from 'esbuild'
-import { looksLikeCjs, transform } from './transform.ts'
+import { extractCjsExports, looksLikeCjs, transform, type TransformOptions } from './transform.ts'
 
 /** Options accepted by {@linkcode commonjsPlugin}. */
 export interface CommonjsPluginOptions {
@@ -32,7 +39,22 @@ export interface CommonjsPluginOptions {
    * callback's content is cached by esbuild either way.
    */
   sourcemap?: boolean
+
+  /**
+   * Forwarded to {@linkcode transform}'s `onDynamicExport`. Called
+   * when the transform sees a CJS export shape it can't statically
+   * forward (computed keys, `Object.assign(exports, ...)`, etc.).
+   * Use it to log a one-shot warning to the operator — the resulting
+   * ESM still emits, but some named exports may be missing.
+   */
+  onDynamicExport?: TransformOptions['onDynamicExport']
 }
+
+// Re-export `transform` and `extractCjsExports` so consumers can
+// invoke them directly without reaching into the `./transform.ts`
+// subpath (the package's `exports` map only exposes `.`).
+export { extractCjsExports, looksLikeCjs, transform }
+export type { CjsExportsScan, TransformOptions, TransformResult } from './transform.ts'
 
 const DEFAULT_LOADER_FILTER = /\.[cm]?[jt]sx?$/
 
@@ -46,7 +68,7 @@ const DEFAULT_LOADER_FILTER = /\.[cm]?[jt]sx?$/
 export default function commonjsPlugin(
   options: CommonjsPluginOptions = {},
 ): esbuild.Plugin {
-  const { filter, sourcemap = false } = options
+  const { filter, sourcemap = false, onDynamicExport } = options
   const filters = filter ? Array.isArray(filter) ? filter : [filter] : null
 
   return {
@@ -80,6 +102,7 @@ export default function commonjsPlugin(
           const result = transform(source, {
             sourcefile: args.path,
             sourcemap,
+            onDynamicExport,
           })
           return { contents: result.code, loader: 'js' }
         },

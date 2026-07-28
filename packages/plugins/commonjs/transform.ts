@@ -19,11 +19,10 @@
  *                                          export default _mod
  *   module.exports = { foo: 1 }         →  const foo = 1;
  *                                          export default { foo, bar }
- *   exports.X = Y                      →  assignment left in place
- *                                          (X becomes a free identifier
- *                                          in the new ESM module, since
- *                                          the file's other CJS surface
- *                                          was rewritten away)
+ *   exports.X = Y                      →  const X = Y; export { X }
+ *                                          (the last assignment to each
+ *                                          name wins, matching the
+ *                                          runtime `module.exports` shape)
  *
  * Anything not in the recognised set is left as-is. The plugin's
  * heuristic skips already-ESM files before the transform runs, so
@@ -35,6 +34,8 @@ import { generate } from 'astring'
 import type {
   CallExpression,
   ExportDefaultDeclaration,
+  ExportNamedDeclaration,
+  ExportSpecifier,
   Expression,
   ExpressionStatement,
   Identifier,
@@ -60,6 +61,14 @@ export interface TransformOptions {
   sourcemap?: boolean
   /** Whether to include the original source in the source map. */
   sourcesContent?: boolean
+  /**
+   * Called when the transform sees a CJS export shape it can't
+   * statically forward (computed keys, `Object.assign(exports, ...)`,
+   * `exports = ...`, `module.exports = function/class/expr`). Use it
+   * to log a one-shot warning to the operator — the resulting ESM
+   * still emits, but some named exports may be missing.
+   */
+  onDynamicExport: ((message: string) => void) | undefined
 }
 
 /** Result of a {@linkcode transform} call. */
@@ -70,6 +79,19 @@ export interface TransformResult {
 }
 
 /**
+ * Result of an {@linkcode extractCjsExports} scan: the names of the
+ * statically-resolvable CJS named exports, plus a `dynamic` flag set
+ * when the scan encountered a shape it couldn't resolve statically
+ * (computed keys, `Object.assign(exports, ...)`, etc.).
+ */
+export interface CjsExportsScan {
+  /** Names of statically-resolvable `exports.X = Y` assignments. */
+  names: readonly string[]
+  /** True if the scan encountered a shape it couldn't resolve. */
+  dynamic: boolean
+}
+
+/**
  * Convert a CJS source string to ESM. Returns the transformed source
  * (and optionally a source map). Throws if the source can't be
  * parsed — callers should treat parse errors as "skip the transform"
@@ -77,7 +99,7 @@ export interface TransformResult {
  */
 export function transform(
   code: string,
-  options: TransformOptions = {},
+  options: TransformOptions = { onDynamicExport: undefined },
 ): TransformResult {
   // Detect source type. ESM-style files (top-level `import` /
   // `export`) parse as `module`; the rest parses as `script`. CJS
@@ -91,7 +113,12 @@ export function transform(
     locations: !!options.sourcemap,
   }) as Program
 
-  const newBody: (Statement | ModuleDeclaration)[] = rewriteBody(ast.body)
+  const ctx: RewriteContext = {
+    importsByName: new Map<string, ImportDeclaration>(),
+    namedExports: new Map<string, Expression>(),
+    onDynamicExport: options.onDynamicExport,
+  }
+  const newBody: (Statement | ModuleDeclaration)[] = rewriteBody(ast.body, ctx)
 
   const newAst: Program = {
     ...ast,
@@ -117,6 +144,215 @@ export function transform(
     // deno-lint-ignore no-explicit-any
     map: generatedMap as any,
   }
+}
+
+/**
+ * Scan a CJS source string and return the names of its statically
+ * resolvable named exports (`exports.X = Y`), in source order. Used
+ * by the dev server's per-spec shim generator to build a destructure
+ * against an `import * as ns from "<abs>";` re-export without
+ * requiring the consumer to hand-maintain an export list.
+ *
+ * Each name appears at most once. Duplicate `exports.X = …;` patterns
+ * collapse to a single name — consumers only need the names for the
+ * destructure, the values resolve at runtime via `module.exports`.
+ *
+ * Throws if the source can't be parsed as a CJS module.
+ */
+export function extractCjsExports(
+  code: string,
+  options: { onDynamicExport?: (message: string) => void } = {},
+): CjsExportsScan {
+  const looksLikeEsm = /^\s*(?:import|export)\b/m.test(code)
+  const ast = parse(code, {
+    ecmaVersion: 'latest',
+    sourceType: looksLikeEsm ? 'module' : 'script',
+    allowReturnOutsideFunction: true,
+  }) as Program
+
+  const names: string[] = []
+  const seen = new Set<string>()
+  let dynamic = false
+  walkCjsExportStatements(ast.body, (name) => {
+    if (!seen.has(name)) {
+      seen.add(name)
+      names.push(name)
+    }
+  }, (msg) => {
+    dynamic = true
+    options.onDynamicExport?.(msg)
+  })
+
+  return { names, dynamic }
+}
+
+/**
+ * Walk a parsed CJS program body, calling `onName` for each
+ * statically-resolvable `exports.X = Y` assignment at any depth and
+ * `onDynamic` for any unrecognised export shape (computed keys,
+ * `Object.assign(exports, ...)`, `exports = ...`, etc.).
+ *
+ * Used by both {@linkcode transform} (to decide what to register in
+ * the named-exports map) and {@linkcode extractCjsExports} (to build
+ * the list of names without mutating the AST). The walker descends
+ * into `if/else`, `try/catch/finally`, `with`, `for`, `while`, and
+ * other block-scoped statements because names like React's
+ * `exports.createRoot` live inside an `if (process.env.NODE_ENV ===
+ * 'production') { … }` branch — we want the static name even if we
+ * don't know which branch runs at runtime.
+ */
+function walkCjsExportStatements(
+  body: (Statement | ModuleDeclaration)[],
+  onName: (name: string) => void,
+  onDynamic: (message: string) => void,
+): void {
+  for (const stmt of body) {
+    walkCjsExportStatement(stmt, onName, onDynamic)
+  }
+}
+
+function walkCjsExportStatement(
+  node: Statement | ModuleDeclaration | Expression,
+  onName: (name: string) => void,
+  onDynamic: (message: string) => void,
+): void {
+  // Direct hit — `exports.X = Y;` at this position.
+  if (node.type === 'ExpressionStatement') {
+    const expr = node.expression
+    if (expr.type === 'AssignmentExpression') {
+      const left = expr.left
+      if (left.type === 'MemberExpression') {
+        if (left.computed) {
+          onDynamic(`computed-key exports assignment — name not statically known`)
+          return
+        }
+        const obj = left.object
+        const prop = left.property
+        if (obj.type === 'Identifier' && obj.name === 'exports') {
+          if (prop.type === 'Identifier') {
+            onName(prop.name)
+          } else {
+            onDynamic(`non-identifier exports property — name not statically known`)
+          }
+          return
+        }
+      }
+    }
+  }
+  // Recurse into block-shaped statements so names inside `if/else`
+  // and friends are picked up.
+  if (node.type === 'IfStatement') {
+    walkCjsExportStatement(node.consequent, onName, onDynamic)
+    if (node.alternate) walkCjsExportStatement(node.alternate, onName, onDynamic)
+    return
+  }
+  if (node.type === 'BlockStatement') {
+    for (const s of node.body) walkCjsExportStatement(s, onName, onDynamic)
+    return
+  }
+  if (node.type === 'WithStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+  if (node.type === 'TryStatement') {
+    walkCjsExportStatement(node.block, onName, onDynamic)
+    if (node.handler) {
+      // CatchClause — recurse into its BlockStatement body.
+      walkCjsExportStatement(node.handler.body, onName, onDynamic)
+    }
+    if (node.finalizer) {
+      for (const s of node.finalizer.body) walkCjsExportStatement(s, onName, onDynamic)
+    }
+    return
+  }
+  if (node.type === 'ForStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+  if (node.type === 'WhileStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+  if (node.type === 'DoWhileStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+  if (node.type === 'ForInStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+  if (node.type === 'ForOfStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+  if (node.type === 'LabeledStatement') {
+    walkCjsExportStatement(node.body, onName, onDynamic)
+    return
+  }
+}
+
+/**
+ * Collect the set of top-level binding names in a CJS program body:
+ * `function X() {}`, `class X {}`, `var X = …`, `let X = …`,
+ * `const X = …`. Used by {@linkcode rewriteBody} to detect
+ * assignments like `exports.X = X` whose RHS is already a top-level
+ * binding — for those we skip emitting a redundant `const X = …;`
+ * and just surface the existing binding as an ESM named export.
+ */
+function collectTopLevelNames(body: (Statement | ModuleDeclaration)[]): Set<string> {
+  const names = new Set<string>()
+  for (const stmt of body) {
+    if (stmt.type === 'FunctionDeclaration' && stmt.id?.type === 'Identifier') {
+      names.add(stmt.id.name)
+    } else if (stmt.type === 'ClassDeclaration' && stmt.id?.type === 'Identifier') {
+      names.add(stmt.id.name)
+    } else if (stmt.type === 'VariableDeclaration') {
+      for (const decl of stmt.declarations) {
+        for (const id of collectPatternNames(decl.id)) {
+          names.add(id)
+        }
+      }
+    }
+  }
+  return names
+}
+
+/**
+ * Walk a destructuring / `var` pattern and yield its binding names.
+ * Standalone identifier bindings (the canonical case); rest elements
+ * and defaults that nest patterns are returned with their inner
+ * names too.
+ */
+function collectPatternNames(
+  id: VariableDeclarator['id'],
+): string[] {
+  if (id.type === 'Identifier') return [id.name]
+  if (id.type === 'ObjectPattern') {
+    const out: string[] = []
+    for (const prop of id.properties) {
+      if (prop.type === 'Property' && prop.key.type === 'Identifier') {
+        out.push(prop.key.name)
+      } else if (prop.type === 'RestElement' && prop.argument?.type === 'Identifier') {
+        out.push(prop.argument.name)
+      }
+    }
+    return out
+  }
+  if (id.type === 'ArrayPattern') {
+    const out: string[] = []
+    for (const el of id.elements) {
+      if (el && el.type === 'Identifier') {
+        out.push(el.name)
+      } else if (el && el.type === 'RestElement' && el.argument?.type === 'Identifier') {
+        out.push(el.argument.name)
+      }
+    }
+    return out
+  }
+  if (id.type === 'MemberExpression' && id.property.type === 'Identifier') {
+    return [id.property.name]
+  }
+  return []
 }
 
 /** Heuristic — does the source string look like CommonJS? */
@@ -161,6 +397,29 @@ type RewriteResult =
   | undefined
 
 /**
+ * Shared mutable state threaded through the body walker. The body's
+ * imported-name map and the named-export map both need to live
+ * somewhere across statement iterations, and the `onDynamicExport`
+ * callback is the same plumbing that {@linkcode extractCjsExports}
+ * uses for its `dynamic` flag.
+ */
+interface RewriteContext {
+  /** Map of import name → import declaration, prepended at the end. */
+  importsByName: Map<string, ImportDeclaration>
+  /**
+   * Map of named export name → the right-hand-side `Expression` AST
+   * node from the *last* `exports.X = Y;` assignment at module top
+   * scope. The body's final pass emits one `const X = Y;` per name
+   * (last-write-wins mirrors the CJS `module.exports` shape) and a
+   * single trailing `export { X, … }` so esbuild surfaces them as
+   * ESM named exports.
+   */
+  namedExports: Map<string, Expression>
+  /** Optional callback for unrecognised export shapes. */
+  onDynamicExport: ((message: string) => void) | undefined
+}
+
+/**
  * Walk the top-level statements of a parsed CJS program and return
  * a new array with the recognised CJS shapes replaced by their ESM
  * equivalents. Top-level statements that don't match a recognised
@@ -168,16 +427,20 @@ type RewriteResult =
  */
 function rewriteBody(
   body: (Statement | ModuleDeclaration)[],
+  ctx: RewriteContext,
 ): (Statement | ModuleDeclaration)[] {
   const result: (Statement | ModuleDeclaration)[] = []
-  // Map of import name → import declaration. The body rewriter
-  // stashes imports here and prepends them once at the end of the
-  // walk so they come before any remaining top-level code that
-  // uses the bindings.
-  const importsByName = new Map<string, ImportDeclaration>()
+  const { importsByName, namedExports } = ctx
+
+  // Collect names that already have a top-level binding before we
+  // walk — for those we don't need to emit a `const X = Y;` later
+  // because the original declaration (`function X() {}`,
+  // `var X = require("mod")`, etc.) is still in the body. We just
+  // need to surface them as ESM exports.
+  const existingNames = collectTopLevelNames(body)
 
   for (const stmt of body) {
-    const replaced = tryRewriteStatement(stmt, importsByName)
+    const replaced = tryRewriteStatement(stmt, ctx)
     if (replaced === undefined) {
       // Not my pattern — leave the statement alone.
       result.push(stmt)
@@ -192,21 +455,73 @@ function rewriteBody(
     }
   }
 
+  // Emit `const X = Y;` for each captured CJS named-export
+  // assignment (last-write-wins), then a single trailing
+  // `export { X, Y, … }` so esbuild surfaces them. For names that
+  // already have a binding elsewhere in the body (React's
+  // `function Children() {} exports.Children = Children;` pattern
+  // is the canonical case) we skip the `const X = Y;` and just
+  // surface the existing binding.
+  const head: (Statement | ModuleDeclaration)[] = []
+  if (namedExports.size > 0) {
+    const specifiers: ExportSpecifier[] = []
+    for (const name of namedExports.keys()) {
+      const init = namedExports.get(name)
+      if (init === undefined) continue
+      const id: Identifier = {
+        type: 'Identifier',
+        name,
+        start: 0,
+        end: 0,
+      }
+      if (!existingNames.has(name)) {
+        head.push({
+          type: 'VariableDeclaration',
+          start: 0,
+          end: 0,
+          kind: 'const',
+          declarations: [{
+            type: 'VariableDeclarator',
+            start: 0,
+            end: 0,
+            id,
+            init,
+          }],
+        } as VariableDeclaration)
+      }
+      specifiers.push({
+        type: 'ExportSpecifier',
+        start: 0,
+        end: 0,
+        local: id,
+        exported: id,
+      } as ExportSpecifier)
+    }
+    head.push({
+      type: 'ExportNamedDeclaration',
+      start: 0,
+      end: 0,
+      specifiers,
+      declaration: null,
+      source: null,
+    } as ExportNamedDeclaration)
+  }
+
   // Prepend the collected `import` statements so they come before
   // any remaining top-level code that uses the bindings.
   const imports = [...importsByName.values()]
-  return [...imports, ...result]
+  return [...imports, ...head, ...result]
 }
 
 function tryRewriteStatement(
   stmt: Statement | ModuleDeclaration,
-  importsByName: Map<string, ImportDeclaration>,
+  ctx: RewriteContext,
 ): RewriteResult {
   if (stmt.type === 'VariableDeclaration') {
-    return rewriteVarDecl(stmt, importsByName)
+    return rewriteVarDecl(stmt, ctx)
   }
   if (stmt.type === 'ExpressionStatement') {
-    return rewriteExprStmt(stmt, importsByName)
+    return rewriteExprStmt(stmt, ctx)
   }
   return undefined
 }
@@ -217,8 +532,9 @@ function tryRewriteStatement(
 
 function rewriteVarDecl(
   stmt: VariableDeclaration,
-  importsByName: Map<string, ImportDeclaration>,
+  ctx: RewriteContext,
 ): RewriteResult {
+  const { importsByName } = ctx
   // We only transform top-level `var`/`let`/`const` declarations
   // whose init is a static `require(spec)` call. Anything else
   // (arithmetic, function calls, object literals, etc.) is left
@@ -396,8 +712,9 @@ function bindingKindFromPattern(
 
 function rewriteExprStmt(
   stmt: ExpressionStatement,
-  importsByName: Map<string, ImportDeclaration>,
+  ctx: RewriteContext,
 ): RewriteResult {
+  const { importsByName, namedExports, onDynamicExport } = ctx
   const expr = stmt.expression
 
   if (expr.type === 'AssignmentExpression') {
@@ -410,20 +727,37 @@ function rewriteExprStmt(
         obj.type === 'Identifier' && obj.name === 'module' &&
         prop.type === 'Identifier' && prop.name === 'exports' && !me.computed
       ) {
-        return rewriteModuleExports(expr.right, importsByName)
+        return rewriteModuleExports(expr.right, ctx)
       }
-      // `exports.X = Y` — leave in place as a regular
-      // assignment (X becomes a free identifier in the new ESM
-      // module, which is the right behaviour for React's pattern
-      // of doing `exports.X = Y` and then reading X elsewhere).
+      // `exports.X = Y` — track the (name, right-hand-side) pair so
+      // the body can emit `const X = Y; export { X }` later. The
+      // previous behaviour left the assignment in place, which threw
+      // `ReferenceError: exports is not defined` at runtime in an
+      // ESM module. Surfacing the names via a single trailing
+      // `export { … }` is what makes esbuild forward them. Last
+      // write wins — `namedExports.set` overwrites any prior entry,
+      // matching the CJS `module.exports` shape.
       if (
-        obj.type === 'Identifier' && obj.name === 'exports' && !me.computed &&
+        obj.type === 'Identifier' && obj.name === 'exports' &&
         prop.type === 'Identifier'
       ) {
-        return undefined
+        if (me.computed) {
+          // `exports["X"] = Y` / `exports[expr] = Y` — emit a
+          // warning and pass through unchanged. The result still
+          // parses, but consumers won't see this name statically.
+          onDynamicExport?.(
+            `exports[${prop.name}] = … (computed key) — leave as-is`,
+          )
+          return undefined
+        }
+        namedExports.set(prop.name, expr.right)
+        return null
       }
     }
     // Unrecognised assignment — leave it alone.
+    onDynamicExport?.(
+      `unrecognised top-level assignment — left as-is (will likely fail in ESM)`,
+    )
     return undefined
   }
 
@@ -459,8 +793,9 @@ function rewriteExprStmt(
  */
 function rewriteModuleExports(
   right: Expression,
-  importsByName: Map<string, ImportDeclaration>,
+  ctx: RewriteContext,
 ): RewriteResult {
+  const { importsByName } = ctx
   // Common case: `module.exports = require("mod")`. We need an
   // `import * as _mod from "mod"; export default _mod` pair.
   if (right.type === 'CallExpression' && isRequireCall(right)) {

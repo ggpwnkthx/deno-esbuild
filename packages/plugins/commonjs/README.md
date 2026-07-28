@@ -20,22 +20,43 @@ no Babel runtime, no SWC binary. Recognised CJS shapes include:
 | CJS shape                         | ESM output                                                                             |
 | --------------------------------- | -------------------------------------------------------------------------------------- |
 | `var X = require("spec")`         | `import X from "spec"`                                                                 |
-| `var { a, b } = require("spec")`  | `import { a as a } from "spec"; import { b as b } from "spec"` (separate declarations) |
+| `var { X, Y } = require("spec")`  | `import { X as X } from "spec"; import { Y as Y } from "spec"` (separate declarations) |
 | `require("spec")` (side-effect)   | `import "spec"`                                                                        |
 | `module.exports = X`              | `export default X`                                                                     |
 | `module.exports = require("mod")` | `import * as ns from "mod"; export default ns`                                         |
 | `module.exports = { foo: 1 }`     | `const foo = 1; export default { foo }`                                                |
-| `exports.X = Y`                   | left in place; `X` becomes a free identifier                                           |
+| `exports.X = Y`                   | `const X = Y; export { X }` (or just `export { X }` if `X` is already top-level-bound) |
+| `exports.X = Y` (inside an `if`)  | both branches scanned; union of names is exported                                      |
 
-A pre-pass (`looksLikeCjs`) detects whether the file is worth transforming by looking for the CJS
-surface in source text — a fast text-based scan that returns `true` whenever the CJS surface appears
-anywhere outside of the top-level structure. The downstream acorn+astring AST walk handles strings
-and comments correctly, so a false positive from the pre-pass just causes an unnecessary parse + AST
+For `exports.X = Y` last-write-wins, matching the runtime `module.exports` shape. The pre-pass
+(`looksLikeCjs`) detects whether the file is worth transforming by looking for the CJS surface in
+source text — a fast text-based scan that returns `true` whenever the CJS surface appears anywhere
+outside of the top-level structure. The downstream acorn+astring AST walk handles strings and
+comments correctly, so a false positive from the pre-pass just causes an unnecessary parse + AST
 walk, not a wrong rewrite.
 
 The plugin's value-add over esbuild's built-in CJS handling is `filter` — esbuild's default CJS
 handler runs on every CJS file the bundler encounters; the plugin lets you opt only the ones you
 care about into the transform path.
+
+## Direct API: `extractCjsExports`
+
+For consumers (dev servers, bundlers) that need to know the named-export surface of a CJS source
+without running the full transform, the transform also re-exports a pure scan helper:
+
+```ts
+import { extractCjsExports } from '@ggpwnkthx/esbuild-plugin-commonjs'
+
+const scan = extractCjsExports(source, {
+  onDynamicExport: (msg) => console.warn(`cjs export: ${msg}`),
+})
+// scan.names  : string[]   // statically-resolvable `exports.X = Y` names, source order, deduped
+// scan.dynamic: boolean    // `true` if a non-statically-resolvable shape was encountered
+```
+
+The scan recurses into `if/else`, `try/catch/finally`, `with`, `for/while/do`, and other
+block-shaped statements so names declared in `process.env`-gated branches (the React 18
+`react-dom/client.js` shape) are still found.
 
 ## Usage
 
@@ -65,6 +86,14 @@ commonjsPlugin({
   // default — the dev server doesn't need source maps and esbuild
   // caches the onLoad content either way.
   sourcemap?: boolean,
+
+  // Forwarded to the transform. Fired when the transform sees a CJS
+  // export shape it can't statically forward (computed keys,
+  // Object.assign(exports, ...), exports = ..., module.exports =
+  // function/class/expr). Use it to log a one-shot warning to the
+  // operator — the resulting ESM still emits, but some named exports
+  // may be missing.
+  onDynamicExport?: (message: string) => void,
 })
 ```
 

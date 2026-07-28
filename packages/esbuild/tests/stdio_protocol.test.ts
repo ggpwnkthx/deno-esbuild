@@ -7,7 +7,7 @@ import {
   type Packet,
   readUInt32LE,
   type Value,
-} from '../shared/stdio_protocol.ts'
+} from '../shared/stdio_protocol/mod.ts'
 
 Deno.test('UTF-8: encode/decode round-trip for ASCII', () => {
   const out = decodeUTF8(encodeUTF8('hello world'))

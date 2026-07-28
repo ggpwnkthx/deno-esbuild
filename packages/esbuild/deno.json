@@ -1,6 +1,6 @@
 {
   "name": "@ggpwnkthx/esbuild",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19"
   },
@@ -10,15 +10,15 @@
     "./binary_installer": "./binary_installer.ts",
     "./shared": "./shared/mod.ts",
     "./shared/validation": "./shared/validation.ts",
-    "./shared/flags": "./shared/flags.ts",
+    "./shared/flags": "./shared/flags/mod.ts",
     "./shared/v8_stack": "./shared/v8_stack.ts",
     "./shared/message_sanitize": "./shared/message_sanitize.ts",
-    "./shared/plugin_runner": "./shared/plugin_runner.ts",
-    "./shared/transport": "./shared/transport.ts",
-    "./shared/stdio_protocol": "./shared/stdio_protocol.ts",
-    "./shared/types": "./shared/types.ts",
+    "./shared/plugin_runner": "./shared/plugin_runner/mod.ts",
+    "./shared/transport": "./shared/transport/mod.ts",
+    "./shared/stdio_protocol": "./shared/stdio_protocol/mod.ts",
+    "./shared/types": "./shared/types/mod.ts",
     "./shared/uint8array_json_parser": "./shared/uint8array_json_parser.ts",
-    "./shared/worker": "./shared/worker.ts"
+    "./shared/worker": "./shared/worker/mod.ts"
   },
   "publish": {
     "include": [

@@ -33,26 +33,26 @@
  * await stop(); // prevent hang
  * ```
  */
-/** @see ../shared/types.ts:BuildOptions */
-export type { BuildOptions } from './shared/types.ts'
-/** @see ../shared/types.ts:Loader */
-export type { Loader } from './shared/types.ts'
-/** @see ../shared/types.ts:OnLoadArgs */
-export type { OnLoadArgs } from './shared/types.ts'
-/** @see ../shared/types.ts:OnLoadResult */
-export type { OnLoadResult } from './shared/types.ts'
-/** @see ../shared/types.ts:OnResolveArgs */
-export type { OnResolveArgs } from './shared/types.ts'
-/** @see ../shared/types.ts:OnResolveResult */
-export type { OnResolveResult } from './shared/types.ts'
-/** @see ../shared/types.ts:Platform */
-export type { Platform } from './shared/types.ts'
-/** @see ../shared/types.ts:Plugin */
-export type { Plugin } from './shared/types.ts'
-/** @see ../shared/types.ts:PluginBuild */
-export type { PluginBuild } from './shared/types.ts'
-/** @see ../shared/types.ts:TransformOptions */
-export type { TransformOptions } from './shared/types.ts'
+/** @see ../shared/types/mod.ts:BuildOptions */
+export type { BuildOptions } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:Loader */
+export type { Loader } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:OnLoadArgs */
+export type { OnLoadArgs } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:OnLoadResult */
+export type { OnLoadResult } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:OnResolveArgs */
+export type { OnResolveArgs } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:OnResolveResult */
+export type { OnResolveResult } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:Platform */
+export type { Platform } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:Plugin */
+export type { Plugin } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:PluginBuild */
+export type { PluginBuild } from './shared/types/mod.ts'
+/** @see ../shared/types/mod.ts:TransformOptions */
+export type { TransformOptions } from './shared/types/mod.ts'
 import * as common from './shared/mod.ts'
 import * as ourselves from './mod.ts'
 import { install } from './binary_installer.ts'
@@ -189,7 +189,7 @@ const api: EsbuildApi = createEsbuildApi({
   },
 })
 
-/** @see ../shared/types.ts:build
+/** @see ../shared/types/mod.ts:build
  * @param options - Configuration options for the build.
  * @example
  * ```ts
@@ -201,25 +201,25 @@ const api: EsbuildApi = createEsbuildApi({
  * ```
  */
 export const build = api.build
-/** @see ../shared/types.ts:context */
+/** @see ../shared/types/mod.ts:context */
 export const context = api.context
-/** @see ../shared/types.ts:transform */
+/** @see ../shared/types/mod.ts:transform */
 export const transform = api.transform
-/** @see ../shared/types.ts:formatMessages */
+/** @see ../shared/types/mod.ts:formatMessages */
 export const formatMessages = api.formatMessages
-/** @see ../shared/types.ts:analyzeMetafile */
+/** @see ../shared/types/mod.ts:analyzeMetafile */
 export const analyzeMetafile = api.analyzeMetafile
-/** @see ../shared/types.ts:buildSync */
+/** @see ../shared/types/mod.ts:buildSync */
 export const buildSync = api.buildSync
-/** @see ../shared/types.ts:transformSync */
+/** @see ../shared/types/mod.ts:transformSync */
 export const transformSync = api.transformSync
-/** @see ../shared/types.ts:formatMessagesSync */
+/** @see ../shared/types/mod.ts:formatMessagesSync */
 export const formatMessagesSync = api.formatMessagesSync
-/** @see ../shared/types.ts:analyzeMetafileSync */
+/** @see ../shared/types/mod.ts:analyzeMetafileSync */
 export const analyzeMetafileSync = api.analyzeMetafileSync
-/** @see ../shared/types.ts:stop */
+/** @see ../shared/types/mod.ts:stop */
 export const stop = api.stop
-/** @see ../shared/types.ts:initialize */
+/** @see ../shared/types/mod.ts:initialize */
 export const initialize = api.initialize
 
 // If we're called as the main script, forward the CLI to the underlying executable

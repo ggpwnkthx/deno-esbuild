@@ -1,20 +1,17 @@
 /**
  * @module
- * Test seam for spawning the native esbuild binary.
+ * Spawns the native esbuild binary for the transport in `mod.ts`.
  *
- * The transport in `mod.ts` calls {@link spawnWithDenoCommand} to wrap
- * `Deno.Command` in a narrow {@link SpawnHandle} (the only surface the
- * esbuild service needs: write/read/close/status). The `SpawnFn` indirection
- * exists so future tests can substitute a fake subprocess without touching
- * the call site.
+ * {@link spawnWithDenoCommand} wraps `Deno.Command` in a narrow
+ * {@link SpawnHandle} exposing only what the esbuild service needs
+ * (write/read/close/status).
  */
 
 /**
  * Minimal subprocess handle used by the native-binary transport. The shape is
- * deliberately narrow (only what the esbuild service needs) so the underlying
- * implementation can be swapped for a test double in a future change.
+ * deliberately narrow (only what the esbuild service needs).
  */
-export interface SpawnHandle {
+interface SpawnHandle {
   write(bytes: Uint8Array): void
   read(): Promise<Uint8Array | null>
   close(): Promise<void> | void
@@ -22,21 +19,14 @@ export interface SpawnHandle {
 }
 
 /** Options for {@link spawnWithDenoCommand}. */
-export interface SpawnOptions {
+interface SpawnOptions {
   args: string[]
   stdin: 'piped' | 'inherit'
   stdout: 'piped' | 'inherit'
   stderr: 'inherit'
 }
 
-/** Spawns a process and returns a {@link SpawnHandle} for it. */
-export type SpawnFn = (cmd: string, options: SpawnOptions) => SpawnHandle
-
-/**
- * Validates the supplied {@link SpawnOptions} so that future test doubles
- * can be plugged in without crashing the transport on a malformed string.
- */
-export function validateSpawnOptions(options: SpawnOptions): void {
+function validateSpawnOptions(options: SpawnOptions): void {
   const validStdio = (v: string, field: string): void => {
     if (v !== 'piped' && v !== 'inherit') {
       throw new Error(
@@ -51,8 +41,7 @@ export function validateSpawnOptions(options: SpawnOptions): void {
 
 /**
  * Spawns a process using `Deno.Command` (Deno ≥ 1.40) and returns a
- * {@link SpawnHandle} for it. The `SpawnFn` indirection lets future tests
- * inject a fake subprocess without touching call sites.
+ * {@link SpawnHandle} for it.
  */
 export function spawnWithDenoCommand(
   cmd: string,

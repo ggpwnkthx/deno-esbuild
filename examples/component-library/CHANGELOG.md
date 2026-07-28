@@ -26,14 +26,24 @@ no version.
   example no longer publishes anything. The `examples/component-library/README.md` documents this;
   the only artefacts under `src/` are now `main.tsx`, `index.html`, `serve.ts`, and the `server/`
   helpers, none of which are library code.
+- The hand-maintained `CJS_REEXPORT_TABLE` in `src/server/serve_module.ts` is gone. The shim now
+  derives named exports from the underlying CJS source by walking the AST with `extractCjsExports`
+  (re-exported from `@ggpwnkthx/esbuild-plugin-commonjs`); the walker recurses into `if/else`,
+  `try/catch/finally`, `for`/`while`, and other block statements, so it picks up shapes like
+  `react-dom/client`'s `if (process.env.NODE_ENV === 'production') { … }` branches without a
+  hand-maintained list. If the scan encounters a CJS export shape it can't statically resolve
+  (computed keys, `Object.assign(exports, ...)`, `module.exports = function/class/expr`), it warns
+  the dev-server console once per unique message and falls through to the `export * from` shim —
+  consumers see `undefined` for the missed name rather than a hard build failure. Upgrading to a
+  future React major (e.g. 19) picks up new hooks/component helpers automatically without editing
+  this example.
 
 ### Added
 
-- `src/server/serve_module.ts` now has two shim shapes. CommonJS-only npm specs with no static
-  export list (`react`, `react-dom`, `react-dom/client`, `react/jsx-runtime`,
-  `react/jsx-dev-runtime`) feed a hand-maintained destructure into
-  `import ns from "<abs>"; export const { a, b, c } = ns;`. Every other npm spec (MUI, Emotion,
-  anything that ships a real ESM module) feeds
+- `src/server/serve_module.ts` now has two shim shapes. CommonJS-only npm specs feed a destructure
+  generated from a dynamic AST scan into
+  `import * as ns from "<abs>"; const { …names } = ns; export { …names }; export default ns;`. Every
+  other npm spec (MUI, Emotion, anything that ships a real ESM module) feeds
   `export * from "<abs>"; export { default } from "<abs>";` into esbuild's CJS-to-ESM bridge. The
   result is one fully-bundled ESM module per `/@modules/<spec>` URL with the right surface either
   way.

@@ -7,7 +7,76 @@ individual packages live in each package's own `CHANGELOG.md`.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## latest - 2026-07-27
+## latest - 2026-07-28
+
+### chore(esbuild): cut 0.2.15
+
+- `@ggpwnkthx/esbuild` (`packages/esbuild/`) bumped from `0.2.14` to `0.2.15`. Internal refactor
+  only — the public API surface is unchanged. The previously-monolithic `shared/` files were split
+  into folder modules so the package can grow without making every collaborator read every line:
+  - `shared/flags` → `shared/flags/{build,defaults,mod,normalize,push_helpers,transform,types}.ts`.
+  - `shared/plugin_runner` →
+    `shared/plugin_runner/{handle_plugins,lifecycle,messages,mod,object_stash,on_load,on_resolve,on_start,plugin_setup,request_callbacks,types}.ts`.
+  - `shared/transport` →
+    `shared/transport/{build_context,build_context_lifecycle,build_context_rebuild,build_response,channel,mod,service,simple_services,sync_stubs,transform,types,util,version}.ts`.
+  - `shared/stdio_protocol` →
+    `shared/stdio_protocol/{formatter_messages,le,messages,mod,packet,plugin_messages,utf8}.ts`.
+  - `shared/types` →
+    `shared/types/{api,build,common,diagnostics,metafile,mod,plugin,plugin_callbacks,primitives,serve,transform,tsconfig}.ts`.
+  - `shared/worker` → `shared/worker/{entry,mod,runtime,types}.ts`.
+- Three helpers were extracted out of `shared/validation.ts` so the validator surface stays focused:
+  - `validateStringValue` and `validateAndJoinStringArray` → `shared/string_helpers.ts`.
+  - `jsRegExpToGoRegExp` → `shared/regex.ts`.
+  - `shared/validation.ts` re-exports the moved names so existing test imports
+    (`tests/validation.test.ts`, `tests/message_sanitize.test.ts`) keep resolving.
+- `failureErrorWithLog` is now its own `shared/failure_error.ts` module;
+  `shared/message_sanitize.ts` carries a back-compat re-export so the existing test import keeps
+  working.
+- `deno.json` `exports` map: `./shared/flags`, `./shared/plugin_runner`, `./shared/transport`,
+  `./shared/stdio_protocol`, `./shared/types`, and `./shared/worker` now point at the folder
+  `mod.ts` entry points. A new `./shared/stdio_protocol` subpath exposes the packet/formatter
+  helpers directly. No user-visible change in the API.
+
+### fix(esbuild-plugin-commonjs): cut 0.1.1
+
+- `@ggpwnkthx/esbuild-plugin-commonjs` (`packages/plugins/commonjs/`) bumped from `0.1.0` to
+  `0.1.1`. The earlier `0.1.0` baseline was rolled back in `8392dc2` and re-cut here with the new
+  `exports.X = Y` rewrite and the `extractCjsExports` / `onDynamicExport` surface:
+  - `extractCjsExports(source, options?)` — pure scan that returns the statically-resolvable
+    `exports.X = Y` names from a CJS source string (with a `dynamic` flag for unrecognised shapes).
+    Walks into `if/else`, `try/catch/finally`, `for/while/do`, `with`, and other block-shaped
+    statements so names declared in `process.env`-gated branches are still found. Re-exported from
+    the package's `.` subpath so consumers can invoke it directly without reaching into
+    `./transform.ts`.
+  - `TransformOptions.onDynamicExport` and `CommonjsPluginOptions.onDynamicExport` — optional
+    callback for unrecognised export shapes (computed keys, `Object.assign(exports, ...)`,
+    `module.exports = function/class/expr`). Lets callers surface a one-shot warning to the operator
+    when a CJS file uses a shape the transform can't statically forward.
+  - The `CommonjsPluginOptions` is now re-exported via the package's `.` subpath along with the
+    `TransformOptions`, `TransformResult`, and `CjsExportsScan` types.
+- Fixed: `exports.X = Y` assignments at module top scope are now rewritten to
+  `const X = Y; export { X };` instead of being left in place (which would have thrown
+  `ReferenceError: exports is not defined` at runtime once esbuild's `__commonJS` wrapper stripped
+  the `module` / `exports` bindings). Names declared via top-level `function X() {}` / `var X = …`
+  are surfaced without a redundant `const X = …;` to avoid duplicate declarations; the rewrite skips
+  emitting `const X = Y;` when `X` is already bound at module top scope. Last-write-wins on
+  duplicate `exports.X = …` assignments (matching the runtime `module.exports` shape). Unrecognised
+  shapes trigger `onDynamicExport` rather than silently dropping the rewrite.
+- `tests/mod.test.ts`: new `plugin — surfaces`exports.X = Y`named exports through bundling`
+  integration test (with backing `tests/fixtures/cjs-named-exports.js`) asserts the end-to-end
+  bundle no longer carries the `exports.X = …` assignment that used to throw at runtime.
+- `tests/transform.test.ts`: new regression cases for `exports.X = Y` reuses an existing top-level
+  binding, the trailing `export { … }` aggregation, and the `onDynamicExport` callback for
+  unrecognised shapes.
+
+### refactor(example): consume extractCjsExports in serve_module
+
+- `examples/component-library/CHANGELOG.md` already documented the move to
+  `extractCjsExports`-driven destructure shims under `[Unreleased]`. The follow-up release of
+  `@ggpwnkthx/esbuild-plugin-commonjs@0.1.1` makes that surface public (the example previously
+  re-implemented the walker locally). No version bump for the example — it is unversioned.
+
+## previous - 2026-07-27
 
 ### fix(esbuild-wrapper-shared): scoped-specifier + .js-suffix fixes; cut 0.3.2 and 0.3.3
 

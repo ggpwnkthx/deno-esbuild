@@ -48,6 +48,7 @@
     "./examples/": {
       "esbuild": "./packages/esbuild/mod.ts",
       "@ggpwnkthx/esbuild-plugin-deno": "./packages/plugins/deno/mod.ts",
+      "@ggpwnkthx/esbuild-plugin-commonjs": "./packages/plugins/commonjs/mod.ts",
       "@ggpwnkthx/esbuild-wrapper-shared": "./packages/wrappers/shared/mod.ts",
       "@ggpwnkthx/esbuild-wrapper-hono": "./packages/wrappers/hono/mod.ts"
     }

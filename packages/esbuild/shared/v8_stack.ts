@@ -9,8 +9,8 @@
  * pure: they consume the {@link StreamIn} `readFileSync` only to lazily read
  * the source file referenced in the stack frame.
  */
-import type * as types from './types.ts'
-import * as protocol from './stdio_protocol.ts'
+import type * as types from './types/mod.ts'
+import * as protocol from './stdio_protocol/mod.ts'
 
 /**
  * The input end of the stdio channel. Only the optional `readFileSync`

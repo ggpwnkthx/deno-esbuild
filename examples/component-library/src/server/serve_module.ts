@@ -1,66 +1,72 @@
 import type { DenoPluginHandle } from '@ggpwnkthx/esbuild-plugin-deno'
+import { extractCjsExports, looksLikeCjs } from '@ggpwnkthx/esbuild-plugin-commonjs'
 import * as esbuild from '@ggpwnkthx/esbuild'
 import { JS_MIME, rewriteImports } from '@ggpwnkthx/esbuild-wrapper-shared'
+import * as path from '@std/path'
 
 /**
- * Specs whose npm package ships only CommonJS sources and exposes no static
- * export list. For these we hand-maintain the re-exports we need at runtime;
- * `export * from "<abs>"` doesn't work because esbuild cannot see the named
- * exports of a CJS module statically (it falls back to forwarding only the
- * default export). Everything else (ESM packages like `@mui/material`,
- * `@emotion/*`, etc.) goes through the generic shim below.
+ * Recursively walk a CJS wrapper chain looking for the first source
+ * with statically-resolvable named exports (`exports.X = Y`).
  *
- * The {@linkcode react} entry is intentionally exhaustive so MUI and
- * `react-dom` can reach every React hook/component helper they reference.
+ * Most npm CJS packages ship a thin `index.js` whose only CJS surface
+ * is `module.exports = require('./cjs/whatever.development.js')`. The
+ * actual `exports.X = Y` lines live one or two levels deeper. This
+ * helper follows the chain and runs the commonjsPlugin's
+ * {@linkcode extractCjsExports} scan at the leaf.
+ *
+ * Returns `[]` when no static exports are found (caller falls through
+ * to the generic `export * from "<abs>";` shim, which works for ESM
+ * packages).
+ *
+ * The scan runs once per `/@modules/<spec>` request; esbuild caches
+ * the bundle output keyed on its own internal content hash so the
+ * repeated work per request is just an acorn parse, not a re-bundle.
  */
-const CJS_REEXPORT_TABLE: Record<string, readonly string[]> = {
-  'react': [
-    'Children',
-    'Component',
-    'Fragment',
-    'Profiler',
-    'PureComponent',
-    'StrictMode',
-    'Suspense',
-    '__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED',
-    'act',
-    'cloneElement',
-    'createContext',
-    'createElement',
-    'createFactory',
-    'createRef',
-    'forwardRef',
-    'isValidElement',
-    'lazy',
-    'memo',
-    'startTransition',
-    'unstable_act',
-    'useCallback',
-    'useContext',
-    'useDebugValue',
-    'useDeferredValue',
-    'useEffect',
-    'useId',
-    'useImperativeHandle',
-    'useInsertionEffect',
-    'useLayoutEffect',
-    'useMemo',
-    'useReducer',
-    'useRef',
-    'useState',
-    'useSyncExternalStore',
-    'useTransition',
-    'version',
-  ],
-  'react-dom': ['createPortal', 'flushSync', 'unstable_batchedUpdates'],
-  'react-dom/client': ['createRoot', 'hydrateRoot'],
-  'react/jsx-runtime': ['jsx', 'jsxs', 'Fragment'],
-  'react/jsx-dev-runtime': ['jsxDEV', 'jsx', 'jsxs', 'Fragment'],
-} as const
-
-function _isCjsReexportSpec(spec: string): boolean {
-  return Object.prototype.hasOwnProperty.call(CJS_REEXPORT_TABLE, spec)
+async function discoverCjsExports(absPath: string): Promise<readonly string[]> {
+  const visited = new Set<string>()
+  const dynamicMessages = new Set<string>()
+  let current = absPath
+  for (let depth = 0; depth < 5; depth++) {
+    if (visited.has(current)) return []
+    visited.add(current)
+    let source: string
+    try {
+      source = await Deno.readTextFile(current)
+    } catch {
+      return []
+    }
+    if (!looksLikeCjs(source)) return []
+    const scan = extractCjsExports(source, {
+      onDynamicExport: (msg: string) => dynamicMessages.add(msg),
+    })
+    if (scan.names.length > 0) {
+      // Warn once per unique message. Prevents spamming the dev
+      // console on every request for the same spec; the Set collapses
+      // duplicates across the chain-follow.
+      for (const msg of dynamicMessages) {
+        if (!warnedDynamicExports.has(msg)) {
+          console.warn(
+            `[serve_module] ${current}: ${msg}; some CJS exports may be missing from the shim`,
+          )
+          warnedDynamicExports.add(msg)
+        }
+      }
+      return scan.names
+    }
+    // No named exports at this level — try to follow one wrapper hop
+    // (`module.exports = require('./cjs/foo.js')`).
+    const match = source.match(
+      /module\.exports\s*=\s*require\(\s*(['"])(\.{1,2}\/[^'"]+)\1\s*\)/,
+    )
+    if (!match) return []
+    const target = match[2]
+    if (!target) return []
+    current = path.join(path.dirname(current), target)
+  }
+  return []
 }
+
+const warnedDynamicExports = new Set<string>()
 
 /**
  * Specs that must be shared across every served bundle rather than inlined.
@@ -115,16 +121,31 @@ function reactExternalPlugin(currentSpec: string): esbuild.Plugin {
 }
 
 /**
- * Build the per-`/modules/<spec>` ESM bundle. CJS-only specs use the
- * hand-maintained {@linkcode CJS_REEXPORT_TABLE} destructure, which esbuild
- * can statically forward as named exports. ESM packages use
- * `export * from "<abs>"; export { default } from "<abs>";`, which esbuild's
- * CJS-to-ESM bridge handles cleanly when the target module is real ESM.
+ * Build the per-`/modules/<spec>` ESM bundle.
  *
- * Bundles for {@linkcode SHARED_REACT_SPECS} are built WITHOUT externalising
- * React — they're the source of truth. Bundles for everything else
- * externalise React via {@linkcode reactExternalPlugin} so the browser
- * resolves `react` against the shared `/@modules/react` URL.
+ * The shim has two shapes, chosen by what the underlying source looks
+ * like:
+ *
+ *   - **CJS source** (`react/index.js` itself, or any package whose
+ *     `index.js` follows `module.exports = require('./cjs/...')`):
+ *     the names returned by {@linkcode discoverCjsExports} become a
+ *     destructure against the inner module's namespace after
+ *     `commonjsPlugin` has rewritten the CJS surface into ESM. The
+ *     shim forwards both the named bindings (so consumers can
+ *     `import { useState } from "/@modules/react"`) and the default
+ *     export (so consumers can `import * as React from "/@modules/react"`
+ *     and read `React.useState`).
+ *
+ *   - **Real ESM packages** (`@mui/material/Button`,
+ *     `@emotion/react`, etc.): `export * from "<abs>"; export {
+ *     default } from "<abs>";` is enough — esbuild's built-in ESM
+ *     handling forwards every named binding.
+ *
+ * Bundles for {@linkcode SHARED_REACT_SPECS} are built WITHOUT
+ * externalising React — they're the source of truth. Bundles for
+ * everything else externalise React via {@linkcode reactExternalPlugin}
+ * so the browser resolves `react` against the shared `/@modules/react`
+ * URL.
  */
 async function bundledShim(
   handle: DenoPluginHandle,
@@ -132,8 +153,8 @@ async function bundledShim(
   spec: string,
 ): Promise<string> {
   const url = JSON.stringify(abs)
-  const reexports = CJS_REEXPORT_TABLE[spec]
-  const contents = reexports
+  const reexports = await discoverCjsExports(abs)
+  const contents = reexports.length > 0
     ? `import * as ns from ${url};\nconst { ${reexports.join(', ')} } = ns;\nexport { ${
       reexports.join(', ')
     } };\nexport default ns;\n`
@@ -151,6 +172,13 @@ async function bundledShim(
     platform: 'browser',
     target: 'es2022',
     sourcemap: false,
+    // The shim does NOT use `commonjsPlugin` here. The wrapper files
+    // (e.g. `react/index.js`) include runtime-only constructs like
+    // `process.env.NODE_ENV` that the browser can't evaluate. esbuild's
+    // built-in CJS-to-ESM bridge handles `module.exports = require('./cjs/foo')`
+    // chains by inlining the inner bundle and exposing its named
+    // exports on the wrapper's namespace — which is what makes
+    // `const { X } = ns` resolve correctly in the destructure shim.
     plugins: [reactExternalPlugin(spec), handle.plugin],
   }
   if (!isSharedReactSpec(spec)) {

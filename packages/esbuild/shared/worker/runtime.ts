@@ -1,85 +1,27 @@
 /**
  * @module
- * Web worker runtime for esbuild's WASM API.
+ * Pure factory for the esbuild WASM worker message handler.
  *
- * This module imports the Go WASM runtime shim, installs the worker message
- * handler when it is executed inside a Worker, and also exports the same handler
- * factory so wasm.ts can run the service on the current thread when
- * initialize({ worker: false }) is requested.
+ * The types referenced by this module live in {@link ./types.ts}. The factory
+ * itself is shared by the Worker entrypoint ({@link ../worker/entry.ts}) and
+ * the main-thread fallback in `wasm.ts`.
  *
  * @see ../wasm.ts
+ * @see ./types.ts
  */
-import './go_wasm.ts'
-import { ESBUILD_VERSION } from './transport.ts'
+import { ESBUILD_VERSION } from '../transport/mod.ts'
+import type {
+  EsbuildWorkerGlobal,
+  GoWasmFS,
+  GoWasmRuntimeConstructor,
+  GoWasmRuntimeHandle,
+  WorkerInputMessage,
+  WorkerOutputMessage,
+} from './types.ts'
 
-/**
- * Messages accepted by the esbuild WASM worker.
- *
- * The first message must contain either a `WebAssembly.Module` or a URL
- * string for `esbuild.wasm`; subsequent messages are stdin packets.
- */
-export type WorkerInputMessage =
-  | Uint8Array
-  | ArrayBuffer
-  | WebAssembly.Module
-  | string
-
-/** Messages the worker posts back to the host. Either a stdout chunk,
- * `null` when the worker is ready, or an `Error` if it failed to start. */
-type WorkerOutputMessage = Uint8Array | Error | null
-
-/** Errno-style callback used by the Go WASM filesystem shim. */
-type ErrnoCallback = (err: Error | null, count?: number) => void
-
-/** Subset of the Go WASM filesystem shim used by the worker. */
-interface GoWasmFS {
-  writeSync(fd: number, buffer: Uint8Array): number
-  read(
-    fd: number,
-    buffer: Uint8Array,
-    offset: number,
-    length: number,
-    position: number | null,
-    callback: ErrnoCallback,
-  ): void
-}
-
-/**
- * Subset of the Go WASM runtime handle exposed to esbuild's worker plumbing.
- */
-export interface GoWasmRuntimeHandle {
-  /** Command-line arguments passed to the Go runtime. */
-  argv: string[]
-  /** WebAssembly imports the runtime needs to instantiate. */
-  importObject: WebAssembly.Imports
-  /** Boot the runtime against the given WebAssembly instance. */
-  run(instance: WebAssembly.Instance): Promise<void> | void
-
-  /** Pending `setTimeout` ids, used by `wasm.ts` to clean up the
-   * main-thread runtime when `worker: false` is requested. */
-  // This exists on the Go runtime shim and is used by wasm.ts to clean up the
-  // main-thread runtime when worker: false is used.
-  _scheduledTimeouts: Map<number, ReturnType<typeof setTimeout>>
-}
-
-/** Constructor signature for the Go WASM runtime. */
-interface GoWasmRuntimeConstructor {
-  new (): GoWasmRuntimeHandle
-}
-
-/** Subset of the `globalThis` shape the worker reads at startup. */
-interface EsbuildWorkerGlobal {
-  /** Filesystem shim installed by `go_wasm.ts`. */
-  fs?: GoWasmFS
-  /** Go runtime constructor installed by `go_wasm.ts`. */
-  Go?: GoWasmRuntimeConstructor
-  /** Outbound message channel. */
-  postMessage?: (message: WorkerOutputMessage) => void
-  /** Inbound message channel. */
-  onmessage?: ((message: { data: WorkerInputMessage }) => void) | null
-  /** Presence of `document` distinguishes browser main thread from workers. */
-  document?: unknown
-}
+// Re-exported so `./entry.ts` can keep importing the worker global shape
+// from this module rather than reaching into `./types.ts`.
+export type { EsbuildWorkerGlobal } from './types.ts'
 
 const workerGlobal = globalThis as unknown as EsbuildWorkerGlobal
 
@@ -216,6 +158,10 @@ export function createWorkerMessageHandler(
   }
 }
 
+/** Instantiates a `WebAssembly.Module` either from a pre-loaded `Module`
+ * instance or by fetching the supplied URL. Uses
+ * `WebAssembly.instantiateStreaming` when the response advertises
+ * `application/wasm`. */
 async function tryToInstantiateModule(
   wasm: WebAssembly.Module | string,
   go: GoWasmRuntimeHandle,
@@ -245,20 +191,7 @@ async function tryToInstantiateModule(
   return result.instance
 }
 
+/** Coerces an unknown thrown value into a real `Error`. */
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error))
 }
-
-function installDefaultWorkerHandler(): void {
-  if (typeof workerGlobal.postMessage !== 'function') return
-
-  // Browser main threads have postMessage too. Avoid hijacking window.onmessage
-  // when this module is imported for initialize({ worker: false }).
-  if ('document' in workerGlobal) return
-
-  workerGlobal.onmessage = createWorkerMessageHandler(
-    workerGlobal.postMessage.bind(workerGlobal),
-  )
-}
-
-installDefaultWorkerHandler()

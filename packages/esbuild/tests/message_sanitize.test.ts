@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
-import type * as types from '../shared/types.ts'
+import type * as types from '../shared/types/mod.ts'
 import {
   failureErrorWithLog,
   replaceDetailsInMessages,

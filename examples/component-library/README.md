@@ -119,14 +119,16 @@ the routes array rather than editing an `if` chain:
 
 ```ts
 // CJS-only specs (react, react-dom, react-dom/client, react/jsx-runtime,
-// react/jsx-dev-runtime): esbuild's CJS-to-ESM bridge can't see the named
-// exports of a CJS module statically, so we hand-maintain the destructure
-// (see CJS_REEXPORT_TABLE in serve_module.ts) and re-export each as a const.
-// The React entry is intentionally exhaustive so MUI and react-dom can
-// reach every React hook/component helper they reference.
+// react/jsx-dev-runtime): the named exports are discovered by scanning
+// the underlying CJS source for `exports.X = Y;` assignments (see
+// `discoverCjsExports` in `serve_module.ts`). The walker recurses
+// through `if/else` branches and follows `module.exports = require('./cjs/...')`
+// wrapper chains, so it picks up everything React's source declares
+// statically without needing a hand-maintained list. The destructure
+// below is the runtime form esbuild emits.
 import * as ns from ${abs};
-const { Children, Component, ..., __SECRET_INTERNALS..., ..., version } = ns;
-export { Children, Component, ..., __SECRET_INTERNALS..., ..., version };
+const { Children, Component, ..., version } = ns;
+export { Children, Component, ..., version };
 export default ns;
 
 // Everything else (MUI, Emotion, anything that ships a real ESM module):
@@ -134,6 +136,11 @@ export default ns;
 export * from ${abs};
 export { default } from ${abs};
 ```
+
+If the scan encounters a CJS export shape it can't statically resolve (computed keys,
+`Object.assign(exports, ...)`, `module.exports = function/class/expr`), it warns the dev-server
+console once per unique message and falls through to the `export * from` shim — consumers see
+`undefined` for the missed name rather than a hard build failure.
 
 The bundle's other bare specifiers (e.g. `import * as React from "react"` inside MUI) are picked up
 by the same shared `rewriteImports` post-pass that runs on the local `*.tsx` / `*.ts` transforms, so
@@ -169,7 +176,8 @@ sequenceDiagram
     Browser->>Server: GET /@modules/react-dom/client
     Server->>Deno: resolve('react-dom/client')
     Deno-->>Server: resolved URL (npm cache)
-    Server->>Esbuild: build CJS_REEXPORT_TABLE shim for react-dom/client
+    Server->>Server: discoverCjsExports — scan client.js for exports.X = Y (creates name list)
+    Server->>Esbuild: build destructure shim for react-dom/client
     Esbuild-->>Server: bundled ESM (createRoot, hydrateRoot re-exported)
     Server-->>Browser: bundled react-dom/client module
 

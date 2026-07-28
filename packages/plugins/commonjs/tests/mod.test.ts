@@ -149,3 +149,60 @@ Deno.test('plugin — filter option restricts which files are transformed', asyn
     `expected the bundle to still contain \`module.exports\` when the filter matches nothing (the plugin should have returned null and esbuild's default CJS handler should have wrapped the file), got:\n${code}`,
   )
 })
+
+Deno.test('plugin — surfaces `exports.X = Y` named exports through bundling', async () => {
+  // Regression test for the old behaviour where `exports.X = Y;` was
+  // left in place inside the bundle. That code path threw at runtime
+  // (`exports` is undefined in an ESM module). After the transform
+  // fix, the named bindings show up as real ESM named exports.
+  const fixture = new URL(
+    './fixtures/cjs-named-exports.js',
+    import.meta.url,
+  ).pathname
+  const result = await esbuild.build({
+    stdin: {
+      contents: `import * as ns from ${
+        JSON.stringify(fixture)
+      }; export const { add, sub, version } = ns;`,
+      resolveDir: '/',
+      sourcefile: 'entry.js',
+      loader: 'js',
+    },
+    bundle: true,
+    write: false,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2022',
+    plugins: [commonjsPlugin()],
+  })
+  const code = result.outputFiles?.[0]?.text ?? ''
+  // The CJS source no longer survives in the bundle — `exports.X = …`
+  // is what used to throw at runtime.
+  assertEquals(
+    code.includes('exports.add'),
+    false,
+    `expected the bundle to not contain "exports.add", got:\n${code}`,
+  )
+  assertEquals(
+    code.includes('exports.sub'),
+    false,
+    `expected the bundle to not contain "exports.sub", got:\n${code}`,
+  )
+  // The named exports are surfaced as ESM exports.
+  assert(
+    /\badd\b/.test(code),
+    `expected the bundle to surface the "add" export, got:\n${code}`,
+  )
+  assert(
+    /\bsub\b/.test(code),
+    `expected the bundle to surface the "sub" export, got:\n${code}`,
+  )
+  assert(
+    /\bversion\b/.test(code),
+    `expected the bundle to surface the "version" export, got:\n${code}`,
+  )
+  assert(
+    code.includes('"1.2.3"') || code.includes("'1.2.3'"),
+    `expected the bundle to contain the version literal, got:\n${code}`,
+  )
+})

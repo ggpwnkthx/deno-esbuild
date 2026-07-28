@@ -10,9 +10,9 @@
  * `*Sync` stubs. Differences between the two transports are confined to
  * the `EnsureService` and `runtime` arguments.
  */
-import type * as types from './types.ts'
+import type * as types from './types/mod.ts'
 import { type RuntimeKind, validateInitializeOptions } from './validation.ts'
-import type { Service, SyncStubs } from './transport.ts'
+import type { Service, SyncStubs } from './transport/mod.ts'
 
 /**
  * Inputs needed to construct the public esbuild API surface.
@@ -26,9 +26,9 @@ import type { Service, SyncStubs } from './transport.ts'
  * - `onValidate`: optional hook fired inside `initialize` after the
  *   options are validated. The hook receives the normalized options so
  *   transports that need them (e.g. WASM, which uses `wasmURL` and
- *   `useWorker`) can capture them before `ensureService` runs.
+ *   `worker`) can capture them before `ensureService` runs.
  */
-export interface CreateEsbuildApiOptions {
+interface CreateEsbuildApiOptions {
   ensureService: () => Promise<Service>
   syncStubs: SyncStubs
   runtime: RuntimeKind

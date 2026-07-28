@@ -9,16 +9,15 @@
  * ```
  */
 export * from './validation.ts'
-export * from './flags.ts'
+export * from './flags/mod.ts'
 export * from './v8_stack.ts'
 export {
   failureErrorWithLog,
-  type ObjectStashLike as MessageObjectStashLike,
   replaceDetailsInMessages,
   sanitizeLocation,
   sanitizeMessages,
   sanitizeStringArray,
   sanitizeStringMap,
 } from './message_sanitize.ts'
-export * from './plugin_runner.ts'
-export * from './transport.ts'
+export * from './plugin_runner/mod.ts'
+export * from './transport/mod.ts'

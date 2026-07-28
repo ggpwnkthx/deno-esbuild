@@ -5,6 +5,49 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-07-28
+
+### Changed
+
+- Modularised the previously-monolithic `shared/` files into folder modules so the package can grow
+  without making every collaborator read every line. The `deno.json` `exports` map now points each
+  shared subpath at the new entry point:
+  - `shared/flags` → `shared/flags/mod.ts` (split into `build.ts`, `defaults.ts`, `mod.ts`,
+    `normalize.ts`, `push_helpers.ts`, `transform.ts`, `types.ts`).
+  - `shared/plugin_runner` → `shared/plugin_runner/mod.ts` (split into `handle_plugins.ts`,
+    `lifecycle.ts`, `messages.ts`, `mod.ts`, `object_stash.ts`, `on_load.ts`, `on_resolve.ts`,
+    `on_start.ts`, `plugin_setup.ts`, `request_callbacks.ts`, `types.ts`).
+  - `shared/transport` → `shared/transport/mod.ts` (split into `build_context.ts`,
+    `build_context_lifecycle.ts`, `build_context_rebuild.ts`, `build_response.ts`, `channel.ts`,
+    `mod.ts`, `service.ts`, `simple_services.ts`, `sync_stubs.ts`, `transform.ts`, `types.ts`,
+    `util.ts`, `version.ts`).
+  - `shared/stdio_protocol` → `shared/stdio_protocol/mod.ts` (split into `formatter_messages.ts`,
+    `le.ts`, `messages.ts`, `mod.ts`, `packet.ts`, `plugin_messages.ts`, `utf8.ts`).
+  - `shared/types` → `shared/types/mod.ts` (split into `api.ts`, `build.ts`, `common.ts`,
+    `diagnostics.ts`, `metafile.ts`, `mod.ts`, `plugin.ts`, `plugin_callbacks.ts`, `primitives.ts`,
+    `serve.ts`, `transform.ts`, `tsconfig.ts`).
+  - `shared/worker` → `shared/worker/mod.ts` (split into `entry.ts`, `mod.ts`, `runtime.ts`,
+    `types.ts`).
+- Extracted two shared helpers out of `shared/validation.ts` into their own modules to keep the
+  validator surface focused:
+  - `validateStringValue` and `validateAndJoinStringArray` → `shared/string_helpers.ts`.
+  - `jsRegExpToGoRegExp` → `shared/regex.ts`.
+  - `shared/validation.ts` re-exports the moved names so existing test imports
+    (`tests/validation.test.ts`, `tests/message_sanitize.test.ts`) keep resolving.
+- Extracted `failureErrorWithLog` out of `shared/message_sanitize.ts` into a standalone
+  `shared/failure_error.ts`. `shared/message_sanitize.ts` carries a back-compat re-export so the
+  existing test import (`tests/message_sanitize.test.ts`) keeps working.
+- `shared/mod.ts` barrel now re-exports from the folder modules. The added `stdio_protocol/` subpath
+  in the `exports` map lets consumers reach the packet/formatter helpers directly.
+- `shared/types/mod.ts` carries the consolidated `TsconfigRaw`, `BuildOptions`, `TransformOptions`,
+  and `Plugin` types the package exports; the old single-file `shared/types.ts` is gone.
+
+### Fixed
+
+- `shared/stdio_protocol.test.ts` and `shared/message_sanitize.test.ts` now import their helpers
+  from the new locations (`./shared/stdio_protocol/mod.ts` and `./shared/failure_error.ts`
+  respectively) so the test suite keeps running against the same symbols that ship to consumers.
+
 ## [0.2.14] - 2026-07-25
 
 ### Changed

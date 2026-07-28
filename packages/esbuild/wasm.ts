@@ -29,8 +29,8 @@
  * });
  * ```
  */
-import type * as types from './shared/types.ts'
-import type { GoWasmRuntimeHandle, WorkerInputMessage } from './shared/worker.ts'
+import type * as types from './shared/types/mod.ts'
+import type { GoWasmRuntimeHandle, WorkerInputMessage } from './shared/worker/mod.ts'
 import * as common from './shared/mod.ts'
 import * as ourselves from './wasm.ts'
 import { version } from './mod.ts'
@@ -83,7 +83,7 @@ const startRunningService = async (
   if (useWorker) {
     // Run esbuild off the main thread.
     const nativeWorker = new Worker(
-      new URL('./shared/worker.ts', import.meta.url).href,
+      new URL('./shared/worker/entry.ts', import.meta.url).href,
       { type: 'module' },
     )
 
@@ -111,7 +111,7 @@ const startRunningService = async (
     workerInstance = workerAdapter
   } else {
     // Run esbuild on the current thread.
-    const { createWorkerMessageHandler } = await import('./shared/worker.ts')
+    const { createWorkerMessageHandler } = await import('./shared/worker/mod.ts')
     let go: GoWasmRuntimeHandle | undefined
     const onmessage = createWorkerMessageHandler((data) => {
       workerInstance.onmessage?.({ data })
@@ -223,63 +223,63 @@ const api: EsbuildApi = createEsbuildApi({
 /**
  * @param options - Configuration options for the build.
  * @returns A promise that resolves with the build result or rejects with a `BuildFailure`.
- * @see ../shared/types.ts:build
+ * @see ../shared/types/mod.ts:build
  */
 export const build = api.build
 /**
  * @param options - Configuration options for the build context.
  * @returns A promise that resolves with a `BuildContext` for long-running operations.
- * @see ../shared/types.ts:context
+ * @see ../shared/types/mod.ts:context
  */
 export const context = api.context
 /**
  * @param input - The source code (string) or raw bytes to transform.
  * @param options - Optional transform configuration.
  * @returns A promise that resolves with the transform result or rejects with a `TransformFailure`.
- * @see ../shared/types.ts:transform
+ * @see ../shared/types/mod.ts:transform
  */
 export const transform = api.transform
 /**
  * @param messages - An array of diagnostic messages to format.
  * @param options - Configuration for the formatter, including `kind` ("error" or "warning").
  * @returns A promise that resolves with an array of formatted message strings.
- * @see ../shared/types.ts:formatMessages
+ * @see ../shared/types/mod.ts:formatMessages
  */
 export const formatMessages = api.formatMessages
 /**
  * @param metafile - The metafile JSON string or object to analyze.
  * @param options - Optional analysis configuration.
  * @returns A promise that resolves with a human-readable analysis string.
- * @see ../shared/types.ts:analyzeMetafile
+ * @see ../shared/types/mod.ts:analyzeMetafile
  */
 export const analyzeMetafile = api.analyzeMetafile
 /**
  * Synchronous builds are not supported in the WASM API and throw unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:buildSync
+ * @see ../shared/types/mod.ts:buildSync
  */
 export const buildSync = api.buildSync
 /**
  * Synchronous transforms are not supported in the WASM API and throw unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:transformSync
+ * @see ../shared/types/mod.ts:transformSync
  */
 export const transformSync = api.transformSync
 /**
  * Synchronous message formatting is not supported in the WASM API and throw unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:formatMessagesSync
+ * @see ../shared/types/mod.ts:formatMessagesSync
  */
 export const formatMessagesSync = api.formatMessagesSync
 /**
  * Synchronous metafile analysis is not supported in the WASM API and throw unconditionally.
  * @throws Always throws an error indicating this API is unavailable in Deno.
- * @see ../shared/types.ts:analyzeMetafileSync
+ * @see ../shared/types/mod.ts:analyzeMetafileSync
  */
 export const analyzeMetafileSync = api.analyzeMetafileSync
 /**
  * @returns A promise that resolves when cleanup is complete.
- * @see ../shared/types.ts:stop
+ * @see ../shared/types/mod.ts:stop
  */
 export const stop = api.stop
 /**
@@ -289,6 +289,6 @@ export const stop = api.stop
  *   in browsers), `wasmModule` (optional pre-loaded module), and `worker` (whether
  *   to run in a worker, default true).
  * @returns A promise that resolves when initialization is complete.
- * @see ../shared/types.ts:initialize
+ * @see ../shared/types/mod.ts:initialize
  */
 export const initialize = api.initialize

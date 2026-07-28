@@ -300,7 +300,6 @@ export function JSON_parse(bytes: Uint8Array): any {
               // Invalid escape sequence
               default:
                 throwSyntaxError(bytes, --i)
-                break
             }
           } // ASCII text
           else if (c <= 0x7F) {
