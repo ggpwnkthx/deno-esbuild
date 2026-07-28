@@ -9,14 +9,15 @@ API targets esbuild binary version `0.28.1`.
 
 ## Packages
 
-| Package                             | JSR                                                                                                                 | README                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `@ggpwnkthx/esbuild`                | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild)](https://jsr.io/@ggpwnkthx/esbuild)                               | [packages/esbuild/README.md](./packages/esbuild/README.md)                 |
-| `@ggpwnkthx/esbuild-plugin-deno`    | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-plugin-deno)](https://jsr.io/@ggpwnkthx/esbuild-plugin-deno)       | [packages/plugins/deno/README.md](./packages/plugins/deno/README.md)       |
-| `@ggpwnkthx/esbuild-plugin-css`     | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-plugin-css)](https://jsr.io/@ggpwnkthx/esbuild-plugin-css)         | [packages/plugins/css/README.md](./packages/plugins/css/README.md)         |
-| `@ggpwnkthx/esbuild-wrapper-shared` | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-wrapper-shared)](https://jsr.io/@ggpwnkthx/esbuild-wrapper-shared) | [packages/wrappers/shared/README.md](./packages/wrappers/shared/README.md) |
-| `@ggpwnkthx/esbuild-wrapper-hono`   | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-wrapper-hono)](https://jsr.io/@ggpwnkthx/esbuild-wrapper-hono)     | [packages/wrappers/hono/README.md](./packages/wrappers/hono/README.md)     |
-| `@ggpwnkthx/esbuild-wrapper-oak`    | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-wrapper-oak)](https://jsr.io/@ggpwnkthx/esbuild-wrapper-oak)       | [packages/wrappers/oak/README.md](./packages/wrappers/oak/README.md)       |
+| Package                              | JSR                                                                                                                   | README                                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `@ggpwnkthx/esbuild`                 | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild)](https://jsr.io/@ggpwnkthx/esbuild)                                 | [packages/esbuild/README.md](./packages/esbuild/README.md)                   |
+| `@ggpwnkthx/esbuild-plugin-commonjs` | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-plugin-commonjs)](https://jsr.io/@ggpwnkthx/esbuild-plugin-commonjs) | [packages/plugins/commonjs/README.md](./packages/plugins/commonjs/README.md) |
+| `@ggpwnkthx/esbuild-plugin-deno`     | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-plugin-deno)](https://jsr.io/@ggpwnkthx/esbuild-plugin-deno)         | [packages/plugins/deno/README.md](./packages/plugins/deno/README.md)         |
+| `@ggpwnkthx/esbuild-plugin-css`      | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-plugin-css)](https://jsr.io/@ggpwnkthx/esbuild-plugin-css)           | [packages/plugins/css/README.md](./packages/plugins/css/README.md)           |
+| `@ggpwnkthx/esbuild-wrapper-shared`  | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-wrapper-shared)](https://jsr.io/@ggpwnkthx/esbuild-wrapper-shared)   | [packages/wrappers/shared/README.md](./packages/wrappers/shared/README.md)   |
+| `@ggpwnkthx/esbuild-wrapper-hono`    | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-wrapper-hono)](https://jsr.io/@ggpwnkthx/esbuild-wrapper-hono)       | [packages/wrappers/hono/README.md](./packages/wrappers/hono/README.md)       |
+| `@ggpwnkthx/esbuild-wrapper-oak`     | [![JSR](https://jsr.io/badges/@ggpwnkthx/esbuild-wrapper-oak)](https://jsr.io/@ggpwnkthx/esbuild-wrapper-oak)         | [packages/wrappers/oak/README.md](./packages/wrappers/oak/README.md)         |
 
 Each package has its own README, CHANGELOG, LICENSE, deno.json, exports, and package-level tasks.
 The per-package READMEs cover installation, configuration, API reference, and examples.
@@ -26,10 +27,12 @@ The per-package READMEs cover installation, configuration, API reference, and ex
 ```txt
 .
 ├── deno.json
-├── examples/component-library/   # component-library demo
+├── examples/
+│   └── component-library/   # Material UI demo on the dev-server pipeline
 ├── packages/
 │   ├── esbuild/
 │   ├── plugins/
+│   │   ├── commonjs/
 │   │   ├── css/
 │   │   └── deno/
 │   └── wrappers/

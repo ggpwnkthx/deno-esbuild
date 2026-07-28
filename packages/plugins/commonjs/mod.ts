@@ -7,13 +7,12 @@
  * astring), so the plugin is a Deno-first thin shim — no Babel
  * runtime, no SWC binary.
  *
- * The single use case the plugin solves for `@examples/hono-dev-server`
- * is bundling React 19 / React-DOM 19 into a browser-targeted ESM
- * payload: their published CJS source does `require("react")` at
- * module scope, and esbuild's built-in CJS-to-ESM conversion leaves
- * those calls as a `__require` helper that the browser can't
- * satisfy. The transform rewrites those calls to static `import`
- * statements, which the browser's module loader handles.
+ * The motivating use case is bundling npm packages whose published
+ * CJS source does `require("react")` (or similar) at module scope
+ * into a browser-targeted ESM payload: esbuild's built-in CJS-to-ESM
+ * conversion leaves those calls as a `__require` helper that the
+ * browser can't satisfy. The transform rewrites those calls to static
+ * `import` statements, which the browser's module loader handles.
  */
 
 import * as esbuild from 'esbuild'

@@ -9,6 +9,135 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## latest - 2026-07-27
 
+### fix(esbuild-wrapper-shared): scoped-specifier + .js-suffix fixes; cut 0.3.2 and 0.3.3
+
+- `@ggpwnkthx/esbuild-wrapper-shared` (`packages/wrappers/shared/`) bumped from `0.3.1` to `0.3.3`.
+  Three upstream fixes that the Hono/Oak wrappers and `examples/component-library` need to load
+  npm-bundled output without leaving bare specifiers unre-written:
+  - `rewriteImports` `isBareSpec` regex now matches scoped package specifiers (e.g. `@mui/material`,
+    `@emotion/react`) in addition to unprefixed bare specifiers. The previous `^[A-Za-z]` regex
+    silently left scoped bare specifiers unrewritten, which caused the browser to throw
+    `TypeError: Failed to resolve module specifier "@mui/material"` at runtime.
+  - `rewriteImports` now normalises the `specifier` to a `.js`-suffixed form before `parseModule`
+    via the new `jsLikeSpecifier()` helper. The previous code only forced the `.js` extension when
+    the input ended in `.tsx`/`.ts`; for any other spec (e.g. `react`, `@mui/material`) the parser
+    returned zero-width AST spans for most imports, which silently dropped them from the rewrite
+    pass and triggered `TypeError: Failed to resolve module specifier "react"` at runtime.
+  - `TranspilerOptions.postProcess` and `Options.postProcess` are new optional
+    `(code: string) => string | Promise<string>` hooks that let consumers register an AST rewriter
+    at `createTranspiler` construction time. A per-call `TranspileRequest.postProcess` (when
+    supplied) overrides the constructor-time default, so a Hono app can register `rewriteImports`
+    once at middleware-construction time without wrapping the `EsbuildLike` per request.
+- `packages/wrappers/shared/tests/`: new regression cases
+  ("`normalises non-TS/JSX specifier to .js for parseModule`",
+  "`normalises scoped npm specifier
+  (no extension) to .js`",
+  "`constructor postProcess default runs without per-call override`",
+  "`per-call postProcess overrides the constructor default`") pin down the new behavior.
+
+### feat(esbuild-wrapper-hono): wire Options.postProcess and cut 0.2.12
+
+- `@ggpwnkthx/esbuild-wrapper-hono` (`packages/wrappers/hono/`) bumped from `0.2.11` to `0.2.12`.
+  `Options.postProcess` is now wired through both `createTranspiler` (the constructor-time default)
+  and `getCachedOrTranspile` (the per-call override). Per-call wins when both are supplied, matching
+  the shared `postProcess ?? defaultPostProcess` semantics. A Hono app can register a single shared
+  AST rewriter at middleware-construction time (e.g. `@ggpwnkthx/esbuild-wrapper-shared`'s
+  `rewriteImports`) without wrapping the `EsbuildLike` per request.
+- Sibling pin `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.1` bumped to
+  `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.3` so the wrapper consumes the upstream
+  `rewriteImports` fixes plus the transpiler-wide `postProcess` default.
+- `packages/wrappers/hono/README.md`: new "Post-process the transpiled code" section demonstrates
+  wiring `rewriteImports` into the middleware via the new option, and the options table gains a
+  `postProcess` row.
+- `packages/wrappers/hono/tests/default.test.ts`: new
+  `postProcess runs after esbuild.transform on
+  every response` case injects a mock `EsbuildLike`,
+  registers a `postProcess` hook, and asserts the hook is called exactly once and its output is what
+  the response body contains.
+
+### chore(esbuild-wrapper-oak): cut 0.2.12 (sibling pin bump)
+
+- `@ggpwnkthx/esbuild-wrapper-oak` (`packages/wrappers/oak/`) bumped from `0.2.11` to `0.2.12`.
+  Sibling pin `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.1` bumped to
+  `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.3` so the wrapper consumes the upstream
+  `rewriteImports` fixes plus the transpiler-wide `postProcess` default. No code change in this
+  wrapper — the pin moves the dependency surface forward so consumers get the new shared utilities
+  through the wrapper package. The Oak wrapper does not yet surface `Options.postProcess`; the
+  upstream `postProcess` is only reachable via the Hono wrapper's `Options` until Oak gains a
+  parallel option in a future release.
+
+### feat(esbuild-plugin-commonjs): initial release at 0.2.0
+
+- New workspace member `packages/plugins/commonjs/` shipping `@ggpwnkthx/esbuild-plugin-commonjs` at
+  version `0.2.0`. esbuild plugin that converts CommonJS source files to ESM at the `onLoad` step so
+  they bundle cleanly into a browser-targeted ESM payload. The transform is a hand-rolled TypeScript
+  AST walker in `transform.ts` built on `acorn` (parse) + `astring` (codegen) — no Babel runtime, no
+  SWC binary. Recognised CJS shapes (top-level `require(spec)`, `var X = require(spec)`,
+  `var { a, b } = require(spec)`, `module.exports = X`, `module.exports = { ... }`,
+  `module.exports = require(mod)`) are rewritten to the equivalent ESM; anything outside the
+  recognised set passes through unchanged. A fast text-based pre-pass (`looksLikeCjs`) keeps the
+  no-op path cheap. `CommonjsPluginOptions`: `filter?: RegExp | RegExp[]` (limit the transform to a
+  subset of files) and `sourcemap?: boolean`. The plugin short-circuits in `setup()` when
+  `build.initialOptions.format !== "esm"`; esbuild's built-in CJS handling is the right thing for
+  CJS / IIFE output.
+- `deno.json` (root): `packages/plugins/commonjs` added to the `workspace` list; `scopes` block
+  gains a `./packages/plugins/commonjs/` key redirecting `esbuild` to the local source for sibling
+  development.
+- `.github/workflows/publish.yml`: `packages/plugins/commonjs` added to the `ci` matrix and to the
+  `publish-deps` matrix (it depends only on `@ggpwnkthx/esbuild`, so it can ship in `publish-deps`
+  once `publish-base` has shipped `packages/esbuild`).
+- `.gitignore`: `deno.lock` added at the root so the workspace's `"lock": false` setting is
+  preserved across `deno install` runs.
+- Test coverage: `tests/transform.test.ts` (16 cases for the AST walker), `tests/detect.test.ts` (6
+  cases for `looksLikeCjs`), `tests/mod.test.ts` (5 integration cases via `esbuild.build`). All 27
+  tests pass.
+
+### refactor(example): swap examples/component-library for Material UI; tighten module allowlist
+
+- `examples/component-library` migrated off the hand-rolled `src/Button.tsx` / `src/Card.tsx`
+  library. `src/main.tsx` now renders `@mui/material`'s `Button` + `Card` + `CardContent` +
+  `Typography` directly. `deno.json` imports `@mui/material@^9.2.0` (subpaths `Button`, `Card`,
+  `CardContent`, `Typography`) plus the two MUI peer dependencies `@emotion/react@^11.14.0` and
+  `@emotion/styled@^11.14.1`. The `react/jsx-runtime`, `react/jsx-dev-runtime`, and
+  `react-dom/client` subpaths are added to the `imports` map (React stays at 18.3.1) so esbuild's
+  automatic JSX transform output is rewriteable to `/@modules/<spec>` URLs alongside the rest. The
+  `@ggpwnkthx/esbuild-wrapper-shared` pin moves from `^0.3.1` to `^0.3.3` to pick up the
+  scoped-specifier fix in `isBareSpec` and the `.js`-suffix normaliser.
+- The `publish` block in `examples/component-library/deno.json` is removed: with no `Button.tsx` /
+  `Card.tsx` to ship, the example no longer publishes anything.
+- `examples/component-library/deno.lock` is deleted. The workspace root's `deno.json` sets
+  `"lock": false`, and Deno 2.x rejects `"lock"` overrides in workspace members, so the example's
+  previous lockfile (which only tracked React and was already stale relative to the new MUI/Emotion
+  tree) could no longer be regenerated in this state.
+- `src/serve.ts` now derives the `/@modules/<spec>` allowlist from the `deno.json` imports map at
+  module load. Only keys whose value starts with `npm:` are allowed; type packages (`@types/react`,
+  `@types/react-dom`), dev tooling (`@astral/astral`, `@deno/graph`,
+  `@ggpwnkthx/esbuild-wrapper-shared`, `@std/*`) share the `imports` map but resolve to a JSR URL
+  the browser would not import, so they are filtered out to keep `/@modules/<spec>` from being a
+  public CDN for the wrong audience. The same filtered set feeds both the route gate and the
+  `rewriteImports` `postProcess` resolver.
+- `src/server/allowlist.ts` is deleted (the allowlist is now derived in `serve.ts`).
+  `src/server/serve_module.ts` is rewritten around two shim shapes: CJS-only specs with no static
+  export list (`react`, `react-dom`, `react-dom/client`, `react/jsx-runtime`,
+  `react/jsx-dev-runtime`) feed a hand-maintained destructure into
+  `import * as ns from "<abs>"; const { ... } = ns; export { ... }; export default ns;`. Every other
+  npm spec (MUI, Emotion, anything that ships a real ESM module) feeds
+  `export * from "<abs>"; export { default } from "<abs>";` into esbuild's CJS-to-ESM bridge.
+  `react` is externalised for every non-React bundle via `reactExternalPlugin(spec)` so the browser
+  fetches `/@modules/react` once and reuses the cached module for MUI and the per-route react
+  bundles. The CJS-bridged bundles' inner `require("react")` calls are rewritten to a static
+  `import * as __React0 from "/@modules/react"` reference by `neutralizeDynamicReactRequires(spec)`,
+  so the CJS-bundled code reads from the shared module's namespace import.
+- `tests/allowlist_test.ts` is deleted (the allowlist is no longer a separate file).
+  `tests/browser_test.ts` is rewritten to assert on a fully-rendered MUI tree (the `MuiButton-root`
+  and `MuiCard-root` class hooks, the `MuiTypography-h5` title, and the click counter updates from
+  `Clicked 0 times` to `Clicked 2 times` after two clicks). The 90s timeout now rejects (and is
+  cleared on completion) instead of silently resolving, so a hung test can no longer falsely pass.
+- New `examples/component-library/CHANGELOG.md` documents the MUI migration. The example is
+  unversioned (no JSR name/version in `deno.json`), so the CHANGELOG uses `[Unreleased]`.
+
+## previous - 2026-07-27
+
 ### refactor(workspace): promote Router + import rewriter + MIME helpers into shared wrapper; ship examples/component-library
 
 - `@ggpwnkthx/esbuild-wrapper-shared` (`packages/wrappers/shared/`) bumped from `0.2.10` to `0.3.1`
