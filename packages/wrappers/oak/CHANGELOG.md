@@ -5,6 +5,19 @@ All notable changes to `@ggpwnkthx/esbuild-wrapper-oak` are documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] - 2026-07-27
+
+### Changed
+
+- Sibling pin `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.1` bumped to
+  `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.3` so the wrapper consumes the upstream
+  `rewriteImports` fixes (`isBareSpec` scoped-specifier match in 0.3.2 and `.js`-suffix specifier
+  normalisation in 0.3.3) plus the transpiler-wide `postProcess` default added in 0.3.3. No code
+  change in this wrapper — the pin moves the dependency surface forward so consumers get the new
+  shared utilities through the wrapper package. The Oak wrapper does not yet surface
+  `Options.postProcess`; the upstream `postProcess` is only reachable via the Hono wrapper's
+  `Options` until Oak gains a parallel option in a future release.
+
 ## [0.2.11] - 2026-07-27
 
 ### Changed
