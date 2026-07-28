@@ -1,6 +1,7 @@
 {
   "workspace": [
     "./packages/esbuild",
+    "./packages/plugins/commonjs",
     "./packages/plugins/deno",
     "./packages/plugins/css",
     "./packages/wrappers/shared",
@@ -23,6 +24,9 @@
     "@std/semver": "jsr:@std/semver@^1.0.8"
   },
   "scopes": {
+    "./packages/plugins/commonjs/": {
+      "esbuild": "../esbuild/mod.ts"
+    },
     "./packages/plugins/deno/": {
       "esbuild": "../esbuild/mod.ts",
       "@ggpwnkthx/esbuild-wrapper-shared": "../wrappers/shared/mod.ts"
@@ -44,7 +48,8 @@
     "./examples/": {
       "esbuild": "./packages/esbuild/mod.ts",
       "@ggpwnkthx/esbuild-plugin-deno": "./packages/plugins/deno/mod.ts",
-      "@ggpwnkthx/esbuild-wrapper-shared": "./packages/wrappers/shared/mod.ts"
+      "@ggpwnkthx/esbuild-wrapper-shared": "./packages/wrappers/shared/mod.ts",
+      "@ggpwnkthx/esbuild-wrapper-hono": "./packages/wrappers/hono/mod.ts"
     }
   },
   "fmt": {

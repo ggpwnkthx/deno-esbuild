@@ -29,6 +29,7 @@ jobs:
       matrix:
         package:
           - packages/esbuild
+          - packages/plugins/commonjs
           - packages/plugins/deno
           - packages/plugins/css
           - packages/wrappers/shared
@@ -87,6 +88,7 @@ jobs:
       matrix:
         package:
           - packages/wrappers/shared
+          - packages/plugins/commonjs
           - packages/plugins/deno
           - packages/plugins/css
     steps:

@@ -1,0 +1,31 @@
+{
+  "name": "@ggpwnkthx/esbuild-plugin-commonjs",
+  "version": "0.2.0",
+  "exports": {
+    ".": "./mod.ts"
+  },
+  "imports": {
+    "acorn": "npm:acorn@^8.14.0",
+    "astring": "npm:astring@^1.9.0",
+    "esbuild": "jsr:@ggpwnkthx/esbuild@^0.2.14",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/path": "jsr:@std/path@^1.1.6"
+  },
+  "publish": {
+    "include": [
+      "mod.ts",
+      "transform.ts",
+      "README.md",
+      "CHANGELOG.md",
+      "LICENSE.md",
+      "deno.json"
+    ]
+  },
+  "tasks": {
+    "fmt": "deno fmt .",
+    "lint": "deno lint .",
+    "check": "deno check .",
+    "test": "deno test --allow-read --allow-write --allow-env --allow-run",
+    "ci": "deno fmt --check && deno lint && deno check && deno test --allow-read --allow-write --allow-env --allow-run"
+  }
+}
