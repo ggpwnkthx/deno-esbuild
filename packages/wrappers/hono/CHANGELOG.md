@@ -5,6 +5,23 @@ All notable changes to `@ggpwnkthx/esbuild-wrapper-hono` are documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] - 2026-07-27
+
+### Added
+
+- `Options.postProcess` (`(code: string) => string | Promise<string>`) is now wired through
+  `createTranspiler` and `transpiler.getCachedOrTranspile`, so consumers can run an AST rewriter
+  (e.g. `@ggpwnkthx/esbuild-wrapper-shared`'s `rewriteImports`) after every esbuild transform
+  without wrapping their own `EsbuildLike`. The constructor-time default plus a per-call override
+  are both supported; per-call wins when both are supplied.
+
+### Changed
+
+- Sibling pin `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.1` bumped to
+  `jsr:@ggpwnkthx/esbuild-wrapper-shared@^0.3.3` so the wrapper consumes the upstream
+  `rewriteImports` fixes (`isBareSpec` scoped-specifier match in 0.3.2 and `.js`-suffix specifier
+  normalisation in 0.3.3) plus the transpiler-wide `postProcess` default added in 0.3.3.
+
 ## [0.2.11] - 2026-07-27
 
 ### Changed

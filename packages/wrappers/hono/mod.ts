@@ -61,6 +61,7 @@ export default (options?: Options): MiddlewareHandler => {
     transformOptions: options?.transformOptions,
     maxSize: options?.maxSize,
     ttl: options?.ttl,
+    postProcess: options?.postProcess,
   })
 
   return createMiddleware(async (c, next) => {
@@ -80,6 +81,7 @@ export default (options?: Options): MiddlewareHandler => {
         pathname: url.pathname,
         body,
         shouldStop: !options?.esbuild,
+        postProcess: options?.postProcess,
       }))
     } catch (ex) {
       setErrorResponse('hono', c, body, contentType, ex, url.pathname)

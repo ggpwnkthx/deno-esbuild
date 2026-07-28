@@ -60,17 +60,38 @@ app.use(esbuildMiddleware({
 }))
 ```
 
+### Post-process the transpiled code
+
+`postProcess` runs on every esbuild output before it is cached or returned. It is the recommended
+place to plug in an import rewriter (e.g. `@ggpwnkthx/esbuild-wrapper-shared`'s `rewriteImports`) so
+bare specifiers resolve to routes your dev server actually serves.
+
+```ts
+import esbuildMiddleware from '@ggpwnkthx/esbuild-wrapper-hono'
+import { rewriteImports } from '@ggpwnkthx/esbuild-wrapper-shared'
+
+app.use(esbuildMiddleware({
+  postProcess: (code) =>
+    rewriteImports(code, {
+      specifier: '/src/main.tsx',
+      defaultJsxImportSource: 'react',
+      resolveBareSpecifier: (spec) => allowed.has(spec) ? `/@modules/${spec}` : undefined,
+    }),
+}))
+```
+
 ## Options
 
-| Key                | Type                       | Default             | Description                                                                     |
-| ------------------ | -------------------------- | ------------------- | ------------------------------------------------------------------------------- |
-| `extensions`       | `string[]`                 | `[".ts", ".tsx"]`   | File extensions to intercept and transpile.                                     |
-| `cache`            | `boolean`                  | `false`             | Enable in-memory caching of transpiled output.                                  |
-| `esbuild`          | `typeof esbuild`           | native esbuild      | Inject a custom esbuild instance (e.g. WASM).                                   |
-| `contentType`      | `string`                   | `"text/javascript"` | The `content-type` header value the middleware sets on the transpiled response. |
-| `transformOptions` | `esbuild.TransformOptions` | `{}`                | Additional options passed to `esbuild.transform`.                               |
-| `maxSize`          | `number`                   | `undefined`         | Maximum number of entries in the cache.                                         |
-| `ttl`              | `number`                   | `undefined`         | Time-to-live in milliseconds for cache entries.                                 |
+| Key                | Type                                          | Default             | Description                                                                     |
+| ------------------ | --------------------------------------------- | ------------------- | ------------------------------------------------------------------------------- |
+| `extensions`       | `string[]`                                    | `[".ts", ".tsx"]`   | File extensions to intercept and transpile.                                     |
+| `cache`            | `boolean`                                     | `false`             | Enable in-memory caching of transpiled output.                                  |
+| `esbuild`          | `typeof esbuild`                              | native esbuild      | Inject a custom esbuild instance (e.g. WASM).                                   |
+| `contentType`      | `string`                                      | `"text/javascript"` | The `content-type` header value the middleware sets on the transpiled response. |
+| `transformOptions` | `esbuild.TransformOptions`                    | `{}`                | Additional options passed to `esbuild.transform`.                               |
+| `maxSize`          | `number`                                      | `undefined`         | Maximum number of entries in the cache.                                         |
+| `ttl`              | `number`                                      | `undefined`         | Time-to-live in milliseconds for cache entries.                                 |
+| `postProcess`      | `(code: string) => string \| Promise<string>` | `undefined`         | Hook run on the esbuild output before it is cached or returned.                 |
 
 All options are optional. The middleware uses sensible defaults for every value.
 

@@ -76,3 +76,39 @@ Deno.test('cache: true skips esbuild.transform on repeat requests', async () => 
   const body2 = await res2.text()
   assertEquals(body1, body2)
 })
+
+Deno.test('postProcess runs after esbuild.transform on every response', async () => {
+  const mockEsbuild: EsbuildLike = {
+    transform: (input: string | Uint8Array) => {
+      const text = typeof input === 'string' ? input : new TextDecoder().decode(input)
+      return Promise.resolve({ code: text.replace(': number', '') })
+    },
+    stop: () => Promise.resolve(),
+  }
+  let postProcessCalls = 0
+
+  const app = new Hono()
+  app.use(
+    '*',
+    esbuildMiddleware({
+      esbuild: mockEsbuild,
+      postProcess: (code) => {
+        postProcessCalls++
+        return `${code}\n//postprocessed`
+      },
+    }),
+  )
+  app.use('*', async (c) =>
+    await c.body(source, 200, {
+      'content-type': 'application/typescript',
+      'content-length': String(source.length),
+    }))
+
+  const res = await app.request('http://localhost/post.ts')
+  assertEquals(res.status, 200)
+  assertEquals(postProcessCalls, 1)
+
+  const body = await res.text()
+  assertStringIncludes(body, '//postprocessed')
+  assertStringIncludes(body, 'export const value = 1;')
+})
