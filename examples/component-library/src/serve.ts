@@ -17,6 +17,13 @@
  * `JS_MIME` constant come from `@ggpwnkthx/esbuild-wrapper-shared` so the
  * example stays in sync with the same abstractions exposed to Hono and
  * Oak consumers.
+ *
+ * Allowlist source: the `imports` map in this example's `deno.json`. Every
+ * key is an allowed `/@modules/<spec>` target. The keys include the
+ * subpath imports (`react/jsx-runtime`, `react/jsx-dev-runtime`,
+ * `react-dom/client`) so esbuild's automatic JSX transform output
+ * (`import { jsx } from "react/jsx-runtime"`) is rewritten to
+ * `/@modules/react/jsx-runtime` by the same resolver that gates the route.
  */
 import type { DenoPluginHandle } from '@ggpwnkthx/esbuild-plugin-deno'
 import { JS_MIME, type Route, Router, shouldTranspile } from '@ggpwnkthx/esbuild-wrapper-shared'
@@ -25,7 +32,36 @@ import { loadPlugin } from './server/plugin.ts'
 import { serveModule } from './server/serve_module.ts'
 import { failureBody, type TransformedModule, transformLocal } from './server/serve_transform.ts'
 import { serveStatic } from './server/serve_static.ts'
-import { joinSrc, joinTests, SRC, stripLeadingSlashes, TESTS, within } from './server/paths.ts'
+import {
+  DENO_CONFIG,
+  joinSrc,
+  joinTests,
+  SRC,
+  stripLeadingSlashes,
+  TESTS,
+  within,
+} from './server/paths.ts'
+
+// Derive the dev-server allowlist from this example's deno.json imports.
+// Only keys whose value is an `npm:` URL are allowed; type packages
+// (`@types/*`), dev tooling (`@astral/astral`, `@deno/graph`,
+// `@ggpwnkthx/esbuild-wrapper-shared`, `@std/*`) live in the same `imports`
+// map but resolve to a JSR URL the browser would not import, so they are
+// filtered out to keep `/@modules/<spec>` from being a public CDN for the
+// wrong audience.
+const denoConfig = JSON.parse(await Deno.readTextFile(DENO_CONFIG)) as {
+  imports?: Record<string, string>
+}
+const importMap = denoConfig.imports ?? {}
+const allowedSpecs = new Set(
+  Object.entries(importMap)
+    .filter(([, value]) => typeof value === 'string' && value.startsWith('npm:'))
+    .map(([key]) => key),
+)
+
+function moduleUrlForAllowedSpec(spec: string): string | undefined {
+  return allowedSpecs.has(spec) ? `/@modules/${spec}` : undefined
+}
 
 function normalize(pathname: string): string {
   let p = decodeURIComponent(pathname)
@@ -45,7 +81,7 @@ function moduleRoute(handle: DenoPluginHandle): Route {
     match: (_req, ctx) => ctx.pathname.startsWith('/@modules/'),
     handle: async (_req, ctx) => {
       const rawSpec = ctx.pathname.slice('/@modules/'.length)
-      return await serveModule(handle, rawSpec)
+      return await serveModule(handle, rawSpec, moduleUrlForAllowedSpec)
     },
   }
 }
@@ -73,7 +109,11 @@ function transformRoute(): Route {
       const found = resolveLocal(candidate)
       if (!found.ok) return new Response('forbidden', { status: 403 })
       try {
-        const { code }: TransformedModule = await transformLocal(candidate, found.rel)
+        const { code }: TransformedModule = await transformLocal(
+          candidate,
+          found.rel,
+          moduleUrlForAllowedSpec,
+        )
         return new Response(code, { headers: { 'content-type': JS_MIME } })
       } catch (err) {
         console.warn(

@@ -1,5 +1,4 @@
 import { createTranspiler, rewriteImports } from '@ggpwnkthx/esbuild-wrapper-shared'
-import { moduleUrlForAllowedSpec } from './allowlist.ts'
 
 const transpiler = createTranspiler({
   cache: true,
@@ -33,6 +32,7 @@ async function statMtime(abs: string): Promise<number | null> {
 export async function transformLocal(
   abs: string,
   rel: string,
+  moduleUrlForAllowedSpec: (spec: string) => string | undefined,
 ): Promise<TransformedModule> {
   const body = await Deno.readTextFile(abs)
   const { code } = await transpiler.getCachedOrTranspile({

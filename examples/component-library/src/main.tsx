@@ -1,6 +1,8 @@
+import Button from '@mui/material/Button'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import Typography from '@mui/material/Typography'
 import { createRoot } from 'react-dom/client'
-import { Button } from './Button.tsx'
-import { Card } from './Card.tsx'
 
 function formatCount(n: number): string {
   return `Clicked ${n} times`
@@ -18,9 +20,18 @@ function handleClick() {
 
 createRoot(root).render(
   <main>
-    <Card title='Example card'>
-      <Button onClick={handleClick}>Click me</Button>
-      <p data-testid='gg-count'>{formatCount(0)}</p>
+    <Card sx={{ maxWidth: 360 }}>
+      <CardContent>
+        <Typography variant='h5' component='h2'>
+          Example card
+        </Typography>
+        <Button variant='contained' onClick={handleClick}>
+          Click me
+        </Button>
+        <Typography variant='body2' data-testid='gg-count'>
+          {formatCount(0)}
+        </Typography>
+      </CardContent>
     </Card>
   </main>,
 )

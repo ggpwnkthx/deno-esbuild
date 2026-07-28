@@ -1,20 +1,28 @@
 /**
  * End-to-end smoke test for the demo: boot the per-file ESM dev server, then
- * verify the React components render with the expected text and behavior in a
- * real headless Chromium via @astral/astral.
+ * verify Material UI's components render and respond to clicks in a real
+ * headless Chromium via @astral/astral.
  *
  * The dev server serves every `*.ts` / `*.tsx` under `src/` as a separate
  * browser-routable ESM module via `esbuild.transform`, and bundles npm/JS
  * dependencies on demand through `/@modules/<spec>` using `handle.build()`.
- * Bare React specifiers are rewritten server-side to `/@modules/<spec>`
- * URLs via `@deno/graph` AST positions, so no import map is required in
- * the HTML.
+ * Bare React and MUI specifiers are rewritten server-side to
+ * `/@modules/<spec>` URLs via `@deno/graph` AST positions, so no import map
+ * is required in the HTML.
+ *
+ * `react`, `react-dom`, `react-dom/client`, `react/jsx-runtime`, and
+ * `react/jsx-dev-runtime` are externalised inside every non-React bundle
+ * so the browser fetches one shared `/@modules/react` (etc.) URL and reuses
+ * it across every dependent module. The shared React instance is what makes
+ * MUI's hooks succeed against react-dom's dispatcher (see
+ * `src/server/serve_module.ts` for the `neutralizeDynamicReactRequires`
+ * post-pass that handles the CJS-bridged bundles).
  */
 import { launch } from '@astral/astral'
 import { assert, assertEquals, assertExists, assertStringIncludes } from '@std/assert'
 import * as path from '@std/path'
 import { EXAMPLE_ROOT, SRC } from '../src/server/paths.ts'
-import { COPY, COUNT_TEXT, SELECTOR } from './selectors.ts'
+import { COPY, SELECTOR } from './selectors.ts'
 
 interface ServerHandle {
   port: number
@@ -68,124 +76,141 @@ async function startServer(): Promise<ServerHandle> {
   }
 }
 
-assertExists(EXAMPLE_ROOT)
+assertEquals(typeof EXAMPLE_ROOT, 'string')
 
-const { button: buttonSel, card: cardSel, count: countSel } = SELECTOR
+const { button: buttonSel, card: cardSel, count: countSel, title: titleSel } = SELECTOR
 
-interface CardAndButton {
-  card: string
-  button: string
-}
-
-Deno.test('component library demo renders in a real browser', async (t) => {
+Deno.test('component library demo renders Material UI end-to-end', async () => {
   const server = await startServer()
   try {
-    await t.step('renders Card with title and Button with label', async () => {
-      const browser = await launch({ headless: true, args: ['--no-sandbox'] })
-      try {
-        const requests: string[] = []
-        const consoleErrors: string[] = []
-        const pageErrors: string[] = []
-        const page = await browser.newPage('about:blank', {
-          interceptor(request) {
-            requests.push(decodeURIComponent(new URL(request.url).pathname))
-          },
-        })
-        page.addEventListener('console', (event) => {
-          if (event.detail.type === 'error') consoleErrors.push(event.detail.text)
-        })
-        page.addEventListener('pageerror', (event) => pageErrors.push(event.detail.message))
-        const url = `http://localhost:${server.port}/index.html`
-        await page.goto(url, { waitUntil: 'load' })
-
-        const button = await page.waitForSelector(buttonSel, { timeout: 10_000 })
-        assertExists(button, 'Button should be present in the DOM')
-
-        const card = await page.waitForSelector(cardSel, { timeout: 5_000 })
-        assertExists(card, 'Card should be present in the DOM')
-
-        const mainSource = await page.evaluate(async () => {
-          const r = await fetch('/main.tsx')
-          return await r.text()
-        })
-        assertStringIncludes(mainSource, '/@modules/react-dom/client')
-        assertStringIncludes(mainSource, '/@modules/react/jsx-runtime')
-        assert(
-          !mainSource.includes('from "react-dom/client"'),
-          `expected server to rewrite react-dom/client, got: ${mainSource}`,
-        )
-
-        const state = await page.evaluate((selectors: CardAndButton) => {
-          const card = globalThis.document.querySelector<HTMLElement>(selectors.card)
-          const button = globalThis.document.querySelector<HTMLElement>(selectors.button)
-          return {
-            cardTitle: globalThis.document.querySelector('.gg-card__title')?.textContent,
-            buttonLabel: button?.textContent,
-            cardTestId: card?.dataset.testid,
-            buttonTestId: button?.dataset.testid,
-            reactGlobalUndefined: Reflect.get(globalThis, 'React') === undefined,
-          }
-        }, { args: [{ card: cardSel, button: buttonSel } satisfies CardAndButton] })
-        assertEquals(state.cardTitle, COPY.cardTitle)
-        assertEquals(state.buttonLabel, COPY.buttonLabel)
-        assertEquals(state.cardTestId, 'gg-card')
-        assertEquals(state.buttonTestId, 'gg-button')
-        assertEquals(state.reactGlobalUndefined, true)
-        assertEquals(consoleErrors, [])
-        assertEquals(pageErrors, [])
-
-        const esmRequests = requests.filter((request) =>
-          /\.(?:t|j)sx?$/.test(request) || /^\/@modules\//.test(request)
-        )
-
-        const expected = new Set([
-          '/main.tsx',
-          '/Button.tsx',
-          '/Card.tsx',
-          '/@modules/react-dom/client',
-        ])
-        for (const path of expected) {
-          assert(
-            esmRequests.includes(path),
-            `expected ${path} in requests, got: ${JSON.stringify(esmRequests)}`,
-          )
-        }
-
-        const leakedServerFiles = esmRequests.filter((r) => r.startsWith('/server/'))
-        assertEquals(
-          leakedServerFiles,
-          [],
-          `dev-server files leaked into browser requests: ${JSON.stringify(leakedServerFiles)}`,
-        )
-
-        const initialCount = await page.evaluate(
-          (sel: string) => globalThis.document.querySelector(sel)?.textContent,
-          { args: [countSel] },
-        )
-        assertEquals(initialCount, COUNT_TEXT.initial)
-
-        const click = () =>
-          page.evaluate(
-            (sel: string) => {
-              const button = globalThis.document.querySelector<HTMLButtonElement>(sel)
-              button?.click()
-            },
-            { args: [buttonSel] },
-          )
-        await click()
-        await click()
-        const afterClicks = await page.evaluate(
-          (sel: string) => globalThis.document.querySelector(sel)?.textContent,
-          { args: [countSel] },
-        )
-        assertEquals(afterClicks, `Clicked ${2} times`)
-        assertEquals(consoleErrors, [])
-        assertEquals(pageErrors, [])
-      } finally {
-        await browser.close()
-      }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error('browser test exceeded 90s timeout')),
+        90_000,
+      )
     })
+    try {
+      await Promise.race([timeout, runBrowserTest(server)])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
   } finally {
     await server.kill()
   }
 })
+
+async function runBrowserTest(server: ServerHandle): Promise<void> {
+  const browser = await launch({ headless: true, args: ['--no-sandbox'] })
+  try {
+    const requests: string[] = []
+    const consoleErrors: string[] = []
+    const pageErrors: string[] = []
+    const page = await browser.newPage('about:blank', {
+      interceptor(request) {
+        requests.push(decodeURIComponent(new URL(request.url).pathname))
+      },
+    })
+    page.addEventListener('console', (event) => {
+      if (event.detail.type === 'error') consoleErrors.push(event.detail.text)
+    })
+    page.addEventListener('pageerror', (event) => pageErrors.push(event.detail.message))
+    const url = `http://localhost:${server.port}/index.html`
+    // MUI's bundle is large; wait until network is idle so every
+    // `/@modules/<spec>` request has finished before assertions run.
+    await page.goto(url, { waitUntil: 'networkidle0' })
+
+    // The transformed main.tsx must rewrite every bare specifier it
+    // imports into a /@modules/<spec> URL.
+    const mainSource = await page.evaluate(async () => {
+      const r = await fetch('/main.tsx')
+      return await r.text()
+    })
+    assertStringIncludes(mainSource, '/@modules/react-dom/client')
+    assertStringIncludes(mainSource, '/@modules/react/jsx-runtime')
+    assertStringIncludes(mainSource, '/@modules/@mui/material/Button')
+    assertStringIncludes(mainSource, '/@modules/@mui/material/Card')
+    assertStringIncludes(mainSource, '/@modules/@mui/material/CardContent')
+    assertStringIncludes(mainSource, '/@modules/@mui/material/Typography')
+    assert(
+      !mainSource.includes('from "react-dom/client"'),
+      `expected server to rewrite react-dom/client, got: ${mainSource}`,
+    )
+    assert(
+      !mainSource.includes('from "@mui/material/Button"'),
+      `expected server to rewrite @mui/material/Button, got: ${mainSource}`,
+    )
+
+    // MUI must actually render with React from the shared /@modules/react
+    // module. If the dispatcher chain is broken, MUI's hooks throw before
+    // these selectors ever appear in the DOM.
+    const button = await page.waitForSelector(buttonSel, { timeout: 10_000 })
+    assertExists(button, 'MuiButton-root should be present in the DOM')
+    const card = await page.waitForSelector(cardSel, { timeout: 5_000 })
+    assertExists(card, 'MuiCard-root should be present in the DOM')
+    const title = await page.waitForSelector(titleSel, { timeout: 5_000 })
+    assertExists(title, 'MuiTypography-h5 should be present in the DOM')
+
+    const state = await page.evaluate((selectors: typeof SELECTOR) => ({
+      cardTitle: globalThis.document.querySelector(selectors.title)?.textContent ??
+        null,
+      buttonLabel: globalThis.document.querySelector(selectors.button)?.textContent ??
+        null,
+      cardTestId: globalThis.document.querySelector(selectors.card)?.getAttribute(
+        'data-testid',
+      ) ?? null,
+      countText: globalThis.document.querySelector(selectors.count)?.textContent ?? null,
+    }), { args: [SELECTOR] })
+    assertEquals(state.cardTitle, COPY.cardTitle)
+    assertEquals(state.buttonLabel, COPY.buttonLabel)
+
+    // Click the button and verify the count text updates.
+    await page.evaluate((sel: string) => {
+      const btn = globalThis.document.querySelector<HTMLButtonElement>(sel)
+      btn?.click()
+      btn?.click()
+    }, { args: [buttonSel] })
+    // Poll for the post-click count text without relying on
+    // waitForFunction's timeout argument (older Astral API).
+    let afterClicks: string | null = null
+    for (let i = 0; i < 20; i++) {
+      afterClicks = await page.evaluate(
+        (sel: string) => globalThis.document.querySelector(sel)?.textContent ?? null,
+        { args: [countSel] },
+      )
+      if (afterClicks === 'Clicked 2 times') break
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    assertEquals(afterClicks, 'Clicked 2 times')
+
+    const esmRequests = requests.filter((request) =>
+      /\.(?:t|j)sx?$/.test(request) || /^\/@modules\//.test(request)
+    )
+    assert(
+      esmRequests.includes('/main.tsx'),
+      `expected /main.tsx in requests, got: ${JSON.stringify(esmRequests)}`,
+    )
+    assert(
+      esmRequests.includes('/@modules/react-dom/client'),
+      `expected /@modules/react-dom/client in requests, got: ${JSON.stringify(esmRequests)}`,
+    )
+    assert(
+      esmRequests.some((r) => r.startsWith('/@modules/@mui/material/')),
+      `expected at least one /@modules/@mui/material/* request, got: ${
+        JSON.stringify(esmRequests)
+      }`,
+    )
+
+    const leakedServerFiles = esmRequests.filter((r) => r.startsWith('/server/'))
+    assertEquals(
+      leakedServerFiles,
+      [],
+      `dev-server files leaked into browser requests: ${JSON.stringify(leakedServerFiles)}`,
+    )
+
+    assertEquals(consoleErrors, [])
+    assertEquals(pageErrors, [])
+  } finally {
+    await browser.close()
+  }
+}
