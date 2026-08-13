@@ -62,8 +62,19 @@ async function runDeno(
   args: string[],
   env: Record<string, string>,
 ): Promise<CommandResult> {
+  // The probe scripts are written into a temporary directory and reached via
+  // an absolute path. Without an explicit `--config`, the subprocess walks up
+  // from the script's directory and finds no deno.json, so the package's
+  // import map (`@std/path`, `@std/assert`) is not applied and any absolute
+  // import back into the package fails to resolve. Inject the package config
+  // right after the subcommand so subprocesses share the same import
+  // resolution as the parent test runner.
+  const packageConfig = new URL('../deno.json', import.meta.url)
+  const configPath = packageConfig.pathname
+  const withConfig = ['run', '--config', configPath, ...args.slice(1)]
+
   const output = await new Deno.Command(Deno.execPath(), {
-    args,
+    args: withConfig,
     env,
     stdout: 'piped',
     stderr: 'piped',
@@ -103,6 +114,151 @@ function assertSuccessfulCommand(
     `${label} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
   )
 }
+
+async function writeCacheLocationProbe(rootDir: string): Promise<string> {
+  const path = `${rootDir}/cache_probe.ts`
+
+  await Deno.writeTextFile(
+    path,
+    `
+import { getDenoCacheBase } from ${
+      JSON.stringify(new URL('../shared/cache_root.ts', import.meta.url).href)
+    };
+
+const base = getDenoCacheBase();
+console.log(JSON.stringify({ base }));
+`,
+  )
+
+  return path
+}
+
+Deno.test('getDenoCacheBase honors DENO_DIR as a sibling directory', async () => {
+  await withIsolatedRuntime(async ({ rootDir, env }) => {
+    const probePath = await writeCacheLocationProbe(rootDir)
+
+    const result = await runDeno([
+      'run',
+      ...denoRunPermissions({ allowNet: false }),
+      probePath,
+    ], env)
+
+    assertSuccessfulCommand(result, 'cache_root probe')
+
+    const parsed = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}')
+    assertEquals(
+      parsed.base,
+      `${rootDir}`,
+      'DENO_DIR should produce a sibling cache base at its parent',
+    )
+  })
+})
+
+Deno.test('getDenoCacheBase falls back to XDG_CACHE_HOME when DENO_DIR is unset', async () => {
+  await withIsolatedRuntime(async ({ rootDir, env }) => {
+    delete env.DENO_DIR
+
+    const probePath = await writeCacheLocationProbe(rootDir)
+
+    const result = await runDeno([
+      'run',
+      ...denoRunPermissions({ allowNet: false }),
+      probePath,
+    ], env)
+
+    assertSuccessfulCommand(result, 'XDG_CACHE_HOME probe')
+
+    const parsed = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}')
+    assertEquals(
+      parsed.base,
+      `${rootDir}/xdg-cache`,
+      'XDG_CACHE_HOME should be used verbatim when it is absolute',
+    )
+  })
+})
+
+Deno.test('getDenoCacheBase returns HOME-based cache when neither DENO_DIR nor XDG_CACHE_HOME is set', async () => {
+  await withIsolatedRuntime(async ({ rootDir, env }) => {
+    delete env.DENO_DIR
+    delete env.XDG_CACHE_HOME
+
+    const probePath = await writeCacheLocationProbe(rootDir)
+
+    const result = await runDeno([
+      'run',
+      ...denoRunPermissions({ allowNet: false }),
+      probePath,
+    ], env)
+
+    assertSuccessfulCommand(result, 'HOME-only probe')
+
+    const parsed = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}')
+    // On POSIX, the HOME-based fallback is `$HOME/.cache`. The fixture
+    // places HOME under `${rootDir}/home`, so the resolved base must end in
+    // `.cache` even when XDG_CACHE_HOME and DENO_DIR are both unset.
+    assertEquals(
+      parsed.base,
+      `${rootDir}/home/.cache`,
+      'HOME/.cache should be used when no other env var is set',
+    )
+  })
+})
+
+Deno.test('ESBUILD_CACHE_DIR overrides DENO_DIR and platform defaults', async () => {
+  await withIsolatedRuntime(async ({ rootDir, env }) => {
+    const override = `${rootDir}/my-cache`
+    env.ESBUILD_CACHE_DIR = override
+
+    // Confirm `getDenoCacheBase` still derives the DENO_DIR sibling when the
+    // override is set — the override only affects the installer's write path,
+    // not the cache-base resolver.
+    const cacheRootProbe = await runDeno([
+      'run',
+      ...denoRunPermissions({ allowNet: false }),
+      await writeCacheLocationProbe(rootDir),
+    ], env)
+    assertSuccessfulCommand(cacheRootProbe, 'cache_root probe with override')
+
+    const parsed = JSON.parse(
+      cacheRootProbe.stdout.trim().split('\n').at(-1) ?? '{}',
+    )
+    assertEquals(
+      parsed.base,
+      `${rootDir}`,
+      'getDenoCacheBase should still derive the DENO_DIR sibling',
+    )
+
+    // Run the real installer with the override set; the binary must land in
+    // <override>/esbuild/bin rather than under DENO_DIR.
+    const installerProbe = await writeProbeScript(rootDir)
+    const installerRun = await runDeno([
+      'run',
+      ...denoRunPermissions({ allowNet: true }),
+      installerProbe,
+    ], env)
+    assertSuccessfulCommand(installerRun, 'installer probe with override')
+
+    const binaryPath = await findDownloadedBinary(rootDir)
+    assertIncludes(
+      binaryPath,
+      `${override}/esbuild/bin/`,
+      'ESBUILD_CACHE_DIR should redirect the binary into the override directory',
+    )
+
+    const siblingBinary = `${rootDir}/esbuild/bin/esbuild-linux-x64@${version}`
+    let siblingExists = true
+    try {
+      await Deno.stat(siblingBinary)
+    } catch {
+      siblingExists = false
+    }
+    if (siblingExists) {
+      throw new Error(
+        'ESBUILD_CACHE_DIR should bypass the DENO_DIR sibling layout, but a binary appeared under the sibling.',
+      )
+    }
+  })
+})
 
 async function writeProbeScript(rootDir: string): Promise<string> {
   const path = `${rootDir}/probe.ts`
@@ -274,10 +430,22 @@ async function findDownloadedBinary(rootDir: string): Promise<string> {
   )
 }
 
-function denoRunPermissions(options: { allowNet: boolean }): string[] {
+function denoRunPermissions(
+  options: { allowNet: boolean; extraEnv?: readonly string[] },
+): string[] {
+  const envKeys = [
+    'HOME',
+    'XDG_CACHE_HOME',
+    'LOCALAPPDATA',
+    'USERPROFILE',
+    'DENO_DIR',
+    'ESBUILD_BINARY_PATH',
+    'ESBUILD_CACHE_DIR',
+    ...(options.extraEnv ?? []),
+  ]
   const permissions = [
     '--no-prompt',
-    '--allow-env=HOME,XDG_CACHE_HOME,LOCALAPPDATA,USERPROFILE,ESBUILD_BINARY_PATH',
+    `--allow-env=${envKeys.join(',')}`,
     '--allow-read',
     '--allow-write',
     '--allow-run',

@@ -5,6 +5,28 @@ All notable changes to `@ggpwnkthx/esbuild` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16] - 2026-08-13
+
+### Added
+
+- `ESBUILD_CACHE_DIR` environment variable: overrides the cache directory used by the native binary
+  installer. Highest priority; takes precedence over `DENO_DIR` and platform defaults. Lets callers
+  collapse the four-env-var permission footprint down to a single `--allow-env=ESBUILD_CACHE_DIR`.
+- `getDenoCacheBase()` helper exported from `@ggpwnkthx/esbuild/shared/cache_root` (also re-exported
+  via the `@ggpwnkthx/esbuild/shared` barrel). Resolves the parent of Deno's managed cache root the
+  same way the `deno` CLI does for `deno info` output.
+
+### Changed
+
+- Native binary installer now resolves its cache directory through `DENO_DIR` when set, falling back
+  to the platform default. The path-joining logic was factored into `shared/cache_root.ts` so the
+  algorithm is in one place and uses `@std/path` instead of manual string concatenation. Existing
+  cache locations are preserved for users who do not set `DENO_DIR`.
+
+### Dependencies
+
+- Added `@std/path` (`jsr:@std/path@^1.0.0`).
+
 ## [0.2.15] - 2026-07-28
 
 ### Changed

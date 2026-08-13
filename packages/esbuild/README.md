@@ -37,7 +37,7 @@ Why:
 
 | Permission                                                    | Used for                                                                                                                                                                         |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--allow-env`                                                 | Read `ESBUILD_BINARY_PATH`, cache-location variables, and home-directory variables.                                                                                              |
+| `--allow-env`                                                 | Read `ESBUILD_BINARY_PATH`, `ESBUILD_CACHE_DIR`, `DENO_DIR`, and the home-directory / cache-location variables used by `getDenoCacheBase`.                                       |
 | `--allow-net=github.com,release-assets.githubusercontent.com` | Download the binary and `SHA256SUMS` from GitHub releases on a cache miss. GitHub redirects asset URLs to `release-assets.githubusercontent.com`, so both hosts must be allowed. |
 | `--allow-read`                                                | Check the binary cache and read temporary transform outputs.                                                                                                                     |
 | `--allow-write`                                               | Create/update the binary cache and temporary transform files.                                                                                                                    |
@@ -78,13 +78,25 @@ https://github.com/ggpwnkthx/deno-esbuild/releases/download/v${version}/
 For a given asset, it downloads both the executable and `SHA256SUMS`, verifies the executable's
 SHA-256 checksum, and writes the executable to the cache with executable permissions.
 
-Cache locations:
+Cache locations, in order of precedence:
 
-| OS      | Cache directory                                                                        |
-| ------- | -------------------------------------------------------------------------------------- |
-| macOS   | `~/Library/Caches/esbuild/bin`                                                         |
-| Linux   | `$XDG_CACHE_HOME/esbuild/bin`, or `~/.cache/esbuild/bin`                               |
-| Windows | `%LOCALAPPDATA%/Cache/esbuild/bin`, or `%USERPROFILE%/AppData/Local/Cache/esbuild/bin` |
+1. `ESBUILD_CACHE_DIR` — if set, used as the cache base directory; the asset file is appended as
+   `<dir>/esbuild/bin/<assetName>@<version>`. This lets callers collapse the four-env-var permission
+   footprint down to a single `--allow-env=ESBUILD_CACHE_DIR`.
+2. `DENO_DIR` — if set, the cache lives at `<dirname of DENO_DIR>/esbuild/bin`. The esbuild binary
+   sits as a sibling of Deno's managed cache root (the same path `deno info` reports), so it is
+   never wiped by `deno clean`.
+3. Platform default — the base directory is computed the same way the `deno` CLI resolves `DENO_DIR`
+   for `deno info`:
+
+   | OS      | Cache directory                                                                        |
+   | ------- | -------------------------------------------------------------------------------------- |
+   | macOS   | `~/Library/Caches/esbuild/bin`                                                         |
+   | Linux   | `$XDG_CACHE_HOME/esbuild/bin`, or `~/.cache/esbuild/bin`                               |
+   | Windows | `%LOCALAPPDATA%/Cache/esbuild/bin`, or `%USERPROFILE%/AppData/Local/Cache/esbuild/bin` |
+
+The cache-root resolution lives in `getDenoCacheBase`, exported from
+`@ggpwnkthx/esbuild/shared/cache_root`.
 
 The cached file name includes the esbuild binary version, for example:
 

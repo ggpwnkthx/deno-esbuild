@@ -9,6 +9,7 @@
  * ```
  */
 export * from './validation.ts'
+export * from './cache_root.ts'
 export * from './flags/mod.ts'
 export * from './v8_stack.ts'
 export {

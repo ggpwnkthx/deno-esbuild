@@ -1,14 +1,16 @@
 {
   "name": "@ggpwnkthx/esbuild",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.19"
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/path": "jsr:@std/path@^1.0.0"
   },
   "exports": {
     ".": "./mod.ts",
     "./wasm": "./wasm.ts",
     "./binary_installer": "./binary_installer.ts",
     "./shared": "./shared/mod.ts",
+    "./shared/cache_root": "./shared/cache_root.ts",
     "./shared/validation": "./shared/validation.ts",
     "./shared/flags": "./shared/flags/mod.ts",
     "./shared/v8_stack": "./shared/v8_stack.ts",

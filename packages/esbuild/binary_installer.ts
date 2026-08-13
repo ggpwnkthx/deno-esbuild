@@ -15,7 +15,9 @@
  *
  * @see ../mod.ts
  */
+import * as path from '@std/path'
 import { ESBUILD_VERSION } from './shared/mod.ts'
+import { getDenoCacheBase } from './shared/cache_root.ts'
 
 /** Base URL of the GitHub release that hosts the esbuild binaries. */
 const RELEASE_BASE_URL =
@@ -85,47 +87,30 @@ function findExpectedSHA256(checksumText: string, assetName: string): string {
 
 /**
  * Resolves the absolute cache path for `assetName` on the current platform.
- * Uses `~/Library/Caches` on macOS, `%LOCALAPPDATA%\Cache` (or `%USERPROFILE%`)
- * on Windows, and `$XDG_CACHE_HOME` (or `~/.cache`) on Linux.
+ *
+ * Precedence:
+ *   1. `ESBUILD_CACHE_DIR` env var (directory override; the asset file
+ *      is appended as `<dir>/esbuild/bin/<assetName>@<version>`, matching
+ *      the layout used by the platform default).
+ *   2. Sibling of Deno's cache root, computed by {@link getDenoCacheBase}.
+ *      The base is the parent of Deno's managed cache, so the esbuild binary
+ *      ends up alongside — never inside — Deno's `node_modules`/remote-cache
+ *      tree.
+ *   3. Throws if neither resolves.
  */
-function getCachePath(assetName: string): {
-  finalPath: string
-  finalDir: string
-} {
-  let baseDir: string | undefined
-
-  switch (Deno.build.os) {
-    case 'darwin':
-      baseDir = Deno.env.get('HOME')
-      if (baseDir) baseDir += '/Library/Caches'
-      break
-
-    case 'windows':
-      baseDir = Deno.env.get('LOCALAPPDATA')
-      if (!baseDir) {
-        baseDir = Deno.env.get('USERPROFILE')
-        if (baseDir) baseDir += '/AppData/Local'
-      }
-      if (baseDir) baseDir += '/Cache'
-      break
-
-    case 'linux': {
-      const xdg = Deno.env.get('XDG_CACHE_HOME')
-      if (xdg && xdg[0] === '/') baseDir = xdg
-      break
-    }
+function getCachePath(assetName: string): string {
+  const override = Deno.env.get('ESBUILD_CACHE_DIR')
+  if (override) {
+    return path.join(override, 'esbuild', 'bin', `${assetName}@${ESBUILD_VERSION}`)
   }
 
-  if (!baseDir) {
-    baseDir = Deno.env.get('HOME')
-    if (baseDir) baseDir += '/.cache'
+  const base = getDenoCacheBase()
+  if (!base) {
+    throw new Error(
+      'Could not determine esbuild cache directory: set ESBUILD_CACHE_DIR or DENO_DIR',
+    )
   }
-
-  if (!baseDir) throw new Error('Failed to find cache directory')
-
-  const finalDir = `${baseDir}/esbuild/bin`
-  const finalPath = `${finalDir}/${assetName}@${ESBUILD_VERSION}`
-  return { finalPath, finalDir }
+  return path.join(base, 'esbuild', 'bin', `${assetName}@${ESBUILD_VERSION}`)
 }
 
 /**
@@ -134,7 +119,8 @@ function getCachePath(assetName: string): {
  * before being placed in the cache.
  */
 async function installFromRelease(assetName: string): Promise<string> {
-  const { finalPath, finalDir } = getCachePath(assetName)
+  const finalPath = getCachePath(assetName)
+  const finalDir = path.dirname(finalPath)
 
   try {
     await Deno.stat(finalPath)
